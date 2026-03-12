@@ -22,11 +22,6 @@ define('EWPA_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('EWPA_PLUGIN_URL', plugin_dir_url(__FILE__));
 define('EWPA_OPTION_KEY', 'ewpa_enabled_abilities');
 
-// ─── Load textdomain ─────────────────────────────────────────────────────────
-add_action('init', function () {
-    load_plugin_textdomain('enable-abilities-for-mcp', false, dirname(plugin_basename(__FILE__)) . '/languages');
-});
-
 // ─── Includes ────────────────────────────────────────────────────────────────
 require_once EWPA_PLUGIN_DIR . 'includes/admin.php';
 require_once EWPA_PLUGIN_DIR . 'includes/abilities.php';

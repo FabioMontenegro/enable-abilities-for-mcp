@@ -16,9 +16,9 @@ delete_option('ewpa_enabled_abilities');
 
 // Multisite: clean each site.
 if (is_multisite()) {
-    $sites = get_sites(array('fields' => 'ids', 'number' => 0));
-    foreach ($sites as $site_id) {
-        switch_to_blog($site_id);
+    $ewpa_sites = get_sites(array('fields' => 'ids', 'number' => 0));
+    foreach ($ewpa_sites as $ewpa_site_id) {
+        switch_to_blog($ewpa_site_id);
         delete_option('ewpa_enabled_abilities');
         restore_current_blog();
     }

@@ -37,8 +37,8 @@ add_action('admin_init', function () {
     $enabled  = array();
 
     if (isset($_POST['ewpa_abilities']) && is_array($_POST['ewpa_abilities'])) {
-        foreach (wp_unslash($_POST['ewpa_abilities']) as $key) {
-            $key = sanitize_text_field($key);
+        $raw_abilities = array_map('sanitize_text_field', wp_unslash($_POST['ewpa_abilities']));
+        foreach ($raw_abilities as $key) {
             if (in_array($key, $all_keys, true)) {
                 $enabled[] = $key;
             }
