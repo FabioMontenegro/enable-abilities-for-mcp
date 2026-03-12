@@ -36,3 +36,6 @@ dist/
 *.log
 debug.log
 error_log
+
+# Plugin Check reports
+enable-abilities-for-mcp-alegra-*.md
