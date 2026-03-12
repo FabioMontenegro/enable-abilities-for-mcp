@@ -1,0 +1,38 @@
+# OS files
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# IDE / Editor
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+*.swp
+*.swo
+*~
+
+# Claude Code
+.claude/
+
+# Node (if using build tools)
+node_modules/
+package-lock.json
+
+# Composer
+vendor/
+composer.lock
+
+# WordPress
+wp-config.php
+wp-content/uploads/
+
+# Build artifacts
+*.zip
+*.tar.gz
+dist/
+
+# Logs
+*.log
+debug.log
+error_log
