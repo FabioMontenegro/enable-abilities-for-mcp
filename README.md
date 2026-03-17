@@ -8,10 +8,11 @@ WordPress 6.9 introduced the **Abilities API**, allowing external tools to disco
 
 ### Features
 
-- **20 abilities** organized in 4 categories: Core, Read, Write, and Utility
+- **23 abilities** organized in 5 categories: Core, Read, Write, SEO, and Utility
 - **Admin dashboard** with toggle switches for each ability
 - **Per-ability control** — expose only what you need
 - **Secure by design** — proper capability checks, input sanitization, and per-post permission validation
+- **WPCS compliant** — fully passes WordPress Coding Standards (phpcs)
 - **MCP-ready** — all abilities include `show_in_rest` and `mcp.public` metadata
 
 ### Available Abilities
@@ -26,6 +27,11 @@ WordPress 6.9 introduced the **Abilities API**, allowing external tools to disco
 - Create categories and tags
 - Create pages
 - Moderate comments
+- Upload images from external URLs to the media library (with optional auto-assign as featured image)
+
+**SEO — Rank Math:**
+- Get full Rank Math metadata for any post/page (title, description, keywords, robots, Open Graph, SEO score)
+- Update Rank Math metadata: SEO title, description, focus keywords, canonical URL, robots, Open Graph, primary category, pillar content
 
 **Utility:**
 - Search and replace text in post content
@@ -43,6 +49,23 @@ WordPress 6.9 introduced the **Abilities API**, allowing external tools to disco
 2. Activate the plugin through the **Plugins** screen in WordPress.
 3. Go to **Settings > WP Abilities** to manage which abilities are active.
 4. Install and configure the [MCP Adapter](https://wordpress.org/plugins/mcp-adapter/) plugin to connect with AI assistants.
+
+## Development
+
+### Code Quality
+
+This plugin follows the [WordPress Coding Standards](https://developer.wordpress.org/coding-standards/wordpress-coding-standards/) (WPCS 3.x).
+
+```bash
+# Install dev dependencies
+composer install
+
+# Run code sniffer
+vendor/bin/phpcs --standard=WordPress --extensions=php --exclude=WordPress.Files.FileName .
+
+# Auto-fix formatting issues
+vendor/bin/phpcbf --standard=WordPress --extensions=php --exclude=WordPress.Files.FileName .
+```
 
 ## License
 

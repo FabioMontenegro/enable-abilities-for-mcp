@@ -1,11 +1,11 @@
 === Enable Abilities for MCP ===
 Contributors: fabiomontenegro1987
 Donate link: https://paypal.me/fabiomontenegroz
-Tags: mcp, ai, rest-api, content-management, automation
+Tags: mcp, ai, rest-api, content-management, automation, seo, rank-math
 Requires at least: 6.9
 Tested up to: 6.9
 Requires PHP: 8.0
-Stable tag: 1.2.0
+Stable tag: 1.4.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -19,10 +19,11 @@ WordPress 6.9 introduced the Abilities API, allowing external tools to discover 
 
 = Features =
 
-* **20 abilities** organized in 4 categories: Core, Read, Write, and Utility
+* **23 abilities** organized in 5 categories: Core, Read, Write, SEO, and Utility
 * **Admin dashboard** with toggle switches for each ability
 * **Per-ability control** — expose only what you need
 * **Secure by design** — proper capability checks, input sanitization, and per-post permission validation
+* **WPCS compliant** — fully passes WordPress Coding Standards (phpcs)
 * **MCP-ready** — all abilities include `show_in_rest` and `mcp.public` metadata
 
 = Available Abilities =
@@ -39,6 +40,12 @@ WordPress 6.9 introduced the Abilities API, allowing external tools to discover 
 * Create categories and tags
 * Create pages
 * Moderate comments
+* Upload images from external URLs to the media library (with optional auto-assign as featured image)
+
+**SEO — Rank Math:**
+
+* Get full Rank Math metadata for any post/page (title, description, keywords, robots, Open Graph, SEO score)
+* Update Rank Math metadata: SEO title, description, focus keywords, canonical URL, robots, Open Graph, primary category, pillar content
 
 **Utility:**
 
@@ -86,6 +93,25 @@ This plugin registers abilities using the standard `wp_register_ability()` API. 
 
 == Changelog ==
 
+= 1.4.0 =
+* Security: removed server filesystem path exposure from image upload response
+* Security: removed SVG from allowed upload extensions (XSS prevention)
+* Security: upgraded capability checks for Rank Math metadata and site statistics abilities
+* Security: replaced `@unlink()` with `wp_delete_file()` for proper file deletion
+* Security: replaced `user_email` with `user_login` in user listing ability to prevent email exposure
+* Code quality: full WordPress Coding Standards (WPCS 3.x) compliance — zero errors, zero warnings
+* Code quality: tabs indentation, Yoda conditions, spaces inside parentheses, proper docblocks
+* Code quality: replaced short ternary operators with explicit ternaries and helper function
+* Code quality: named function callbacks for activation hook
+* Code quality: proper multi-line comment formatting
+
+= 1.3.0 =
+* New: SEO — Rank Math section with 2 dedicated abilities
+* New: Get Rank Math metadata (title, description, keywords, canonical URL, robots, Open Graph, Twitter, primary category, pillar content, SEO score)
+* New: Update Rank Math metadata with per-field granularity and input validation
+* New: Upload image from URL ability — downloads external images to the media library with optional auto-assign as featured image
+* Total abilities increased from 20 to 23
+
 = 1.2.0 =
 * Security hardening: runtime validation of all enum inputs (post_status, orderby, order)
 * Security hardening: integer inputs clamped to allowed ranges
@@ -106,6 +132,12 @@ This plugin registers abilities using the standard `wp_register_ability()` API. 
 * Admin settings page with per-ability toggles
 
 == Upgrade Notice ==
+
+= 1.4.0 =
+Security and code quality update. Fixes path exposure, SVG uploads, email leaks, and capability levels. Full WPCS compliance. Recommended for all users.
+
+= 1.3.0 =
+New SEO section with Rank Math metadata read/write abilities. Read and update SEO title, description, focus keywords, robots, Open Graph, and more.
 
 = 1.2.0 =
 Security update. Adds input validation, per-post capability checks, and sanitization improvements. Recommended for all users.
