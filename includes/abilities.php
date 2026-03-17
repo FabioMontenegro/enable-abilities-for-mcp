@@ -1803,8 +1803,8 @@ function ewpa_register_custom_abilities(): void {
 		wp_register_ability(
 			'ewpa/actualizar-rankmath',
 			array(
-				'label'               => __( 'Actualizar Metadata Rank Math', 'enable-abilities-for-mcp' ),
-				'description'         => __( 'Actualiza la metadata SEO de Rank Math en un post o página. Solo se modifican los campos enviados. Soporta: título, descripción, keywords, canonical, robots, robots avanzados, Open Graph, Twitter Card, breadcrumb, schema snippet, cornerstone y contenido pilar.', 'enable-abilities-for-mcp' ),
+				'label'               => __( 'Actualizar SEO / Focus Keyword de Rank Math', 'enable-abilities-for-mcp' ),
+				'description'         => __( 'Actualiza la metadata SEO de Rank Math en un post o página (rank_math_focus_keyword, rank_math_title, rank_math_description, etc). Usa esta ability para establecer o cambiar la palabra clave objetivo (focus keyword), título SEO, meta descripción, canonical URL, robots, Open Graph, Twitter Card, breadcrumb, schema snippet, cornerstone y contenido pilar. Solo se modifican los campos enviados.', 'enable-abilities-for-mcp' ),
 				'category'            => 'content-management',
 				'input_schema'        => array(
 					'type'       => 'object',
@@ -1822,10 +1822,9 @@ function ewpa_register_custom_abilities(): void {
 							'type'        => 'string',
 							'description' => 'Meta descripción SEO para Rank Math (opcional)',
 						),
-						'keywords'             => array(
-							'type'        => 'array',
-							'items'       => array( 'type' => 'string' ),
-							'description' => 'Focus keywords como array de strings, ej: ["keyword1", "keyword2"] (opcional)',
+						'keyword'              => array(
+							'type'        => 'string',
+							'description' => 'Palabra clave objetivo (focus keyword) única para Rank Math. Se guarda en rank_math_focus_keyword. Ej: "recetas saludables" (opcional)',
 						),
 						'canonical_url'        => array(
 							'type'        => 'string',
@@ -1946,11 +1945,10 @@ function ewpa_register_custom_abilities(): void {
 						$updated[] = 'descripcion_seo';
 					}
 
-					if ( isset( $input['keywords'] ) ) {
-						$keywords = array_map( 'sanitize_text_field', (array) $input['keywords'] );
-						$keywords_str = implode( ', ', $keywords );
-						update_post_meta( $post_id, 'rank_math_focus_keyword', $keywords_str );
-						$updated[] = 'keywords';
+					if ( isset( $input['keyword'] ) ) {
+						$keyword = sanitize_text_field( $input['keyword'] );
+						update_post_meta( $post_id, 'rank_math_focus_keyword', $keyword );
+						$updated[] = 'keyword';
 					}
 
 					if ( isset( $input['canonical_url'] ) ) {

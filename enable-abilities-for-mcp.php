@@ -173,8 +173,8 @@ function ewpa_get_abilities_registry() {
 					'desc'  => __( 'Obtiene la metadata SEO de Rank Math de un post o página: título, descripción, keywords, robots, Open Graph y más.', 'enable-abilities-for-mcp' ),
 				),
 				'ewpa/actualizar-rankmath' => array(
-					'label' => __( 'Actualizar Metadata Rank Math', 'enable-abilities-for-mcp' ),
-					'desc'  => __( 'Actualiza la metadata SEO de Rank Math: título, descripción, keywords, URL canónica, robots y Open Graph.', 'enable-abilities-for-mcp' ),
+					'label' => __( 'Actualizar SEO / Focus Keyword de Rank Math', 'enable-abilities-for-mcp' ),
+					'desc'  => __( 'Actualiza la palabra clave objetivo (focus keyword), título SEO, descripción, URL canónica, robots y Open Graph de Rank Math.', 'enable-abilities-for-mcp' ),
 				),
 			),
 		),
