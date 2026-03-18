@@ -1,7 +1,7 @@
 === Enable Abilities for MCP ===
 Contributors: fabiomontenegro1987
 Donate link: https://paypal.me/fabiomontenegroz
-Tags: mcp, ai, rest-api, content-management, automation, seo, rank-math
+Tags: mcp, ai, rest-api, content-management, automation
 Requires at least: 6.9
 Tested up to: 6.9
 Requires PHP: 8.0
