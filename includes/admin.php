@@ -61,6 +61,51 @@ add_action(
 	}
 );
 
+// ─── AJAX: Generate API Key ─────────────────────────────────────────────────
+add_action( 'wp_ajax_ewpa_generate_api_key', 'ewpa_ajax_generate_api_key' );
+
+/**
+ * AJAX handler to generate a new API key.
+ */
+function ewpa_ajax_generate_api_key(): void {
+	check_ajax_referer( 'ewpa_api_key_nonce', 'nonce' );
+
+	if ( ! current_user_can( 'manage_options' ) ) {
+		wp_send_json_error( array( 'message' => __( 'No tienes permisos suficientes.', 'enable-abilities-for-mcp' ) ) );
+	}
+
+	$plain_key = ewpa_generate_api_key( get_current_user_id() );
+
+	wp_send_json_success(
+		array(
+			'key'     => $plain_key,
+			'message' => __( 'API Key generada exitosamente.', 'enable-abilities-for-mcp' ),
+		)
+	);
+}
+
+// ─── AJAX: Revoke API Key ───────────────────────────────────────────────────
+add_action( 'wp_ajax_ewpa_revoke_api_key', 'ewpa_ajax_revoke_api_key' );
+
+/**
+ * AJAX handler to revoke the current API key.
+ */
+function ewpa_ajax_revoke_api_key(): void {
+	check_ajax_referer( 'ewpa_api_key_nonce', 'nonce' );
+
+	if ( ! current_user_can( 'manage_options' ) ) {
+		wp_send_json_error( array( 'message' => __( 'No tienes permisos suficientes.', 'enable-abilities-for-mcp' ) ) );
+	}
+
+	ewpa_revoke_api_key();
+
+	wp_send_json_success(
+		array(
+			'message' => __( 'API Key revocada exitosamente.', 'enable-abilities-for-mcp' ),
+		)
+	);
+}
+
 /**
  * Renders the admin settings page.
  */
@@ -77,6 +122,82 @@ function ewpa_render_settings_page(): void {
 		</p>
 
 		<?php settings_errors( 'ewpa_settings' ); ?>
+
+		<?php
+		$api_key_data = get_option( EWPA_API_KEY_OPTION );
+		$has_key      = is_array( $api_key_data ) && ! empty( $api_key_data['hash'] );
+		?>
+		<div class="ewpa-section ewpa-api-key-section">
+			<div class="ewpa-section-header">
+				<div class="ewpa-section-title">
+					<span class="dashicons dashicons-admin-network"></span>
+					<div>
+						<h2><?php esc_html_e( 'API Key para MCP', 'enable-abilities-for-mcp' ); ?></h2>
+						<p class="ewpa-section-desc">
+							<?php esc_html_e( 'Genera una API Key para autenticar conexiones externas al servidor MCP via Bearer token.', 'enable-abilities-for-mcp' ); ?>
+						</p>
+					</div>
+				</div>
+			</div>
+			<div class="ewpa-section-body" style="padding: 20px;">
+				<div id="ewpa-api-key-status">
+					<?php if ( $has_key ) : ?>
+						<p class="ewpa-key-active">
+							<span class="dashicons dashicons-yes-alt" style="color: #00a32a;"></span>
+							<?php
+							printf(
+								/* translators: %s: formatted date */
+								esc_html__( 'API Key activa — generada el %s', 'enable-abilities-for-mcp' ),
+								esc_html( wp_date( get_option( 'date_format' ) . ' ' . get_option( 'time_format' ), $api_key_data['created_at'] ) )
+							);
+							?>
+						</p>
+					<?php else : ?>
+						<p class="ewpa-key-inactive">
+							<span class="dashicons dashicons-warning" style="color: #dba617;"></span>
+							<?php esc_html_e( 'No hay API Key configurada.', 'enable-abilities-for-mcp' ); ?>
+						</p>
+					<?php endif; ?>
+				</div>
+
+				<div id="ewpa-api-key-display" style="display: none; margin: 12px 0;">
+					<div class="notice notice-warning inline" style="margin: 0; padding: 12px;">
+						<p><strong><?php esc_html_e( 'Copia esta clave ahora. No se mostrara de nuevo:', 'enable-abilities-for-mcp' ); ?></strong></p>
+						<p>
+							<code id="ewpa-api-key-value" style="font-size: 14px; padding: 6px 10px; background: #f6f7f7; display: inline-block; word-break: break-all;"></code>
+							<button type="button" class="button button-small" id="ewpa-copy-key" style="margin-left: 8px;">
+								<?php esc_html_e( 'Copiar', 'enable-abilities-for-mcp' ); ?>
+							</button>
+						</p>
+					</div>
+				</div>
+
+				<div class="ewpa-key-actions" style="margin-top: 12px;">
+					<?php if ( $has_key ) : ?>
+						<button type="button" class="button" id="ewpa-regenerate-key">
+							<?php esc_html_e( 'Regenerar API Key', 'enable-abilities-for-mcp' ); ?>
+						</button>
+						<button type="button" class="button button-link-delete" id="ewpa-revoke-key" style="margin-left: 8px;">
+							<?php esc_html_e( 'Revocar API Key', 'enable-abilities-for-mcp' ); ?>
+						</button>
+					<?php else : ?>
+						<button type="button" class="button button-primary" id="ewpa-generate-key">
+							<?php esc_html_e( 'Generar API Key', 'enable-abilities-for-mcp' ); ?>
+						</button>
+					<?php endif; ?>
+				</div>
+
+				<p class="description" style="margin-top: 12px;">
+					<?php
+					printf(
+						/* translators: %s: example authorization header */
+						esc_html__( 'Usa esta clave en el header de autenticacion: %s', 'enable-abilities-for-mcp' ),
+						'<code>Authorization: Bearer &lt;tu-api-key&gt;</code>'
+					);
+					?>
+				</p>
+			</div>
+		</div>
 
 		<form method="post" action="">
 			<?php wp_nonce_field( 'ewpa_save_settings', 'ewpa_save_nonce' ); ?>
@@ -344,7 +465,85 @@ function ewpa_render_settings_page(): void {
 	</style>
 
 	<script>
+	var ewpaApiKey = {
+		ajaxUrl: '<?php echo esc_url( admin_url( 'admin-ajax.php' ) ); ?>',
+		nonce: '<?php echo esc_js( wp_create_nonce( 'ewpa_api_key_nonce' ) ); ?>'
+	};
+	</script>
+
+	<script>
 	(function () {
+		/* ── API Key Management ─────────────────────────────────────────── */
+		function ewpaDoAjax(action, confirmMsg) {
+			if (confirmMsg && !confirm(confirmMsg)) {
+				return;
+			}
+			var xhr = new XMLHttpRequest();
+			xhr.open('POST', ewpaApiKey.ajaxUrl, true);
+			xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+			xhr.onload = function () {
+				if (xhr.status === 200) {
+					var response = JSON.parse(xhr.responseText);
+					if (response.success) {
+						if (response.data.key) {
+							document.getElementById('ewpa-api-key-value').textContent = response.data.key;
+							document.getElementById('ewpa-api-key-display').style.display = 'block';
+							var statusEl = document.getElementById('ewpa-api-key-status');
+							statusEl.innerHTML = '<p class="ewpa-key-active">' +
+								'<span class="dashicons dashicons-yes-alt" style="color: #00a32a;"></span> ' +
+								'API Key activa</p>';
+							var actionsEl = document.querySelector('.ewpa-key-actions');
+							actionsEl.innerHTML =
+								'<button type="button" class="button" id="ewpa-regenerate-key">Regenerar API Key</button>' +
+								'<button type="button" class="button button-link-delete" id="ewpa-revoke-key" style="margin-left: 8px;">Revocar API Key</button>';
+							ewpaBindKeyButtons();
+						} else {
+							location.reload();
+						}
+					} else {
+						alert(response.data.message || 'Error');
+					}
+				}
+			};
+			xhr.send('action=' + action + '&nonce=' + ewpaApiKey.nonce);
+		}
+
+		function ewpaBindKeyButtons() {
+			var genBtn = document.getElementById('ewpa-generate-key');
+			var regenBtn = document.getElementById('ewpa-regenerate-key');
+			var revokeBtn = document.getElementById('ewpa-revoke-key');
+			var copyBtn = document.getElementById('ewpa-copy-key');
+
+			if (genBtn) {
+				genBtn.addEventListener('click', function () {
+					ewpaDoAjax('ewpa_generate_api_key', null);
+				});
+			}
+			if (regenBtn) {
+				regenBtn.addEventListener('click', function () {
+					ewpaDoAjax('ewpa_generate_api_key', '<?php echo esc_js( __( 'Esto invalidara la clave anterior. ¿Continuar?', 'enable-abilities-for-mcp' ) ); ?>');
+				});
+			}
+			if (revokeBtn) {
+				revokeBtn.addEventListener('click', function () {
+					ewpaDoAjax('ewpa_revoke_api_key', '<?php echo esc_js( __( '¿Seguro que deseas revocar la API Key? Las conexiones externas dejaran de funcionar.', 'enable-abilities-for-mcp' ) ); ?>');
+				});
+			}
+			if (copyBtn) {
+				copyBtn.addEventListener('click', function () {
+					var keyText = document.getElementById('ewpa-api-key-value').textContent;
+					navigator.clipboard.writeText(keyText).then(function () {
+						copyBtn.textContent = '<?php echo esc_js( __( '¡Copiada!', 'enable-abilities-for-mcp' ) ); ?>';
+						setTimeout(function () {
+							copyBtn.textContent = '<?php echo esc_js( __( 'Copiar', 'enable-abilities-for-mcp' ) ); ?>';
+						}, 2000);
+					});
+				});
+			}
+		}
+		ewpaBindKeyButtons();
+
+		/* ── Abilities Toggles ──────────────────────────────────────────── */
 		var checkboxes = document.querySelectorAll('.ewpa-ability-check');
 		var sectionChecks = document.querySelectorAll('.ewpa-section-check');
 		var enableAll = document.getElementById('ewpa-enable-all');

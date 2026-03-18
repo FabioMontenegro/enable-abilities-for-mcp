@@ -2,7 +2,7 @@
 /**
  * Plugin Name:       Enable Abilities for MCP
  * Description:       Manage which WordPress Abilities are exposed to MCP servers. Enable or disable each ability individually from the dashboard.
- * Version:           1.4.0
+ * Version:           1.5.0
  * Requires at least: 6.9
  * Requires PHP:      8.0
  * Author:            Fabio Montenegro
@@ -18,14 +18,16 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'EWPA_VERSION', '1.4.0' );
+define( 'EWPA_VERSION', '1.5.0' );
 define( 'EWPA_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'EWPA_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 define( 'EWPA_OPTION_KEY', 'ewpa_enabled_abilities' );
+define( 'EWPA_API_KEY_OPTION', 'ewpa_api_key' );
 
 // Includes.
 require_once EWPA_PLUGIN_DIR . 'includes/admin.php';
 require_once EWPA_PLUGIN_DIR . 'includes/abilities.php';
+require_once EWPA_PLUGIN_DIR . 'includes/auth.php';
 
 // Activation: set all abilities enabled by default.
 register_activation_hook( __FILE__, 'ewpa_activate' );

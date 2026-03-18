@@ -5,7 +5,7 @@ Tags: mcp, ai, rest-api, content-management, automation, seo, rank-math
 Requires at least: 6.9
 Tested up to: 6.9
 Requires PHP: 8.0
-Stable tag: 1.4.0
+Stable tag: 1.5.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -93,6 +93,15 @@ This plugin registers abilities using the standard `wp_register_ability()` API. 
 
 == Changelog ==
 
+= 1.5.0 =
+* New: API Key authentication for external MCP connections (Perplexity, custom connectors)
+* New: Generate, regenerate, and revoke API keys from Settings > WP Abilities
+* New: Bearer token authentication scoped to MCP REST API routes only
+* New: API key stored as SHA-256 hash with timing-safe validation
+* New: Authorization header extraction with Apache/Nginx/CGI fallbacks
+* New: `includes/auth.php` module with authentication logic
+* Clean uninstall updated to remove API key option
+
 = 1.4.0 =
 * Security: removed server filesystem path exposure from image upload response
 * Security: removed SVG from allowed upload extensions (XSS prevention)
@@ -132,6 +141,9 @@ This plugin registers abilities using the standard `wp_register_ability()` API. 
 * Admin settings page with per-ability toggles
 
 == Upgrade Notice ==
+
+= 1.5.0 =
+New API Key authentication. Generate a Bearer token from the admin panel to connect external services like Perplexity via custom MCP connector.
 
 = 1.4.0 =
 Security and code quality update. Fixes path exposure, SVG uploads, email leaks, and capability levels. Full WPCS compliance. Recommended for all users.

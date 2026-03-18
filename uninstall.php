@@ -13,6 +13,7 @@ if ( ! defined( 'WP_UNINSTALL_PLUGIN' ) ) {
 
 // Single site.
 delete_option( 'ewpa_enabled_abilities' );
+delete_option( 'ewpa_api_key' );
 
 // Multisite: clean each site.
 if ( is_multisite() ) {
@@ -25,6 +26,7 @@ if ( is_multisite() ) {
 	foreach ( $ewpa_sites as $ewpa_site_id ) {
 		switch_to_blog( $ewpa_site_id );
 		delete_option( 'ewpa_enabled_abilities' );
+		delete_option( 'ewpa_api_key' );
 		restore_current_blog();
 	}
 }
