@@ -23,6 +23,53 @@ add_action(
 	}
 );
 
+// ─── Enqueue admin assets ───────────────────────────────────────────────────
+add_action( 'admin_enqueue_scripts', 'ewpa_enqueue_admin_assets' );
+
+/**
+ * Enqueue CSS and JS only on the plugin settings page.
+ *
+ * @param string $hook_suffix The current admin page hook suffix.
+ */
+function ewpa_enqueue_admin_assets( $hook_suffix ) {
+	if ( 'settings_page_ewpa-settings' !== $hook_suffix ) {
+		return;
+	}
+
+	wp_enqueue_style(
+		'ewpa-admin',
+		EWPA_PLUGIN_URL . 'assets/css/admin.css',
+		array(),
+		EWPA_VERSION
+	);
+
+	wp_enqueue_script(
+		'ewpa-admin',
+		EWPA_PLUGIN_URL . 'assets/js/admin.js',
+		array(),
+		EWPA_VERSION,
+		true
+	);
+
+	wp_localize_script(
+		'ewpa-admin',
+		'ewpaAdmin',
+		array(
+			'ajaxUrl' => admin_url( 'admin-ajax.php' ),
+			'nonce'   => wp_create_nonce( 'ewpa_api_key_nonce' ),
+			'i18n'    => array(
+				'keyActive'         => __( 'API Key activa', 'enable-abilities-for-mcp' ),
+				'regenerate'        => __( 'Regenerar API Key', 'enable-abilities-for-mcp' ),
+				'revoke'            => __( 'Revocar API Key', 'enable-abilities-for-mcp' ),
+				'confirmRegenerate' => __( 'Esto invalidara la clave anterior. ¿Continuar?', 'enable-abilities-for-mcp' ),
+				'confirmRevoke'     => __( '¿Seguro que deseas revocar la API Key? Las conexiones externas dejaran de funcionar.', 'enable-abilities-for-mcp' ),
+				'copied'            => __( '¡Copiada!', 'enable-abilities-for-mcp' ),
+				'copy'              => __( 'Copiar', 'enable-abilities-for-mcp' ),
+			),
+		)
+	);
+}
+
 // ─── Handle form submission ──────────────────────────────────────────────────
 add_action(
 	'admin_init',
@@ -270,352 +317,5 @@ function ewpa_render_settings_page(): void {
 		</form>
 	</div>
 
-	<style>
-		.ewpa-wrap {
-			max-width: 860px;
-		}
-		.ewpa-subtitle {
-			color: #50575e;
-			font-size: 14px;
-			margin: 4px 0 20px;
-		}
-
-		/* Toolbar */
-		.ewpa-toolbar {
-			display: flex;
-			justify-content: space-between;
-			align-items: center;
-			margin-bottom: 16px;
-			padding: 10px 16px;
-			background: #fff;
-			border: 1px solid #c3c4c7;
-			border-radius: 4px;
-		}
-		.ewpa-toolbar-right {
-			display: flex;
-			gap: 8px;
-		}
-		.ewpa-counter {
-			font-size: 14px;
-			color: #50575e;
-		}
-
-		/* Section card */
-		.ewpa-section {
-			background: #fff;
-			border: 1px solid #c3c4c7;
-			border-radius: 4px;
-			margin-bottom: 16px;
-			box-shadow: 0 1px 1px rgba(0, 0, 0, .04);
-		}
-		.ewpa-section-header {
-			padding: 16px 20px;
-			border-bottom: 1px solid #e0e0e0;
-			display: flex;
-			justify-content: space-between;
-			align-items: center;
-			background: #f9f9f9;
-			border-radius: 4px 4px 0 0;
-		}
-		.ewpa-section-title {
-			display: flex;
-			align-items: flex-start;
-			gap: 12px;
-		}
-		.ewpa-section-title > .dashicons {
-			font-size: 24px;
-			width: 24px;
-			height: 24px;
-			color: #2271b1;
-			margin-top: 2px;
-		}
-		.ewpa-section-title h2 {
-			margin: 0;
-			font-size: 15px;
-			line-height: 1.4;
-			display: flex;
-			align-items: center;
-			gap: 8px;
-		}
-		.ewpa-section-desc {
-			margin: 2px 0 0;
-			color: #646970;
-			font-size: 13px;
-		}
-		.ewpa-section-toggle {
-			display: flex;
-			align-items: center;
-			gap: 6px;
-			cursor: pointer;
-			white-space: nowrap;
-			font-size: 13px;
-			color: #50575e;
-			user-select: none;
-		}
-		.ewpa-section-toggle input {
-			margin: 0;
-		}
-
-		/* Badge */
-		.ewpa-badge {
-			display: inline-block;
-			padding: 1px 8px;
-			border-radius: 10px;
-			font-size: 11px;
-			font-weight: 600;
-			text-transform: uppercase;
-			letter-spacing: .3px;
-		}
-		.ewpa-badge-warning {
-			background: #fcf0e3;
-			color: #9a6700;
-			border: 1px solid #f0c78b;
-		}
-
-		/* Ability row */
-		.ewpa-section-body {
-			padding: 0;
-		}
-		.ewpa-ability {
-			padding: 14px 20px;
-			border-bottom: 1px solid #f0f0f1;
-			display: flex;
-			align-items: flex-start;
-			gap: 16px;
-		}
-		.ewpa-ability:last-child {
-			border-bottom: none;
-		}
-		.ewpa-ability-info {
-			flex: 1;
-		}
-		.ewpa-ability-info strong {
-			display: inline;
-			font-size: 13px;
-		}
-		.ewpa-ability-info p {
-			margin: 4px 0 0;
-			color: #646970;
-			font-size: 12px;
-			line-height: 1.5;
-		}
-		.ewpa-ability-key {
-			font-size: 11px;
-			color: #8c8f94;
-			background: #f0f0f1;
-			padding: 1px 6px;
-			border-radius: 3px;
-			margin-left: 6px;
-		}
-
-		/* Toggle switch */
-		.ewpa-switch {
-			position: relative;
-			display: inline-block;
-			width: 40px;
-			min-width: 40px;
-			height: 22px;
-			margin-top: 1px;
-		}
-		.ewpa-switch input {
-			opacity: 0;
-			width: 0;
-			height: 0;
-			position: absolute;
-		}
-		.ewpa-slider {
-			position: absolute;
-			cursor: pointer;
-			top: 0;
-			left: 0;
-			right: 0;
-			bottom: 0;
-			background-color: #c3c4c7;
-			transition: background-color .2s ease;
-			border-radius: 22px;
-		}
-		.ewpa-slider::before {
-			position: absolute;
-			content: "";
-			height: 16px;
-			width: 16px;
-			left: 3px;
-			bottom: 3px;
-			background-color: #fff;
-			transition: transform .2s ease;
-			border-radius: 50%;
-			box-shadow: 0 1px 2px rgba(0, 0, 0, .2);
-		}
-		.ewpa-switch input:checked + .ewpa-slider {
-			background-color: #2271b1;
-		}
-		.ewpa-switch input:checked + .ewpa-slider::before {
-			transform: translateX(18px);
-		}
-		.ewpa-switch input:focus + .ewpa-slider {
-			box-shadow: 0 0 0 2px #2271b1;
-		}
-
-		/* Save button area */
-		#ewpa-save-btn {
-			font-size: 14px;
-			padding: 6px 24px;
-			height: auto;
-		}
-	</style>
-
-	<script>
-	var ewpaApiKey = {
-		ajaxUrl: '<?php echo esc_url( admin_url( 'admin-ajax.php' ) ); ?>',
-		nonce: '<?php echo esc_js( wp_create_nonce( 'ewpa_api_key_nonce' ) ); ?>'
-	};
-	</script>
-
-	<script>
-	(function () {
-		/* ── API Key Management ─────────────────────────────────────────── */
-		function ewpaDoAjax(action, confirmMsg) {
-			if (confirmMsg && !confirm(confirmMsg)) {
-				return;
-			}
-			var xhr = new XMLHttpRequest();
-			xhr.open('POST', ewpaApiKey.ajaxUrl, true);
-			xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
-			xhr.onload = function () {
-				if (xhr.status === 200) {
-					var response = JSON.parse(xhr.responseText);
-					if (response.success) {
-						if (response.data.key) {
-							document.getElementById('ewpa-api-key-value').textContent = response.data.key;
-							document.getElementById('ewpa-api-key-display').style.display = 'block';
-							var statusEl = document.getElementById('ewpa-api-key-status');
-							statusEl.innerHTML = '<p class="ewpa-key-active">' +
-								'<span class="dashicons dashicons-yes-alt" style="color: #00a32a;"></span> ' +
-								'API Key activa</p>';
-							var actionsEl = document.querySelector('.ewpa-key-actions');
-							actionsEl.innerHTML =
-								'<button type="button" class="button" id="ewpa-regenerate-key">Regenerar API Key</button>' +
-								'<button type="button" class="button button-link-delete" id="ewpa-revoke-key" style="margin-left: 8px;">Revocar API Key</button>';
-							ewpaBindKeyButtons();
-						} else {
-							location.reload();
-						}
-					} else {
-						alert(response.data.message || 'Error');
-					}
-				}
-			};
-			xhr.send('action=' + action + '&nonce=' + ewpaApiKey.nonce);
-		}
-
-		function ewpaBindKeyButtons() {
-			var genBtn = document.getElementById('ewpa-generate-key');
-			var regenBtn = document.getElementById('ewpa-regenerate-key');
-			var revokeBtn = document.getElementById('ewpa-revoke-key');
-			var copyBtn = document.getElementById('ewpa-copy-key');
-
-			if (genBtn) {
-				genBtn.addEventListener('click', function () {
-					ewpaDoAjax('ewpa_generate_api_key', null);
-				});
-			}
-			if (regenBtn) {
-				regenBtn.addEventListener('click', function () {
-					ewpaDoAjax('ewpa_generate_api_key', '<?php echo esc_js( __( 'Esto invalidara la clave anterior. ¿Continuar?', 'enable-abilities-for-mcp' ) ); ?>');
-				});
-			}
-			if (revokeBtn) {
-				revokeBtn.addEventListener('click', function () {
-					ewpaDoAjax('ewpa_revoke_api_key', '<?php echo esc_js( __( '¿Seguro que deseas revocar la API Key? Las conexiones externas dejaran de funcionar.', 'enable-abilities-for-mcp' ) ); ?>');
-				});
-			}
-			if (copyBtn) {
-				copyBtn.addEventListener('click', function () {
-					var keyText = document.getElementById('ewpa-api-key-value').textContent;
-					navigator.clipboard.writeText(keyText).then(function () {
-						copyBtn.textContent = '<?php echo esc_js( __( '¡Copiada!', 'enable-abilities-for-mcp' ) ); ?>';
-						setTimeout(function () {
-							copyBtn.textContent = '<?php echo esc_js( __( 'Copiar', 'enable-abilities-for-mcp' ) ); ?>';
-						}, 2000);
-					});
-				});
-			}
-		}
-		ewpaBindKeyButtons();
-
-		/* ── Abilities Toggles ──────────────────────────────────────────── */
-		var checkboxes = document.querySelectorAll('.ewpa-ability-check');
-		var sectionChecks = document.querySelectorAll('.ewpa-section-check');
-		var enableAll = document.getElementById('ewpa-enable-all');
-		var disableAll = document.getElementById('ewpa-disable-all');
-		var countEl = document.getElementById('ewpa-enabled-count');
-		var totalEl = document.getElementById('ewpa-total-count');
-
-		totalEl.textContent = checkboxes.length;
-
-		function updateCount() {
-			var count = 0;
-			checkboxes.forEach(function (cb) {
-				if (cb.checked) count++;
-			});
-			countEl.textContent = count;
-		}
-
-		function updateSectionCheck(section) {
-			var items = document.querySelectorAll('.ewpa-ability-check[data-section="' + section + '"]');
-			var sectionCb = document.querySelector('.ewpa-section-check[data-section="' + section + '"]');
-			if (!sectionCb) return;
-			var allChecked = true;
-			items.forEach(function (cb) {
-				if (!cb.checked) allChecked = false;
-			});
-			sectionCb.checked = allChecked;
-		}
-
-		function updateAllSections() {
-			sectionChecks.forEach(function (sc) {
-				updateSectionCheck(sc.getAttribute('data-section'));
-			});
-		}
-
-		// Individual toggle
-		checkboxes.forEach(function (cb) {
-			cb.addEventListener('change', function () {
-				updateCount();
-				updateSectionCheck(this.getAttribute('data-section'));
-			});
-		});
-
-		// Section toggle
-		sectionChecks.forEach(function (sc) {
-			sc.addEventListener('change', function () {
-				var section = this.getAttribute('data-section');
-				var checked = this.checked;
-				document.querySelectorAll('.ewpa-ability-check[data-section="' + section + '"]').forEach(function (cb) {
-					cb.checked = checked;
-				});
-				updateCount();
-			});
-		});
-
-		// Enable all
-		enableAll.addEventListener('click', function () {
-			checkboxes.forEach(function (cb) { cb.checked = true; });
-			sectionChecks.forEach(function (sc) { sc.checked = true; });
-			updateCount();
-		});
-
-		// Disable all
-		disableAll.addEventListener('click', function () {
-			checkboxes.forEach(function (cb) { cb.checked = false; });
-			sectionChecks.forEach(function (sc) { sc.checked = false; });
-			updateCount();
-		});
-
-		// Init
-		updateCount();
-		updateAllSections();
-	})();
-	</script>
 	<?php
 }

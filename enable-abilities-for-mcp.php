@@ -2,7 +2,7 @@
 /**
  * Plugin Name:       Enable Abilities for MCP
  * Description:       Manage which WordPress Abilities are exposed to MCP servers. Enable or disable each ability individually from the dashboard.
- * Version:           1.5.0
+ * Version:           1.6.0
  * Requires at least: 6.9
  * Requires PHP:      8.0
  * Author:            Fabio Montenegro
@@ -18,7 +18,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'EWPA_VERSION', '1.5.0' );
+define( 'EWPA_VERSION', '1.6.0' );
 define( 'EWPA_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'EWPA_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 define( 'EWPA_OPTION_KEY', 'ewpa_enabled_abilities' );
@@ -131,35 +131,39 @@ function ewpa_get_abilities_registry() {
 			'section_icon'  => 'dashicons-edit',
 			'section_badge' => 'warning',
 			'abilities'     => array(
-				'ewpa/crear-post'         => array(
+				'ewpa/crear-post'           => array(
 					'label' => __( 'Crear Post', 'enable-abilities-for-mcp' ),
 					'desc'  => __( 'Crea un nuevo post con título, contenido, categorías, etiquetas, imagen destacada y más.', 'enable-abilities-for-mcp' ),
 				),
-				'ewpa/actualizar-post'    => array(
+				'ewpa/actualizar-post'      => array(
 					'label' => __( 'Actualizar Post', 'enable-abilities-for-mcp' ),
 					'desc'  => __( 'Modifica un post existente. Solo actualiza los campos enviados.', 'enable-abilities-for-mcp' ),
 				),
-				'ewpa/eliminar-post'      => array(
+				'ewpa/eliminar-post'        => array(
 					'label' => __( 'Eliminar Post', 'enable-abilities-for-mcp' ),
 					'desc'  => __( 'Envía un post a la papelera o lo elimina permanentemente.', 'enable-abilities-for-mcp' ),
 				),
-				'ewpa/crear-categoria'    => array(
+				'ewpa/crear-categoria'      => array(
 					'label' => __( 'Crear Categoría', 'enable-abilities-for-mcp' ),
 					'desc'  => __( 'Crea una nueva categoría con nombre, slug, descripción y padre.', 'enable-abilities-for-mcp' ),
 				),
-				'ewpa/crear-tag'          => array(
+				'ewpa/crear-tag'            => array(
 					'label' => __( 'Crear Etiqueta', 'enable-abilities-for-mcp' ),
 					'desc'  => __( 'Crea una nueva etiqueta (tag) con nombre, slug y descripción.', 'enable-abilities-for-mcp' ),
 				),
-				'ewpa/crear-pagina'       => array(
+				'ewpa/crear-pagina'         => array(
 					'label' => __( 'Crear Página', 'enable-abilities-for-mcp' ),
 					'desc'  => __( 'Crea una nueva página con título, contenido, estado y página padre.', 'enable-abilities-for-mcp' ),
 				),
-				'ewpa/moderar-comentario' => array(
+				'ewpa/moderar-comentario'   => array(
 					'label' => __( 'Moderar Comentario', 'enable-abilities-for-mcp' ),
 					'desc'  => __( 'Cambia el estado de un comentario: aprobar, espera, spam o papelera.', 'enable-abilities-for-mcp' ),
 				),
-				'ewpa/subir-imagen'       => array(
+				'ewpa/responder-comentario' => array(
+					'label' => __( 'Responder Comentario', 'enable-abilities-for-mcp' ),
+					'desc'  => __( 'Responde a un comentario existente como el usuario autenticado.', 'enable-abilities-for-mcp' ),
+				),
+				'ewpa/subir-imagen'         => array(
 					'label' => __( 'Subir Imagen desde URL', 'enable-abilities-for-mcp' ),
 					'desc'  => __( 'Descarga una imagen desde una URL externa y la registra en la biblioteca de medios. Retorna el ID del attachment.', 'enable-abilities-for-mcp' ),
 				),

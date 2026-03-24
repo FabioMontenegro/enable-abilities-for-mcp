@@ -5,7 +5,7 @@ Tags: mcp, ai, rest-api, content-management, automation
 Requires at least: 6.9
 Tested up to: 6.9
 Requires PHP: 8.0
-Stable tag: 1.5.0
+Stable tag: 1.6.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -19,7 +19,7 @@ WordPress 6.9 introduced the Abilities API, allowing external tools to discover 
 
 = Features =
 
-* **23 abilities** organized in 5 categories: Core, Read, Write, SEO, and Utility
+* **24 abilities** organized in 5 categories: Core, Read, Write, SEO, and Utility
 * **Admin dashboard** with toggle switches for each ability
 * **Per-ability control** — expose only what you need
 * **Secure by design** — proper capability checks, input sanitization, and per-post permission validation
@@ -40,12 +40,13 @@ WordPress 6.9 introduced the Abilities API, allowing external tools to discover 
 * Create categories and tags
 * Create pages
 * Moderate comments
+* Reply to comments as the authenticated user
 * Upload images from external URLs to the media library (with optional auto-assign as featured image)
 
 **SEO — Rank Math:**
 
 * Get full Rank Math metadata for any post/page (title, description, keywords, robots, Open Graph, SEO score)
-* Update Rank Math metadata: SEO title, description, focus keywords, canonical URL, robots, Open Graph, primary category, pillar content
+* Update Rank Math metadata: SEO title, description, focus keyword, canonical URL, robots, Open Graph, primary category, pillar content
 
 **Utility:**
 
@@ -92,6 +93,12 @@ This plugin registers abilities using the standard `wp_register_ability()` API. 
 1. Admin settings page showing all abilities organized by category with toggle switches.
 
 == Changelog ==
+
+= 1.6.0 =
+* New: Reply to comments ability (responder-comentario) — respond to existing comments as the authenticated user
+* Fix: Rank Math focus keyword parameter changed from array to single string for proper MCP compatibility
+* Improved: Updated actualizar-rankmath label and descriptions for better AI discovery via MCP
+* Total abilities increased from 23 to 24
 
 = 1.5.0 =
 * New: API Key authentication for external MCP connections (Perplexity, custom connectors)
@@ -141,6 +148,9 @@ This plugin registers abilities using the standard `wp_register_ability()` API. 
 * Admin settings page with per-ability toggles
 
 == Upgrade Notice ==
+
+= 1.6.0 =
+New reply to comments ability. Fixed Rank Math focus keyword input for reliable MCP integration.
 
 = 1.5.0 =
 New API Key authentication. Generate a Bearer token from the admin panel to connect external services like Perplexity via custom MCP connector.

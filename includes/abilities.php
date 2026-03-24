@@ -1500,7 +1500,86 @@ function ewpa_register_custom_abilities(): void {
 		);
 	}
 
-	// ── B8: Subir imagen desde URL ──────────────────────────────────────
+	// ── B8: Responder comentario ────────────────────────────────────────
+	if ( ewpa_is_ability_enabled( 'ewpa/responder-comentario' ) ) {
+		wp_register_ability(
+			'ewpa/responder-comentario',
+			array(
+				'label'               => __( 'Responder Comentario', 'enable-abilities-for-mcp' ),
+				'description'         => __( 'Responde a un comentario existente en un post o página. La respuesta se publica como el usuario autenticado actual.', 'enable-abilities-for-mcp' ),
+				'category'            => 'content-management',
+				'input_schema'        => array(
+					'type'       => 'object',
+					'required'   => array( 'comment_id', 'content' ),
+					'properties' => array(
+						'comment_id' => array(
+							'type'        => 'integer',
+							'description' => 'ID del comentario al que se responde (obligatorio)',
+						),
+						'content'    => array(
+							'type'        => 'string',
+							'description' => 'Contenido de la respuesta (obligatorio)',
+						),
+					),
+				),
+				'output_schema'       => array(
+					'type'       => 'object',
+					'properties' => array(
+						'comment_id' => array( 'type' => 'integer' ),
+						'parent_id'  => array( 'type' => 'integer' ),
+						'post_id'    => array( 'type' => 'integer' ),
+						'author'     => array( 'type' => 'string' ),
+						'content'    => array( 'type' => 'string' ),
+						'date'       => array( 'type' => 'string' ),
+						'message'    => array( 'type' => 'string' ),
+					),
+				),
+				'permission_callback' => function () {
+					return current_user_can( 'moderate_comments' );
+				},
+				'execute_callback'    => function ( $input ) {
+					$parent_comment = get_comment( absint( $input['comment_id'] ) );
+					if ( ! $parent_comment ) {
+						return new WP_Error( 'not_found', 'Comentario padre no encontrado.' );
+					}
+
+					$current_user = wp_get_current_user();
+					$comment_data = array(
+						'comment_post_ID'      => (int) $parent_comment->comment_post_ID,
+						'comment_parent'       => absint( $input['comment_id'] ),
+						'comment_content'      => wp_kses_post( $input['content'] ),
+						'user_id'              => $current_user->ID,
+						'comment_author'       => $current_user->display_name,
+						'comment_author_email' => $current_user->user_email,
+						'comment_approved'     => 1,
+					);
+
+					$new_comment_id = wp_insert_comment( $comment_data );
+					if ( ! $new_comment_id ) {
+						return new WP_Error( 'insert_failed', 'No se pudo crear la respuesta al comentario.' );
+					}
+
+					return array(
+						'comment_id' => $new_comment_id,
+						'parent_id'  => absint( $input['comment_id'] ),
+						'post_id'    => (int) $parent_comment->comment_post_ID,
+						'author'     => $current_user->display_name,
+						'content'    => wp_kses_post( $input['content'] ),
+						'date'       => current_time( 'mysql' ),
+						'message'    => 'Respuesta al comentario #' . absint( $input['comment_id'] ) . ' publicada exitosamente.',
+					);
+				},
+				'meta'                => array(
+					'show_in_rest' => true,
+					'mcp'          => array(
+						'public' => true,
+					),
+				),
+			)
+		);
+	}
+
+	// ── B9: Subir imagen desde URL ──────────────────────────────────────
 	if ( ewpa_is_ability_enabled( 'ewpa/subir-imagen' ) ) {
 		wp_register_ability(
 			'ewpa/subir-imagen',

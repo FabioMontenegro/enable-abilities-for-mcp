@@ -8,7 +8,7 @@ WordPress 6.9 introduced the **Abilities API**, allowing external tools to disco
 
 ### Features
 
-- **23 abilities** organized in 5 categories: Core, Read, Write, SEO, and Utility
+- **24 abilities** organized in 5 categories: Core, Read, Write, SEO, and Utility
 - **Admin dashboard** with toggle switches for each ability
 - **Per-ability control** — expose only what you need
 - **Secure by design** — proper capability checks, input sanitization, and per-post permission validation
@@ -27,11 +27,12 @@ WordPress 6.9 introduced the **Abilities API**, allowing external tools to disco
 - Create categories and tags
 - Create pages
 - Moderate comments
+- Reply to comments as the authenticated user
 - Upload images from external URLs to the media library (with optional auto-assign as featured image)
 
 **SEO — Rank Math:**
 - Get full Rank Math metadata for any post/page (title, description, keywords, robots, Open Graph, SEO score)
-- Update Rank Math metadata: SEO title, description, focus keywords, canonical URL, robots, Open Graph, primary category, pillar content
+- Update Rank Math metadata: SEO title, description, focus keyword, canonical URL, robots, Open Graph, primary category, pillar content
 
 **Utility:**
 - Search and replace text in post content
