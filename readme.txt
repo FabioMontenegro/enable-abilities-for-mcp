@@ -5,7 +5,7 @@ Tags: mcp, ai, rest-api, content-management, automation
 Requires at least: 6.9
 Tested up to: 6.9
 Requires PHP: 8.0
-Stable tag: 1.6.0
+Stable tag: 1.7.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -61,10 +61,10 @@ WordPress 6.9 introduced the Abilities API, allowing external tools to discover 
 
 == Installation ==
 
-1. Upload the `enable-abilities-for-mcp` folder to `/wp-content/plugins/`.
-2. Activate the plugin through the **Plugins** screen in WordPress.
+1. In your WordPress dashboard, go to **Plugins > Add New** and search for **Enable Abilities for MCP**.
+2. Click **Install Now**, then **Activate**.
 3. Go to **Settings > WP Abilities** to manage which abilities are active.
-4. Install and configure the [MCP Adapter](https://wordpress.org/plugins/mcp-adapter/) plugin to connect with AI assistants.
+4. Install and configure the [MCP Adapter](https://github.com/WordPress/mcp-adapter/releases) plugin to connect with AI assistants.
 
 == Frequently Asked Questions ==
 
@@ -93,6 +93,11 @@ This plugin registers abilities using the standard `wp_register_ability()` API. 
 1. Admin settings page showing all abilities organized by category with toggle switches.
 
 == Changelog ==
+
+= 1.7.0 =
+* New: Admin notice when MCP Adapter plugin is not installed with download link
+* New: MCP endpoint URL and Claude Desktop configuration example in API Key section
+* Updated: Installation instructions reflect WordPress.org plugin directory availability
 
 = 1.6.0 =
 * New: Reply to comments ability (responder-comentario) — respond to existing comments as the authenticated user
@@ -148,6 +153,9 @@ This plugin registers abilities using the standard `wp_register_ability()` API. 
 * Admin settings page with per-ability toggles
 
 == Upgrade Notice ==
+
+= 1.7.0 =
+MCP Adapter dependency notice, connection example for Claude Desktop, and updated installation instructions for WordPress.org.
 
 = 1.6.0 =
 New reply to comments ability. Fixed Rank Math focus keyword input for reliable MCP integration.

@@ -41,15 +41,15 @@ WordPress 6.9 introduced the **Abilities API**, allowing external tools to disco
 ## Requirements
 
 - WordPress 6.9 or later (Abilities API)
-- [MCP Adapter](https://wordpress.org/plugins/mcp-adapter/) plugin installed and configured
+- [MCP Adapter](https://github.com/WordPress/mcp-adapter/releases) plugin installed and configured
 - PHP 8.0 or later
 
 ## Installation
 
-1. Upload the `enable-abilities-for-mcp` folder to `/wp-content/plugins/`.
-2. Activate the plugin through the **Plugins** screen in WordPress.
+1. In your WordPress dashboard, go to **Plugins > Add New** and search for **Enable Abilities for MCP**.
+2. Click **Install Now**, then **Activate**.
 3. Go to **Settings > WP Abilities** to manage which abilities are active.
-4. Install and configure the [MCP Adapter](https://wordpress.org/plugins/mcp-adapter/) plugin to connect with AI assistants.
+4. Install and configure the [MCP Adapter](https://github.com/WordPress/mcp-adapter/releases) plugin to connect with AI assistants.
 
 ## Development
 

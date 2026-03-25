@@ -23,6 +23,44 @@ add_action(
 	}
 );
 
+// ─── MCP Adapter dependency notice ──────────────────────────────────────────
+add_action( 'admin_notices', 'ewpa_admin_notice_mcp_adapter' );
+
+/**
+ * Shows a dismissible admin notice if MCP Adapter plugin is not active.
+ *
+ * @return void
+ */
+function ewpa_admin_notice_mcp_adapter(): void {
+	if ( ! current_user_can( 'activate_plugins' ) ) {
+		return;
+	}
+
+	if ( ! function_exists( 'is_plugin_active' ) ) {
+		include_once ABSPATH . 'wp-admin/includes/plugin.php';
+	}
+
+	if ( is_plugin_active( 'mcp-adapter/mcp-adapter.php' ) ) {
+		return;
+	}
+
+	$mcp_url = 'https://github.com/WordPress/mcp-adapter/releases';
+	?>
+	<div class="notice notice-warning is-dismissible">
+		<p>
+			<?php
+			printf(
+				/* translators: %1$s: opening <a> tag, %2$s: closing </a> tag */
+				esc_html__( 'Enable Abilities for MCP requiere el plugin MCP Adapter para funcionar. %1$sDescargar MCP Adapter%2$s', 'enable-abilities-for-mcp' ),
+				'<a href="' . esc_url( $mcp_url ) . '" target="_blank" rel="noopener noreferrer">',
+				'</a>'
+			);
+			?>
+		</p>
+	</div>
+	<?php
+}
+
 // ─── Enqueue admin assets ───────────────────────────────────────────────────
 add_action( 'admin_enqueue_scripts', 'ewpa_enqueue_admin_assets' );
 
@@ -243,6 +281,52 @@ function ewpa_render_settings_page(): void {
 					);
 					?>
 				</p>
+
+				<div style="margin-top: 16px; padding: 16px; background: #f6f7f7; border: 1px solid #dcdcde; border-radius: 4px;">
+					<h4 style="margin: 0 0 8px;">
+						<?php esc_html_e( 'Endpoint MCP de tu sitio', 'enable-abilities-for-mcp' ); ?>
+					</h4>
+					<p class="description" style="margin: 0 0 8px;">
+						<?php esc_html_e( 'Usa esta URL para conectar tu cliente MCP:', 'enable-abilities-for-mcp' ); ?>
+					</p>
+					<code style="display: block; padding: 8px 12px; background: #fff; border: 1px solid #dcdcde; word-break: break-all;">
+						<?php echo esc_url( site_url( '/wp-json/mcp/mcp-adapter-default-server' ) ); ?>
+					</code>
+
+					<h4 style="margin: 16px 0 8px;">
+						<?php esc_html_e( 'Ejemplo de configuracion para Claude Desktop', 'enable-abilities-for-mcp' ); ?>
+					</h4>
+					<p class="description" style="margin: 0 0 8px;">
+						<?php
+						printf(
+							/* translators: %s: config file name */
+							esc_html__( 'Agrega esto en tu archivo de configuracion %s:', 'enable-abilities-for-mcp' ),
+							'<code>claude_desktop_config.json</code>'
+						);
+						?>
+					</p>
+					<?php
+					$ewpa_mcp_url = esc_url( site_url( '/wp-json/mcp/mcp-adapter-default-server' ) );
+					$ewpa_json    = "{\n";
+					$ewpa_json   .= "  \"mcpServers\": {\n";
+					$ewpa_json   .= "    \"my-wordpress-site\": {\n";
+					$ewpa_json   .= "      \"command\": \"npx\",\n";
+					$ewpa_json   .= "      \"args\": [\n";
+					$ewpa_json   .= "        \"-y\",\n";
+					$ewpa_json   .= "        \"mcp-remote\",\n";
+					$ewpa_json   .= '        "' . $ewpa_mcp_url . "\",\n";
+					$ewpa_json   .= "        \"--header\",\n";
+					$ewpa_json   .= "        \"Authorization: Bearer YOUR-API-KEY\"\n";
+					$ewpa_json   .= "      ]\n";
+					$ewpa_json   .= "    }\n";
+					$ewpa_json   .= "  }\n";
+					$ewpa_json   .= '}';
+					?>
+					<pre style="background: #1e1e1e; color: #d4d4d4; padding: 14px 16px; border-radius: 4px; overflow-x: auto; font-size: 13px; line-height: 1.5; margin: 0;"><code style="color: inherit; background: none;"><?php echo esc_html( $ewpa_json ); ?></code></pre>
+					<p class="description" style="margin: 8px 0 0;">
+						<?php esc_html_e( 'Reemplaza YOUR-API-KEY con la API Key generada arriba.', 'enable-abilities-for-mcp' ); ?>
+					</p>
+				</div>
 			</div>
 		</div>
 
