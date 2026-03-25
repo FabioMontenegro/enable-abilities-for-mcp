@@ -27,6 +27,10 @@ composer.lock
 wp-config.php
 wp-content/uploads/
 
+# Plugin assets (SVN only, not needed in Git)
+assets/banner.png
+assets/logo.png
+
 # Build artifacts
 *.zip
 *.tar.gz
