@@ -1,15 +1,15 @@
 === Enable Abilities for MCP ===
 Contributors: fabiomontenegro1987
 Donate link: https://paypal.me/fabiomontenegroz
-Tags: mcp, ai, rest-api, content-management, automation
+Tags: mcp, ai, rest-api, content-management, woocommerce
 Requires at least: 6.9
 Tested up to: 6.9
 Requires PHP: 8.0
-Stable tag: 1.7.0
+Stable tag: 1.8.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
-Manage which WordPress Abilities are exposed to MCP (Model Context Protocol) servers. Enable or disable each ability individually from the dashboard.
+Manage which WordPress Abilities are exposed to MCP (Model Context Protocol) servers. Compatible with WooCommerce, ACF, JetEngine, and any custom post type. Enable or disable each ability individually from the dashboard.
 
 == Description ==
 
@@ -19,7 +19,8 @@ WordPress 6.9 introduced the Abilities API, allowing external tools to discover 
 
 = Features =
 
-* **24 abilities** organized in 5 categories: Core, Read, Write, SEO, and Utility
+* **32 abilities** organized in 6 categories: Core, Read, Write, SEO, Utility, and Custom Post Types
+* **WooCommerce compatible** — manage products, orders, and any custom post type with full meta field access (_price, _sku, _stock, etc.)
 * **Admin dashboard** with toggle switches for each ability
 * **Per-ability control** — expose only what you need
 * **Secure by design** — proper capability checks, input sanitization, and per-post permission validation
@@ -48,10 +49,19 @@ WordPress 6.9 introduced the Abilities API, allowing external tools to discover 
 * Get full Rank Math metadata for any post/page (title, description, keywords, robots, Open Graph, SEO score)
 * Update Rank Math metadata: SEO title, description, focus keyword, canonical URL, robots, Open Graph, primary category, pillar content
 
+**Custom Post Types:**
+
+* List all registered custom post types with configuration and taxonomies
+* Get items from any CPT with filtering, search, and taxonomy queries
+* Get full details of a CPT item including all meta fields (WooCommerce, ACF, JetEngine, etc.)
+* Create, update, and delete CPT items with taxonomy and meta field support
+* Get CPT taxonomies with their terms
+* Assign taxonomy terms to CPT items
+
 **Utility:**
 
 * Search and replace text in post content
-* Site statistics overview
+* Site statistics overview (now includes custom post type counts)
 
 = Requirements =
 
@@ -84,6 +94,10 @@ Write abilities respect WordPress capabilities. For example, creating a post req
 
 Yes. The plugin can be network-activated. Each site in the network has its own ability configuration.
 
+= Does it work with WooCommerce? =
+
+Yes. The Custom Post Types section automatically detects WooCommerce products, orders, coupons, and any other registered post type. You can list, create, update, and delete items with full access to WooCommerce meta fields like `_price`, `_sku`, `_stock_status`, `_regular_price`, and more.
+
 = Can I add custom abilities? =
 
 This plugin registers abilities using the standard `wp_register_ability()` API. You can register additional abilities in your own plugin using the `wp_abilities_api_init` hook.
@@ -93,6 +107,17 @@ This plugin registers abilities using the standard `wp_register_ability()` API. 
 1. Admin settings page showing all abilities organized by category with toggle switches.
 
 == Changelog ==
+
+= 1.8.0 =
+* New: 8 Custom Post Type abilities — list, get, create, update, delete CPT items, get taxonomies, and assign terms
+* New: Full CPT support works with any plugin or theme (WooCommerce, ACF, JetEngine, custom code, etc.)
+* New: All meta fields accessible on CPT items (including _price, _sku, ACF fields, etc.)
+* New: Contextual admin notices for CPT section (no CPTs detected) and SEO section (Rank Math not active)
+* New: Site statistics now include custom post type counts
+* Changed: All ability keys standardized to English (e.g. ewpa/obtener-posts → ewpa/get-posts)
+* Changed: All source strings standardized to English; Spanish moved to translation files
+* Changed: Automatic migration preserves existing settings when upgrading from v1.7
+* Total abilities increased from 24 to 32
 
 = 1.7.0 =
 * New: Admin notice when MCP Adapter plugin is not installed with download link
@@ -153,6 +178,9 @@ This plugin registers abilities using the standard `wp_register_ability()` API. 
 * Admin settings page with per-ability toggles
 
 == Upgrade Notice ==
+
+= 1.8.0 =
+Major update: 8 new Custom Post Type abilities for WooCommerce, ACF, JetEngine, and more. All keys standardized to English with automatic migration. Contextual admin notices for missing dependencies.
 
 = 1.7.0 =
 MCP Adapter dependency notice, connection example for Claude Desktop, and updated installation instructions for WordPress.org.

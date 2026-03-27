@@ -3,12 +3,12 @@
 # This file is distributed under the same license as the Enable Abilities for MCP plugin.
 msgid ""
 msgstr ""
-"Project-Id-Version: Enable Abilities for MCP 1.5.0\n"
+"Project-Id-Version: Enable Abilities for MCP 1.8.0\n"
 "Report-Msgid-Bugs-To: https://fabiomontenegro.com\n"
-"POT-Creation-Date: 2026-03-18 00:00+0000\n"
-"PO-Revision-Date: 2026-03-18 00:00+0000\n"
+"POT-Creation-Date: 2026-03-27 00:00+0000\n"
+"PO-Revision-Date: 2026-03-27 00:00+0000\n"
 "Last-Translator: Fabio Montenegro <info@fabiomontenegro.com>\n"
-"Language-Team: English (US)\n"
+"Language-Team: English (US) <LL@li.org>\n"
 "Language: en_US\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
@@ -17,451 +17,626 @@ msgstr ""
 "X-Generator: Claude Code\n"
 "X-Domain: enable-abilities-for-mcp\n"
 
-#: enable-abilities-for-mcp.php:71
-msgid "Core de WordPress"
-msgstr "WordPress Core"
+#. Plugin Name of the plugin
+msgid "Enable Abilities for MCP"
+msgstr ""
 
-#: enable-abilities-for-mcp.php:72
-msgid "Abilities nativas del core de WordPress. Se exponen al MCP con el flag público."
-msgstr "Native WordPress core abilities. Exposed to MCP with the public flag."
+#. Description of the plugin
+msgid "Manage which WordPress Abilities are exposed to MCP servers. Enable or disable each ability individually from the dashboard."
+msgstr ""
 
-#: enable-abilities-for-mcp.php:76
-msgid "Información del Sitio"
-msgstr "Site Information"
+#. Author of the plugin
+msgid "Fabio Montenegro"
+msgstr ""
 
-#: enable-abilities-for-mcp.php:77
-msgid "Datos generales del sitio: nombre, URL, descripción, idioma, zona horaria, versión de WP."
-msgstr "General site data: name, URL, description, language, timezone, WP version."
+#. Section labels and descriptions (enable-abilities-for-mcp.php)
+msgid "WordPress Core"
+msgstr ""
 
-#: enable-abilities-for-mcp.php:80
-msgid "Información del Usuario"
-msgstr "User Information"
+msgid "Native WordPress core abilities. Exposed to MCP with the public flag."
+msgstr ""
 
-#: enable-abilities-for-mcp.php:81
-msgid "Datos del usuario actual: nombre, email, rol, avatar."
-msgstr "Current user data: name, email, role, avatar."
+msgid "Site Information"
+msgstr ""
 
-#: enable-abilities-for-mcp.php:84
-msgid "Información del Entorno"
-msgstr "Environment Information"
+msgid "General site data: name, URL, description, language, timezone, WP version."
+msgstr ""
 
-#: enable-abilities-for-mcp.php:85
-msgid "Detalles técnicos: versión de PHP, servidor de BD, tipo de entorno."
-msgstr "Technical details: PHP version, database server, environment type."
+msgid "User Information"
+msgstr ""
 
-#: enable-abilities-for-mcp.php:90
-msgid "Lectura (Solo Consulta)"
-msgstr "Read (Query Only)"
+msgid "Current user data: name, email, role, avatar."
+msgstr ""
 
-#: enable-abilities-for-mcp.php:91
-msgid "Solo consultan datos, no modifican nada. Las más seguras para exponer vía MCP."
-msgstr "Query-only operations, no modifications. The safest to expose via MCP."
+msgid "Environment Information"
+msgstr ""
 
-#: enable-abilities-for-mcp.php:95
-#: includes/abilities.php:119
-msgid "Obtener Posts"
-msgstr "Get Posts"
+msgid "Technical details: PHP version, DB server, environment type."
+msgstr ""
 
-#: enable-abilities-for-mcp.php:96
-msgid "Lista posts con filtros por estado, categoría, cantidad y orden."
-msgstr "List posts with filters by status, category, count, and order."
+msgid "Read (Query Only)"
+msgstr ""
 
-#: enable-abilities-for-mcp.php:99
-#: includes/abilities.php:260
-msgid "Obtener Post Individual"
-msgstr "Get Single Post"
+msgid "Only query data, do not modify anything. Safest to expose via MCP."
+msgstr ""
 
-#: enable-abilities-for-mcp.php:100
-msgid "Detalle completo de un post por ID, incluyendo contenido, meta datos e imagen destacada."
-msgstr "Full post details by ID, including content, metadata, and featured image."
+msgid "Get Posts"
+msgstr ""
 
-#: enable-abilities-for-mcp.php:103
-#: includes/abilities.php:353
-msgid "Obtener Categorías"
-msgstr "Get Categories"
+msgid "List posts with filters by status, category, count, and order."
+msgstr ""
 
-#: enable-abilities-for-mcp.php:104
-msgid "Lista todas las categorías con ID, nombre, slug y cantidad de posts."
-msgstr "List all categories with ID, name, slug, and post count."
+msgid "Get Single Post"
+msgstr ""
 
-#: enable-abilities-for-mcp.php:107
-#: includes/abilities.php:417
-msgid "Obtener Etiquetas"
-msgstr "Get Tags"
+msgid "Full post detail by ID, including content, meta data, and featured image."
+msgstr ""
 
-#: enable-abilities-for-mcp.php:108
-msgid "Lista todas las etiquetas (tags) con ID, nombre, slug y cantidad de posts."
-msgstr "List all tags with ID, name, slug, and post count."
+msgid "Get Categories"
+msgstr ""
 
-#: enable-abilities-for-mcp.php:111
-#: includes/abilities.php:485
-msgid "Obtener Páginas"
-msgstr "Get Pages"
+msgid "List all categories with ID, name, slug, and post count."
+msgstr ""
 
-#: enable-abilities-for-mcp.php:112
-msgid "Lista páginas del sitio con título, estado y jerarquía."
-msgstr "List site pages with title, status, and hierarchy."
+msgid "Get Tags"
+msgstr ""
 
-#: enable-abilities-for-mcp.php:115
-#: includes/abilities.php:566
-msgid "Obtener Comentarios"
-msgstr "Get Comments"
+msgid "List all tags with ID, name, slug, and post count."
+msgstr ""
 
-#: enable-abilities-for-mcp.php:116
-msgid "Lista comentarios con filtros por estado, post y cantidad."
-msgstr "List comments with filters by status, post, and count."
+msgid "Get Pages"
+msgstr ""
 
-#: enable-abilities-for-mcp.php:119
-#: includes/abilities.php:653
-msgid "Obtener Medios"
-msgstr "Get Media"
+msgid "List site pages with title, status, and hierarchy."
+msgstr ""
 
-#: enable-abilities-for-mcp.php:120
-msgid "Lista archivos de la biblioteca de medios con filtros por tipo."
-msgstr "List media library files with type filters."
+msgid "Get Comments"
+msgstr ""
 
-#: enable-abilities-for-mcp.php:123
-#: includes/abilities.php:740
-msgid "Obtener Usuarios"
-msgstr "Get Users"
+msgid "List comments with filters by status, post, and count."
+msgstr ""
 
-#: enable-abilities-for-mcp.php:124
-msgid "Lista usuarios del sitio con ID, nombre, email y rol."
-msgstr "List site users with ID, name, email, and role."
+msgid "Get Media"
+msgstr ""
 
-#: enable-abilities-for-mcp.php:129
-msgid "Escritura (Crear y Modificar)"
-msgstr "Write (Create & Modify)"
+msgid "List media library files with filters by type."
+msgstr ""
 
-#: enable-abilities-for-mcp.php:130
-msgid "Crean o modifican contenido. Requieren permisos apropiados del usuario MCP."
-msgstr "Create or modify content. Require appropriate MCP user permissions."
+msgid "Get Users"
+msgstr ""
 
-#: enable-abilities-for-mcp.php:135
-#: includes/abilities.php:810
-msgid "Crear Post"
-msgstr "Create Post"
+msgid "List site users with ID, name, email, and role."
+msgstr ""
 
-#: enable-abilities-for-mcp.php:136
-msgid "Crea un nuevo post con título, contenido, categorías, etiquetas, imagen destacada y más."
-msgstr "Create a new post with title, content, categories, tags, featured image, and more."
+msgid "Write (Create & Modify)"
+msgstr ""
 
-#: enable-abilities-for-mcp.php:139
-#: includes/abilities.php:964
-msgid "Actualizar Post"
-msgstr "Update Post"
+msgid "Create or modify content. Require appropriate MCP user permissions."
+msgstr ""
 
-#: enable-abilities-for-mcp.php:140
-msgid "Modifica un post existente. Solo actualiza los campos enviados."
-msgstr "Modify an existing post. Only updates the fields provided."
+msgid "Create Post"
+msgstr ""
 
-#: enable-abilities-for-mcp.php:143
-#: includes/abilities.php:1105
-msgid "Eliminar Post"
-msgstr "Delete Post"
+msgid "Create a new post with title, content, categories, tags, featured image, and more."
+msgstr ""
 
-#: enable-abilities-for-mcp.php:144
-msgid "Envía un post a la papelera o lo elimina permanentemente."
-msgstr "Move a post to trash or permanently delete it."
+msgid "Update Post"
+msgstr ""
 
-#: enable-abilities-for-mcp.php:147
-#: includes/abilities.php:1173
-msgid "Crear Categoría"
-msgstr "Create Category"
+msgid "Modify an existing post. Only updates the fields provided."
+msgstr ""
 
-#: enable-abilities-for-mcp.php:148
-msgid "Crea una nueva categoría con nombre, slug, descripción y padre."
-msgstr "Create a new category with name, slug, description, and parent."
+msgid "Delete Post"
+msgstr ""
 
-#: enable-abilities-for-mcp.php:151
-#: includes/abilities.php:1256
-msgid "Crear Etiqueta"
-msgstr "Create Tag"
+msgid "Send a post to trash or permanently delete it."
+msgstr ""
 
-#: enable-abilities-for-mcp.php:152
-msgid "Crea una nueva etiqueta (tag) con nombre, slug y descripción."
-msgstr "Create a new tag with name, slug, and description."
+msgid "Create Category"
+msgstr ""
 
-#: enable-abilities-for-mcp.php:155
-#: includes/abilities.php:1331
-msgid "Crear Página"
-msgstr "Create Page"
+msgid "Create a new category with name, slug, description, and parent."
+msgstr ""
 
-#: enable-abilities-for-mcp.php:156
-msgid "Crea una nueva página con título, contenido, estado y página padre."
-msgstr "Create a new page with title, content, status, and parent page."
+msgid "Create Tag"
+msgstr ""
 
-#: enable-abilities-for-mcp.php:159
-#: includes/abilities.php:1426
-msgid "Moderar Comentario"
-msgstr "Moderate Comment"
+msgid "Create a new tag with name, slug, and description."
+msgstr ""
 
-#: enable-abilities-for-mcp.php:160
-msgid "Cambia el estado de un comentario: aprobar, espera, spam o papelera."
-msgstr "Change comment status: approve, hold, spam, or trash."
+msgid "Create Page"
+msgstr ""
 
-#: enable-abilities-for-mcp.php:163
-#: includes/abilities.php:1508
-msgid "Subir Imagen desde URL"
-msgstr "Upload Image from URL"
+msgid "Create a new page with title, content, status, and parent page."
+msgstr ""
 
-#: enable-abilities-for-mcp.php:164
-msgid "Descarga una imagen desde una URL externa y la registra en la biblioteca de medios. Retorna el ID del attachment."
-msgstr "Download an image from an external URL and register it in the media library. Returns the attachment ID."
+msgid "Moderate Comment"
+msgstr ""
 
-#: enable-abilities-for-mcp.php:169
+msgid "Change comment status: approve, hold, spam, or trash."
+msgstr ""
+
+msgid "Reply to Comment"
+msgstr ""
+
+msgid "Reply to an existing comment as the authenticated user."
+msgstr ""
+
+msgid "Upload Image from URL"
+msgstr ""
+
+msgid "Download an image from an external URL and register it in the media library. Returns the attachment ID."
+msgstr ""
+
 msgid "SEO — Rank Math"
-msgstr "SEO — Rank Math"
+msgstr ""
 
-#: enable-abilities-for-mcp.php:170
-msgid "Consulta y actualiza la metadata SEO de Rank Math en posts y páginas."
-msgstr "Query and update Rank Math SEO metadata for posts and pages."
+msgid "Query and update Rank Math SEO metadata on posts and pages."
+msgstr ""
 
-#: enable-abilities-for-mcp.php:174
-#: includes/abilities.php:1681
-msgid "Obtener Metadata Rank Math"
-msgstr "Get Rank Math Metadata"
+msgid "Get Rank Math Metadata"
+msgstr ""
 
-#: enable-abilities-for-mcp.php:175
-msgid "Obtiene la metadata SEO de Rank Math de un post o página: título, descripción, keywords, robots, Open Graph y más."
-msgstr "Get Rank Math SEO metadata for a post or page: title, description, keywords, robots, Open Graph, and more."
+msgid "Get Rank Math SEO metadata for a post or page: title, description, keywords, robots, Open Graph, and more."
+msgstr ""
 
-#: enable-abilities-for-mcp.php:178
-#: includes/abilities.php:1806
-msgid "Actualizar SEO / Focus Keyword de Rank Math"
-msgstr "Update SEO / Focus Keyword for Rank Math"
+msgid "Update Rank Math SEO / Focus Keyword"
+msgstr ""
 
-#: enable-abilities-for-mcp.php:179
-msgid "Actualiza la palabra clave objetivo (focus keyword), título SEO, descripción, URL canónica, robots y Open Graph de Rank Math."
-msgstr "Update the focus keyword, SEO title, description, canonical URL, robots, and Open Graph for Rank Math."
+msgid "Update focus keyword, SEO title, description, canonical URL, robots, and Open Graph via Rank Math."
+msgstr ""
 
-#: enable-abilities-for-mcp.php:184
-msgid "Utilidad"
-msgstr "Utility"
+msgid "Utility"
+msgstr ""
 
-#: enable-abilities-for-mcp.php:185
-msgid "Herramientas auxiliares que complementan el flujo de trabajo."
-msgstr "Helper tools that complement the workflow."
+msgid "Auxiliary tools that complement the workflow."
+msgstr ""
 
-#: enable-abilities-for-mcp.php:189
-#: includes/abilities.php:2095
-msgid "Buscar y Reemplazar"
-msgstr "Search and Replace"
+msgid "Search and Replace"
+msgstr ""
 
-#: enable-abilities-for-mcp.php:190
-msgid "Busca un texto en el contenido de un post y lo reemplaza por otro."
-msgstr "Search for text in a post's content and replace it with another."
+msgid "Search for text in a post content and replace it with another."
+msgstr ""
 
-#: enable-abilities-for-mcp.php:193
-#: includes/abilities.php:2184
-msgid "Estadísticas del Sitio"
-msgstr "Site Statistics"
+msgid "Site Statistics"
+msgstr ""
 
-#: enable-abilities-for-mcp.php:194
-msgid "Resumen del sitio: total de posts, páginas, categorías, tags, comentarios y usuarios."
-msgstr "Site summary: total posts, pages, categories, tags, comments, and users."
+msgid "Site summary: total posts, pages, categories, tags, comments, and users."
+msgstr ""
 
-#: includes/abilities.php:74
-msgid "Gestión de Contenido"
-msgstr "Content Management"
+msgid "Custom Post Types"
+msgstr ""
 
-#: includes/abilities.php:75
-msgid "Abilities para crear, leer, actualizar y eliminar contenido del blog."
-msgstr "Abilities to create, read, update, and delete blog content."
+msgid "Discover and manage Custom Post Types registered by plugins or themes. Excludes posts, pages, and attachments which have dedicated abilities."
+msgstr ""
 
-#: includes/abilities.php:82
-msgid "Gestión de Usuarios"
-msgstr "User Management"
+msgid "List Post Types"
+msgstr ""
 
-#: includes/abilities.php:83
-msgid "Abilities para consultar información de usuarios del sitio."
-msgstr "Abilities to query site user information."
+msgid "List all public Custom Post Types with their labels, taxonomies, supported features, and capabilities."
+msgstr ""
 
-#: includes/abilities.php:91
-msgid "Abilities para obtener información general y estadísticas del sitio."
-msgstr "Abilities to get general site information and statistics."
+msgid "Get CPT Items"
+msgstr ""
 
-#: includes/abilities.php:120
-msgid "Obtiene una lista de posts/entradas del blog con filtros opcionales por estado, categoría, cantidad y orden."
-msgstr "Get a list of blog posts with optional filters by status, category, count, and order."
+msgid "List items from any CPT with filters by status, count, order, and search."
+msgstr ""
 
-#: includes/abilities.php:261
-msgid "Obtiene todos los detalles de un post específico por su ID, incluyendo contenido completo, meta datos e imagen destacada."
-msgstr "Get all details of a specific post by ID, including full content, metadata, and featured image."
+msgid "Get Single CPT Item"
+msgstr ""
 
-#: includes/abilities.php:354
-msgid "Obtiene todas las categorías del blog con su ID, nombre, slug, descripción y cantidad de posts asociados."
-msgstr "Get all blog categories with ID, name, slug, description, and associated post count."
+msgid "Get full detail of a CPT item by ID, including content, meta data, taxonomies, and featured image."
+msgstr ""
 
-#: includes/abilities.php:418
-msgid "Obtiene todas las etiquetas (tags) del blog con su ID, nombre, slug y cantidad de posts asociados."
-msgstr "Get all blog tags with ID, name, slug, and associated post count."
+msgid "Create CPT Item"
+msgstr ""
 
-#: includes/abilities.php:486
-msgid "Obtiene las páginas del sitio WordPress con su título, estado, contenido y jerarquía (páginas padre/hijo)."
-msgstr "Get WordPress site pages with title, status, content, and hierarchy (parent/child pages)."
+msgid "Create a new item in any CPT with title, content, status, taxonomies, and featured image."
+msgstr ""
 
-#: includes/abilities.php:567
-msgid "Obtiene los comentarios del blog con filtros opcionales por estado, post y cantidad. Útil para moderación y análisis."
-msgstr "Get blog comments with optional filters by status, post, and count. Useful for moderation and analysis."
+msgid "Update CPT Item"
+msgstr ""
 
-#: includes/abilities.php:654
-msgid "Obtiene archivos de la biblioteca de medios (imágenes, videos, documentos) con filtros por tipo MIME y búsqueda."
-msgstr "Get media library files (images, videos, documents) with MIME type and search filters."
+msgid "Update an existing CPT item. Only modifies the fields provided."
+msgstr ""
 
-#: includes/abilities.php:741
-msgid "Obtiene la lista de usuarios del sitio con su ID, nombre, email y rol. Útil para asignar autores a posts."
-msgstr "Get the list of site users with ID, name, email, and role. Useful for assigning authors to posts."
+msgid "Delete CPT Item"
+msgstr ""
 
-#: includes/abilities.php:811
-msgid "Crea un nuevo post/entrada en el blog. Acepta título, contenido HTML, extracto, categorías, etiquetas, imagen destacada y estado. Por defecto crea como borrador."
-msgstr "Create a new blog post. Accepts title, HTML content, excerpt, categories, tags, featured image, and status. Creates as draft by default."
+msgid "Send a CPT item to trash or permanently delete it."
+msgstr ""
 
-#: includes/abilities.php:965
-msgid "Actualiza un post existente. Solo se modifican los campos enviados, los demás permanecen intactos."
-msgstr "Update an existing post. Only the provided fields are modified, the rest remain unchanged."
+msgid "Get CPT Taxonomies"
+msgstr ""
 
-#: includes/abilities.php:1106
-msgid "Envía un post a la papelera o lo elimina permanentemente. Por defecto envía a la papelera."
-msgstr "Move a post to trash or permanently delete it. Moves to trash by default."
+msgid "List taxonomies and their terms for a given CPT."
+msgstr ""
 
-#: includes/abilities.php:1174
-msgid "Crea una nueva categoría en el blog con nombre, slug, descripción y categoría padre (opcional)."
-msgstr "Create a new blog category with name, slug, description, and parent category (optional)."
+msgid "Assign Terms to CPT Item"
+msgstr ""
 
-#: includes/abilities.php:1257
-msgid "Crea una nueva etiqueta (tag) en el blog con nombre, slug y descripción."
-msgstr "Create a new blog tag with name, slug, and description."
+msgid "Assign taxonomy terms to a CPT item. Can add to or replace existing terms."
+msgstr ""
 
-#: includes/abilities.php:1332
-msgid "Crea una nueva página en WordPress con título, contenido, estado y página padre (para jerarquía)."
-msgstr "Create a new WordPress page with title, content, status, and parent page (for hierarchy)."
+#. Section notices (enable-abilities-for-mcp.php)
+msgid "No Custom Post Types detected on this site. These abilities will become available when a plugin or theme registers custom post types (e.g., WooCommerce, ACF, JetEngine)."
+msgstr ""
 
-#: includes/abilities.php:1427
-msgid "Cambia el estado de un comentario: aprobar, poner en espera, marcar como spam o enviar a la papelera."
-msgstr "Change comment status: approve, hold, mark as spam, or move to trash."
+msgid "Rank Math SEO plugin is not active. These abilities require Rank Math to function."
+msgstr ""
 
-#: includes/abilities.php:1509
-msgid "Descarga una imagen desde una URL externa y la registra en la biblioteca de medios de WordPress. Opcionalmente puede asignarla como imagen destacada de un post. Retorna el ID del attachment y la URL local."
-msgstr "Download an image from an external URL and register it in the WordPress media library. Optionally assign it as a post's featured image. Returns the attachment ID and local URL."
-
-#: includes/abilities.php:1682
-msgid "Obtiene toda la metadata SEO de Rank Math para un post o página: título, descripción, keywords, robots, robots avanzados, Open Graph, Twitter Card, schema, breadcrumb, cornerstone y score SEO."
-msgstr "Get all Rank Math SEO metadata for a post or page: title, description, keywords, robots, advanced robots, Open Graph, Twitter Card, schema, breadcrumb, cornerstone, and SEO score."
-
-#: includes/abilities.php:1807
-msgid "Actualiza la metadata SEO de Rank Math en un post o página (rank_math_focus_keyword, rank_math_title, rank_math_description, etc). Usa esta ability para establecer o cambiar la palabra clave objetivo (focus keyword), título SEO, meta descripción, canonical URL, robots, Open Graph, Twitter Card, breadcrumb, schema snippet, cornerstone y contenido pilar. Solo se modifican los campos enviados."
-msgstr "Update Rank Math SEO metadata for a post or page (rank_math_focus_keyword, rank_math_title, rank_math_description, etc). Use this ability to set or change the focus keyword, SEO title, meta description, canonical URL, robots, Open Graph, Twitter Card, breadcrumb, schema snippet, cornerstone, and pillar content. Only the provided fields are modified."
-
-#: includes/abilities.php:2096
-msgid "Busca un texto en el contenido de un post específico y lo reemplaza por otro. Útil para correcciones y actualizaciones."
-msgstr "Search for text in a specific post's content and replace it. Useful for corrections and updates."
-
-#: includes/abilities.php:2185
-msgid "Devuelve un resumen con el total de posts, páginas, categorías, etiquetas, comentarios y usuarios del sitio."
-msgstr "Returns a summary with the total posts, pages, categories, tags, comments, and users on the site."
-
-#: includes/admin.php:17
-#: includes/admin.php:18
+#. Admin page strings (includes/admin.php)
 msgid "WP Abilities"
-msgstr "WP Abilities"
+msgstr ""
 
-#: includes/admin.php:58
-msgid "Configuración guardada correctamente."
-msgstr "Settings saved successfully."
+msgid "Enable Abilities for MCP requires the MCP Adapter plugin to work. %1$sDownload MCP Adapter%2$s"
+msgstr ""
 
-#: includes/admin.php:74
-#: includes/admin.php:97
-msgid "No tienes permisos suficientes."
-msgstr "You do not have sufficient permissions."
+msgid "Ability keys updated to English for internationalization. Your settings have been preserved."
+msgstr ""
 
-#: includes/admin.php:82
-msgid "API Key generada exitosamente."
-msgstr "API Key generated successfully."
+msgid "API Key active"
+msgstr ""
 
-#: includes/admin.php:104
-msgid "API Key revocada exitosamente."
-msgstr "API Key revoked successfully."
+msgid "Regenerate API Key"
+msgstr ""
 
-#: includes/admin.php:118
-msgid "Administra qué abilities de WordPress están disponibles para el MCP. Activa o desactiva cada una según tus necesidades."
-msgstr "Manage which WordPress abilities are available for MCP. Enable or disable each one as needed."
+msgid "Revoke API Key"
+msgstr ""
 
-#: includes/admin.php:135
-msgid "API Key para MCP"
-msgstr "API Key for MCP"
+msgid "This will invalidate the previous key. Continue?"
+msgstr ""
 
-#: includes/admin.php:137
-msgid "Genera una API Key para autenticar conexiones externas al servidor MCP via Bearer token."
-msgstr "Generate an API Key to authenticate external MCP server connections via Bearer token."
+msgid "Are you sure you want to revoke the API Key? External connections will stop working."
+msgstr ""
 
-#. translators: %s: formatted date
-#: includes/admin.php:150
-msgid "API Key activa — generada el %s"
-msgstr "API Key active — generated on %s"
+msgid "Copied!"
+msgstr ""
 
-#: includes/admin.php:158
-msgid "No hay API Key configurada."
-msgstr "No API Key configured."
+msgid "Copy"
+msgstr ""
 
-#: includes/admin.php:165
-msgid "Copia esta clave ahora. No se mostrara de nuevo:"
-msgstr "Copy this key now. It will not be shown again:"
+msgid "Settings saved successfully."
+msgstr ""
 
-#: includes/admin.php:169
-#: includes/admin.php:538
-msgid "Copiar"
-msgstr "Copy"
+msgid "You do not have sufficient permissions."
+msgstr ""
 
-#: includes/admin.php:178
-msgid "Regenerar API Key"
-msgstr "Regenerate API Key"
+msgid "API Key generated successfully."
+msgstr ""
 
-#: includes/admin.php:181
-msgid "Revocar API Key"
-msgstr "Revoke API Key"
+msgid "API Key revoked successfully."
+msgstr ""
 
-#: includes/admin.php:185
-msgid "Generar API Key"
-msgstr "Generate API Key"
+msgid "Manage which WordPress abilities are available for MCP. Enable or disable each one according to your needs."
+msgstr ""
 
-#. translators: %s: example authorization header
-#: includes/admin.php:194
-msgid "Usa esta clave en el header de autenticacion: %s"
-msgstr "Use this key in the authorization header: %s"
+msgid "API Key for MCP"
+msgstr ""
 
-#: includes/admin.php:209
-msgid "abilities activas"
-msgstr "active abilities"
+msgid "Generate an API Key to authenticate external connections to the MCP server via Bearer token."
+msgstr ""
 
-#: includes/admin.php:214
-msgid "Activar todas"
-msgstr "Enable all"
+msgid "API Key active — generated on %s"
+msgstr ""
 
-#: includes/admin.php:217
-msgid "Desactivar todas"
-msgstr "Disable all"
+msgid "No API Key configured."
+msgstr ""
 
-#: includes/admin.php:232
-msgid "Precaución"
-msgstr "Caution"
+msgid "Copy this key now. It will not be shown again:"
+msgstr ""
 
-#: includes/admin.php:241
-msgid "Todas"
-msgstr "All"
+msgid "Generate API Key"
+msgstr ""
 
-#: includes/admin.php:269
-msgid "Guardar Cambios"
-msgstr "Save Changes"
+msgid "Use this key in the authentication header: %s"
+msgstr ""
 
-#: includes/admin.php:524
-msgid "Esto invalidara la clave anterior. ¿Continuar?"
-msgstr "This will invalidate the previous key. Continue?"
+msgid "Your site MCP endpoint"
+msgstr ""
 
-#: includes/admin.php:529
-msgid "¿Seguro que deseas revocar la API Key? Las conexiones externas dejaran de funcionar."
-msgstr "Are you sure you want to revoke the API Key? External connections will stop working."
+msgid "Use this URL to connect your MCP client:"
+msgstr ""
 
-#: includes/admin.php:536
-msgid "¡Copiada!"
-msgstr "Copied!"
+msgid "Claude Desktop configuration example"
+msgstr ""
+
+msgid "Add this to your configuration file %s:"
+msgstr ""
+
+msgid "Replace YOUR-API-KEY with the API Key generated above."
+msgstr ""
+
+msgid "abilities enabled"
+msgstr ""
+
+msgid "Enable All"
+msgstr ""
+
+msgid "Disable All"
+msgstr ""
+
+msgid "Caution"
+msgstr ""
+
+msgid "All"
+msgstr ""
+
+msgid "Save Changes"
+msgstr ""
+
+#. Ability registration strings (includes/abilities.php) — longer descriptions
+msgid "Retrieves a list of blog posts with optional filters by status, category, count, and order."
+msgstr ""
+
+msgid "Retrieves all details of a specific post by ID, including full content, metadata, and featured image."
+msgstr ""
+
+msgid "Retrieves all blog categories with their ID, name, slug, description, and post count."
+msgstr ""
+
+msgid "Retrieves all blog tags with their ID, name, slug, and post count."
+msgstr ""
+
+msgid "Retrieves site pages with their title, status, content, and hierarchy (parent/child)."
+msgstr ""
+
+msgid "Retrieves blog comments with optional filters by status, post, and count. Useful for moderation and analysis."
+msgstr ""
+
+msgid "Retrieves media library files (images, videos, documents) with filters by MIME type and search."
+msgstr ""
+
+msgid "Retrieves the list of site users with their ID, name, email, and role. Useful for assigning post authors."
+msgstr ""
+
+msgid "Creates a new blog post. Accepts title, HTML content, excerpt, categories, tags, featured image, and status. Defaults to draft."
+msgstr ""
+
+msgid "Updates an existing post. Only the provided fields are modified, others remain unchanged."
+msgstr ""
+
+msgid "Sends a post to trash or permanently deletes it. Defaults to trash."
+msgstr ""
+
+msgid "Creates a new blog category with name, slug, description, and parent category (optional)."
+msgstr ""
+
+msgid "Creates a new blog tag with name, slug, and description."
+msgstr ""
+
+msgid "Creates a new WordPress page with title, content, status, and parent page (for hierarchy)."
+msgstr ""
+
+msgid "Changes a comment status: approve, hold, mark as spam, or send to trash."
+msgstr ""
+
+msgid "Replies to an existing comment on a post or page. The reply is published as the current authenticated user."
+msgstr ""
+
+msgid "Downloads an image from an external URL and registers it in the WordPress media library. Optionally assigns it as featured image for a post. Returns the attachment ID and local URL."
+msgstr ""
+
+msgid "Retrieves all Rank Math SEO metadata for a post or page: title, description, keywords, robots, advanced robots, Open Graph, Twitter Card, schema, breadcrumb, cornerstone, and SEO score."
+msgstr ""
+
+msgid "Updates Rank Math SEO metadata on a post or page (rank_math_focus_keyword, rank_math_title, rank_math_description, etc). Use this ability to set or change the focus keyword, SEO title, meta description, canonical URL, robots, Open Graph, Twitter Card, breadcrumb, schema snippet, cornerstone, and pillar content. Only the provided fields are modified."
+msgstr ""
+
+msgid "Searches for text in a specific post content and replaces it with another. Useful for corrections and updates."
+msgstr ""
+
+msgid "Returns a summary with the total posts, pages, categories, tags, comments, and users of the site."
+msgstr ""
+
+msgid "Lists all custom post types registered on the site, with their configuration, supported features, and associated taxonomies."
+msgstr ""
+
+msgid "No custom post types detected on this site."
+msgstr ""
+
+msgid "Retrieves a list of items from a specific custom post type with filtering, search, and taxonomy query support."
+msgstr ""
+
+msgid "The custom post type slug (e.g. product, portfolio)."
+msgstr ""
+
+msgid "Number of items to return (default 20, max 100)."
+msgstr ""
+
+msgid "Filter by status: publish, draft, pending, private, any (default publish)."
+msgstr ""
+
+msgid "Order by: date, title, modified, menu_order, ID, rand (default date)."
+msgstr ""
+
+msgid "Sort direction: ASC or DESC (default DESC)."
+msgstr ""
+
+msgid "Search keyword to filter items."
+msgstr ""
+
+msgid "Taxonomy query array. Each item: {taxonomy, terms, field (slug|id), operator (IN|NOT IN|AND)}."
+msgstr ""
+
+msgid "Get CPT Item"
+msgstr ""
+
+msgid "Retrieves full details of a single custom post type item, including all meta fields, taxonomies, and content."
+msgstr ""
+
+msgid "The ID of the item to retrieve."
+msgstr ""
+
+msgid "Item not found."
+msgstr ""
+
+msgid "Creates a new item in a custom post type. Content is optional as some CPTs store data in custom fields instead."
+msgstr ""
+
+msgid "The custom post type slug."
+msgstr ""
+
+msgid "The item title."
+msgstr ""
+
+msgid "The item content (optional — some CPTs store data in meta fields instead)."
+msgstr ""
+
+msgid "The item excerpt."
+msgstr ""
+
+msgid "Post status: draft, publish, pending, private (default draft)."
+msgstr ""
+
+msgid "Attachment ID for the featured image."
+msgstr ""
+
+msgid "Parent item ID (for hierarchical CPTs)."
+msgstr ""
+
+msgid "Menu order value."
+msgstr ""
+
+msgid "Author user ID."
+msgstr ""
+
+msgid "The URL slug for the item."
+msgstr ""
+
+msgid "Object mapping taxonomy slugs to arrays of term slugs or IDs. Example: {\"product_cat\": [\"clothing\"], \"product_tag\": [\"sale\"]}."
+msgstr ""
+
+msgid "Object mapping meta keys to values. Supports plugin meta like _price, _sku, ACF fields, etc."
+msgstr ""
+
+msgid "You do not have permission to create items of this type."
+msgstr ""
+
+#, php-format
+msgid "%s created successfully."
+msgstr ""
+
+msgid "Updates an existing custom post type item. Only provided fields are modified (partial update)."
+msgstr ""
+
+msgid "The ID of the item to update."
+msgstr ""
+
+msgid "New title."
+msgstr ""
+
+msgid "New content (optional — some CPTs use meta fields instead)."
+msgstr ""
+
+msgid "New excerpt."
+msgstr ""
+
+msgid "New status: draft, publish, pending, private."
+msgstr ""
+
+msgid "Attachment ID for the featured image. Pass 0 to remove."
+msgstr ""
+
+msgid "New URL slug."
+msgstr ""
+
+msgid "Object mapping taxonomy slugs to arrays of term slugs or IDs. Replaces existing terms."
+msgstr ""
+
+msgid "You do not have permission to edit this item."
+msgstr ""
+
+#, php-format
+msgid "%s updated successfully."
+msgstr ""
+
+msgid "Deletes a custom post type item. By default moves to trash; use force_delete to permanently remove."
+msgstr ""
+
+msgid "The ID of the item to delete."
+msgstr ""
+
+msgid "If true, permanently deletes instead of trashing (default false)."
+msgstr ""
+
+msgid "You do not have permission to delete this item."
+msgstr ""
+
+msgid "Failed to delete the item."
+msgstr ""
+
+#, php-format
+msgid "%s permanently deleted."
+msgstr ""
+
+#, php-format
+msgid "%s moved to trash."
+msgstr ""
+
+msgid "Retrieves all taxonomies associated with a custom post type, including their terms."
+msgstr ""
+
+msgid "If true, only show terms with posts (default false)."
+msgstr ""
+
+msgid "Max number of terms per taxonomy (default 100, max 500)."
+msgstr ""
+
+msgid "Assigns taxonomy terms to a custom post type item. Can replace or append terms."
+msgstr ""
+
+msgid "The ID of the item to assign terms to."
+msgstr ""
+
+msgid "The taxonomy slug."
+msgstr ""
+
+msgid "Array of term slugs or IDs to assign."
+msgstr ""
+
+msgid "If true, appends terms instead of replacing (default false)."
+msgstr ""
+
+msgid "The specified taxonomy does not exist."
+msgstr ""
+
+#, php-format
+msgid "The taxonomy \"%1$s\" is not associated with the \"%2$s\" post type."
+msgstr ""
+
+msgid "You do not have permission to assign terms for this taxonomy."
+msgstr ""
+
+#, php-format
+msgid "%1$d term(s) assigned for %2$s."
+msgstr ""
+
+#. Validation error strings (includes/abilities.php)
+msgid "This content type has dedicated abilities. Use the specific abilities for posts, pages, or media instead."
+msgstr ""
+
+msgid "The specified content type does not exist."
+msgstr ""
+
+msgid "This content type is not publicly accessible."
+msgstr ""
+
+#. Ability category strings (includes/abilities.php)
+msgid "Content Management"
+msgstr ""
+
+msgid "Abilities to create, read, update, and delete blog content."
+msgstr ""
+
+msgid "User Management"
+msgstr ""
+
+msgid "Abilities to query site user information."
+msgstr ""
+
+msgid "Abilities to get general information and site statistics."
+msgstr ""
+
+msgid "Abilities to discover and manage custom post types registered by plugins or themes."
+msgstr ""

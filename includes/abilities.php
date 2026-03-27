@@ -24,6 +24,79 @@ function ewpa_get_meta_string( $post_id, $key, $fallback = '' ) {
 	return $value ? $value : $fallback;
 }
 
+/**
+ * Validates a post type as a valid custom post type (not built-in).
+ *
+ * @param string $post_type The post type slug to validate.
+ * @return WP_Post_Type|WP_Error The post type object on success, WP_Error on failure.
+ */
+function ewpa_validate_cpt( $post_type ) {
+	$post_type = sanitize_key( $post_type );
+
+	$builtin_excluded = array(
+		'post',
+		'page',
+		'attachment',
+		'revision',
+		'nav_menu_item',
+		'custom_css',
+		'customize_changeset',
+		'oembed_cache',
+		'user_request',
+		'wp_block',
+		'wp_template',
+		'wp_template_part',
+		'wp_global_styles',
+		'wp_navigation',
+		'wp_font_family',
+		'wp_font_face',
+	);
+
+	if ( in_array( $post_type, $builtin_excluded, true ) ) {
+		return new WP_Error(
+			'builtin_type',
+			__( 'This content type has dedicated abilities. Use the specific abilities for posts, pages, or media instead.', 'enable-abilities-for-mcp' )
+		);
+	}
+
+	if ( ! post_type_exists( $post_type ) ) {
+		return new WP_Error(
+			'invalid_post_type',
+			__( 'The specified content type does not exist.', 'enable-abilities-for-mcp' )
+		);
+	}
+
+	$cpt_obj = get_post_type_object( $post_type );
+
+	if ( ! $cpt_obj->public && ! $cpt_obj->show_in_rest ) {
+		return new WP_Error(
+			'private_post_type',
+			__( 'This content type is not publicly accessible.', 'enable-abilities-for-mcp' )
+		);
+	}
+
+	return $cpt_obj;
+}
+
+/**
+ * Returns list of WordPress core internal meta keys that should not be written to.
+ *
+ * @return array
+ */
+function ewpa_get_wp_internal_meta_keys() {
+	return array(
+		'_edit_lock',
+		'_edit_last',
+		'_wp_trash_meta_status',
+		'_wp_trash_meta_time',
+		'_wp_old_slug',
+		'_encloseme',
+		'_pingme',
+		'_wp_attached_file',
+		'_wp_attachment_metadata',
+	);
+}
+
 /*
  * ==========================================================================
  * CORE ABILITIES FILTER
@@ -71,24 +144,32 @@ function ewpa_register_ability_categories(): void {
 	wp_register_ability_category(
 		'content-management',
 		array(
-			'label'       => __( 'Gestión de Contenido', 'enable-abilities-for-mcp' ),
-			'description' => __( 'Abilities para crear, leer, actualizar y eliminar contenido del blog.', 'enable-abilities-for-mcp' ),
+			'label'       => __( 'Content Management', 'enable-abilities-for-mcp' ),
+			'description' => __( 'Abilities to create, read, update, and delete blog content.', 'enable-abilities-for-mcp' ),
 		)
 	);
 
 	wp_register_ability_category(
 		'user-management',
 		array(
-			'label'       => __( 'Gestión de Usuarios', 'enable-abilities-for-mcp' ),
-			'description' => __( 'Abilities para consultar información de usuarios del sitio.', 'enable-abilities-for-mcp' ),
+			'label'       => __( 'User Management', 'enable-abilities-for-mcp' ),
+			'description' => __( 'Abilities to query site user information.', 'enable-abilities-for-mcp' ),
 		)
 	);
 
 	wp_register_ability_category(
 		'site-information',
 		array(
-			'label'       => __( 'Información del Sitio', 'enable-abilities-for-mcp' ),
-			'description' => __( 'Abilities para obtener información general y estadísticas del sitio.', 'enable-abilities-for-mcp' ),
+			'label'       => __( 'Site Information', 'enable-abilities-for-mcp' ),
+			'description' => __( 'Abilities to get general information and site statistics.', 'enable-abilities-for-mcp' ),
+		)
+	);
+
+	wp_register_ability_category(
+		'cpt-management',
+		array(
+			'label'       => __( 'Custom Post Types', 'enable-abilities-for-mcp' ),
+			'description' => __( 'Abilities to discover and manage custom post types registered by plugins or themes.', 'enable-abilities-for-mcp' ),
 		)
 	);
 }
@@ -111,53 +192,53 @@ function ewpa_register_custom_abilities(): void {
 	 * ======================================================================
 	 */
 
-	// ── A1: Obtener posts ────────────────────────────────────────────────
-	if ( ewpa_is_ability_enabled( 'ewpa/obtener-posts' ) ) {
+	// ── A1: Get Posts ───────────────────────────────────────────────────
+	if ( ewpa_is_ability_enabled( 'ewpa/get-posts' ) ) {
 		wp_register_ability(
-			'ewpa/obtener-posts',
+			'ewpa/get-posts',
 			array(
-				'label'               => __( 'Obtener Posts', 'enable-abilities-for-mcp' ),
-				'description'         => __( 'Obtiene una lista de posts/entradas del blog con filtros opcionales por estado, categoría, cantidad y orden.', 'enable-abilities-for-mcp' ),
+				'label'               => __( 'Get Posts', 'enable-abilities-for-mcp' ),
+				'description'         => __( 'Retrieves a list of blog posts with optional filters by status, category, count, and order.', 'enable-abilities-for-mcp' ),
 				'category'            => 'content-management',
 				'input_schema'        => array(
 					'type'       => 'object',
 					'properties' => array(
 						'numberposts'   => array(
 							'type'        => 'integer',
-							'description' => 'Cantidad de posts a obtener (máx. 100)',
+							'description' => 'Number of posts to retrieve (max. 100)',
 							'default'     => 10,
 							'minimum'     => 1,
 							'maximum'     => 100,
 						),
 						'post_status'   => array(
 							'type'        => 'string',
-							'description' => 'Estado del post: publish, draft, pending, private, trash',
+							'description' => 'Post status: publish, draft, pending, private, trash',
 							'enum'        => array( 'publish', 'draft', 'pending', 'private', 'trash', 'any' ),
 							'default'     => 'publish',
 						),
 						'category_name' => array(
 							'type'        => 'string',
-							'description' => 'Slug de la categoría para filtrar (opcional)',
+							'description' => 'Category slug to filter by (optional)',
 						),
 						'tag'           => array(
 							'type'        => 'string',
-							'description' => 'Slug de la etiqueta para filtrar (opcional)',
+							'description' => 'Tag slug to filter by (optional)',
 						),
 						'orderby'       => array(
 							'type'        => 'string',
-							'description' => 'Ordenar por: date, title, modified, rand',
+							'description' => 'Order by: date, title, modified, rand',
 							'enum'        => array( 'date', 'title', 'modified', 'rand' ),
 							'default'     => 'date',
 						),
 						'order'         => array(
 							'type'        => 'string',
-							'description' => 'Dirección del orden: ASC o DESC',
+							'description' => 'Order direction: ASC or DESC',
 							'enum'        => array( 'ASC', 'DESC' ),
 							'default'     => 'DESC',
 						),
 						's'             => array(
 							'type'        => 'string',
-							'description' => 'Término de búsqueda para filtrar posts (opcional)',
+							'description' => 'Search term to filter posts (optional)',
 						),
 					),
 				),
@@ -252,13 +333,13 @@ function ewpa_register_custom_abilities(): void {
 		);
 	}
 
-	// ── A2: Obtener post individual ──────────────────────────────────────
-	if ( ewpa_is_ability_enabled( 'ewpa/obtener-post' ) ) {
+	// ── A2: Get Single Post ─────────────────────────────────────────────
+	if ( ewpa_is_ability_enabled( 'ewpa/get-post' ) ) {
 		wp_register_ability(
-			'ewpa/obtener-post',
+			'ewpa/get-post',
 			array(
-				'label'               => __( 'Obtener Post Individual', 'enable-abilities-for-mcp' ),
-				'description'         => __( 'Obtiene todos los detalles de un post específico por su ID, incluyendo contenido completo, meta datos e imagen destacada.', 'enable-abilities-for-mcp' ),
+				'label'               => __( 'Get Single Post', 'enable-abilities-for-mcp' ),
+				'description'         => __( 'Retrieves all details of a specific post by ID, including full content, metadata, and featured image.', 'enable-abilities-for-mcp' ),
 				'category'            => 'content-management',
 				'input_schema'        => array(
 					'type'       => 'object',
@@ -266,7 +347,7 @@ function ewpa_register_custom_abilities(): void {
 					'properties' => array(
 						'post_id' => array(
 							'type'        => 'integer',
-							'description' => 'ID del post a obtener',
+							'description' => 'Post ID to retrieve',
 						),
 					),
 				),
@@ -302,7 +383,7 @@ function ewpa_register_custom_abilities(): void {
 					$post_id = absint( $input['post_id'] );
 					$post = get_post( $post_id );
 					if ( ! $post || 'post' !== $post->post_type ) {
-						return new WP_Error( 'not_found', 'Post no encontrado.' );
+						return new WP_Error( 'not_found', 'Post not found.' );
 					}
 
 					$thumbnail_url = get_the_post_thumbnail_url( $post->ID, 'full' );
@@ -345,20 +426,20 @@ function ewpa_register_custom_abilities(): void {
 		);
 	}
 
-	// ── A3: Obtener categorías ───────────────────────────────────────────
-	if ( ewpa_is_ability_enabled( 'ewpa/obtener-categorias' ) ) {
+	// ── A3: Get Categories ──────────────────────────────────────────────
+	if ( ewpa_is_ability_enabled( 'ewpa/get-categories' ) ) {
 		wp_register_ability(
-			'ewpa/obtener-categorias',
+			'ewpa/get-categories',
 			array(
-				'label'               => __( 'Obtener Categorías', 'enable-abilities-for-mcp' ),
-				'description'         => __( 'Obtiene todas las categorías del blog con su ID, nombre, slug, descripción y cantidad de posts asociados.', 'enable-abilities-for-mcp' ),
+				'label'               => __( 'Get Categories', 'enable-abilities-for-mcp' ),
+				'description'         => __( 'Retrieves all blog categories with their ID, name, slug, description, and post count.', 'enable-abilities-for-mcp' ),
 				'category'            => 'content-management',
 				'input_schema'        => array(
 					'type'       => 'object',
 					'properties' => array(
 						'hide_empty' => array(
 							'type'        => 'boolean',
-							'description' => 'Ocultar categorías sin posts (true/false)',
+							'description' => 'Hide categories with no posts (true/false)',
 							'default'     => false,
 						),
 					),
@@ -409,25 +490,25 @@ function ewpa_register_custom_abilities(): void {
 		);
 	}
 
-	// ── A4: Obtener etiquetas (tags) ─────────────────────────────────────
-	if ( ewpa_is_ability_enabled( 'ewpa/obtener-tags' ) ) {
+	// ── A4: Get Tags ────────────────────────────────────────────────────
+	if ( ewpa_is_ability_enabled( 'ewpa/get-tags' ) ) {
 		wp_register_ability(
-			'ewpa/obtener-tags',
+			'ewpa/get-tags',
 			array(
-				'label'               => __( 'Obtener Etiquetas', 'enable-abilities-for-mcp' ),
-				'description'         => __( 'Obtiene todas las etiquetas (tags) del blog con su ID, nombre, slug y cantidad de posts asociados.', 'enable-abilities-for-mcp' ),
+				'label'               => __( 'Get Tags', 'enable-abilities-for-mcp' ),
+				'description'         => __( 'Retrieves all blog tags with their ID, name, slug, and post count.', 'enable-abilities-for-mcp' ),
 				'category'            => 'content-management',
 				'input_schema'        => array(
 					'type'       => 'object',
 					'properties' => array(
 						'hide_empty' => array(
 							'type'        => 'boolean',
-							'description' => 'Ocultar etiquetas sin posts (true/false)',
+							'description' => 'Hide tags with no posts (true/false)',
 							'default'     => false,
 						),
 						'number'     => array(
 							'type'        => 'integer',
-							'description' => 'Cantidad máxima de etiquetas a obtener',
+							'description' => 'Maximum number of tags to retrieve',
 							'default'     => 100,
 						),
 					),
@@ -477,27 +558,27 @@ function ewpa_register_custom_abilities(): void {
 		);
 	}
 
-	// ── A5: Obtener páginas ──────────────────────────────────────────────
-	if ( ewpa_is_ability_enabled( 'ewpa/obtener-paginas' ) ) {
+	// ── A5: Get Pages ───────────────────────────────────────────────────
+	if ( ewpa_is_ability_enabled( 'ewpa/get-pages' ) ) {
 		wp_register_ability(
-			'ewpa/obtener-paginas',
+			'ewpa/get-pages',
 			array(
-				'label'               => __( 'Obtener Páginas', 'enable-abilities-for-mcp' ),
-				'description'         => __( 'Obtiene las páginas del sitio WordPress con su título, estado, contenido y jerarquía (páginas padre/hijo).', 'enable-abilities-for-mcp' ),
+				'label'               => __( 'Get Pages', 'enable-abilities-for-mcp' ),
+				'description'         => __( 'Retrieves site pages with their title, status, content, and hierarchy (parent/child).', 'enable-abilities-for-mcp' ),
 				'category'            => 'content-management',
 				'input_schema'        => array(
 					'type'       => 'object',
 					'properties' => array(
 						'numberposts' => array(
 							'type'        => 'integer',
-							'description' => 'Cantidad de páginas a obtener',
+							'description' => 'Number of pages to retrieve',
 							'default'     => 20,
 							'minimum'     => 1,
 							'maximum'     => 100,
 						),
 						'post_status' => array(
 							'type'        => 'string',
-							'description' => 'Estado de la página: publish, draft, private',
+							'description' => 'Page status: publish, draft, private',
 							'enum'        => array( 'publish', 'draft', 'private', 'any' ),
 							'default'     => 'publish',
 						),
@@ -558,33 +639,33 @@ function ewpa_register_custom_abilities(): void {
 		);
 	}
 
-	// ── A6: Obtener comentarios ──────────────────────────────────────────
-	if ( ewpa_is_ability_enabled( 'ewpa/obtener-comentarios' ) ) {
+	// ── A6: Get Comments ────────────────────────────────────────────────
+	if ( ewpa_is_ability_enabled( 'ewpa/get-comments' ) ) {
 		wp_register_ability(
-			'ewpa/obtener-comentarios',
+			'ewpa/get-comments',
 			array(
-				'label'               => __( 'Obtener Comentarios', 'enable-abilities-for-mcp' ),
-				'description'         => __( 'Obtiene los comentarios del blog con filtros opcionales por estado, post y cantidad. Útil para moderación y análisis.', 'enable-abilities-for-mcp' ),
+				'label'               => __( 'Get Comments', 'enable-abilities-for-mcp' ),
+				'description'         => __( 'Retrieves blog comments with optional filters by status, post, and count. Useful for moderation and analysis.', 'enable-abilities-for-mcp' ),
 				'category'            => 'content-management',
 				'input_schema'        => array(
 					'type'       => 'object',
 					'properties' => array(
 						'number'  => array(
 							'type'        => 'integer',
-							'description' => 'Cantidad de comentarios a obtener',
+							'description' => 'Number of comments to retrieve',
 							'default'     => 20,
 							'minimum'     => 1,
 							'maximum'     => 100,
 						),
 						'status'  => array(
 							'type'        => 'string',
-							'description' => 'Estado del comentario: approve, hold, spam, trash, all',
+							'description' => 'Comment status: approve, hold, spam, trash, all',
 							'enum'        => array( 'approve', 'hold', 'spam', 'trash', 'all' ),
 							'default'     => 'approve',
 						),
 						'post_id' => array(
 							'type'        => 'integer',
-							'description' => 'Filtrar comentarios por ID de post (opcional, 0 = todos)',
+							'description' => 'Filter comments by post ID (optional, 0 = all)',
 							'default'     => 0,
 						),
 					),
@@ -645,33 +726,33 @@ function ewpa_register_custom_abilities(): void {
 		);
 	}
 
-	// ── A7: Obtener medios ───────────────────────────────────────────────
-	if ( ewpa_is_ability_enabled( 'ewpa/obtener-medios' ) ) {
+	// ── A7: Get Media ───────────────────────────────────────────────────
+	if ( ewpa_is_ability_enabled( 'ewpa/get-media' ) ) {
 		wp_register_ability(
-			'ewpa/obtener-medios',
+			'ewpa/get-media',
 			array(
-				'label'               => __( 'Obtener Medios', 'enable-abilities-for-mcp' ),
-				'description'         => __( 'Obtiene archivos de la biblioteca de medios (imágenes, videos, documentos) con filtros por tipo MIME y búsqueda.', 'enable-abilities-for-mcp' ),
+				'label'               => __( 'Get Media', 'enable-abilities-for-mcp' ),
+				'description'         => __( 'Retrieves media library files (images, videos, documents) with filters by MIME type and search.', 'enable-abilities-for-mcp' ),
 				'category'            => 'content-management',
 				'input_schema'        => array(
 					'type'       => 'object',
 					'properties' => array(
 						'numberposts'    => array(
 							'type'        => 'integer',
-							'description' => 'Cantidad de medios a obtener',
+							'description' => 'Number of media items to retrieve',
 							'default'     => 20,
 							'minimum'     => 1,
 							'maximum'     => 100,
 						),
 						'post_mime_type' => array(
 							'type'        => 'string',
-							'description' => 'Tipo MIME para filtrar: image, video, audio, application (opcional)',
+							'description' => 'MIME type filter: image, video, audio, application (optional)',
 							'enum'        => array( 'image', 'video', 'audio', 'application', '' ),
 							'default'     => '',
 						),
 						's'              => array(
 							'type'        => 'string',
-							'description' => 'Término de búsqueda (opcional)',
+							'description' => 'Search term (optional)',
 						),
 					),
 				),
@@ -732,20 +813,20 @@ function ewpa_register_custom_abilities(): void {
 		);
 	}
 
-	// ── A8: Obtener usuarios ─────────────────────────────────────────────
-	if ( ewpa_is_ability_enabled( 'ewpa/obtener-usuarios' ) ) {
+	// ── A8: Get Users ───────────────────────────────────────────────────
+	if ( ewpa_is_ability_enabled( 'ewpa/get-users' ) ) {
 		wp_register_ability(
-			'ewpa/obtener-usuarios',
+			'ewpa/get-users',
 			array(
-				'label'               => __( 'Obtener Usuarios', 'enable-abilities-for-mcp' ),
-				'description'         => __( 'Obtiene la lista de usuarios del sitio con su ID, nombre, email y rol. Útil para asignar autores a posts.', 'enable-abilities-for-mcp' ),
+				'label'               => __( 'Get Users', 'enable-abilities-for-mcp' ),
+				'description'         => __( 'Retrieves the list of site users with their ID, name, email, and role. Useful for assigning post authors.', 'enable-abilities-for-mcp' ),
 				'category'            => 'user-management',
 				'input_schema'        => array(
 					'type'       => 'object',
 					'properties' => array(
 						'role' => array(
 							'type'        => 'string',
-							'description' => 'Filtrar por rol: administrator, editor, author, contributor, subscriber (opcional)',
+							'description' => 'Filter by role: administrator, editor, author, contributor, subscriber (optional)',
 							'enum'        => array( 'administrator', 'editor', 'author', 'contributor', 'subscriber', '' ),
 							'default'     => '',
 						),
@@ -802,13 +883,13 @@ function ewpa_register_custom_abilities(): void {
 	 * ======================================================================
 	 */
 
-	// ── B1: Crear post ───────────────────────────────────────────────────
-	if ( ewpa_is_ability_enabled( 'ewpa/crear-post' ) ) {
+	// ── B1: Create Post ─────────────────────────────────────────────────
+	if ( ewpa_is_ability_enabled( 'ewpa/create-post' ) ) {
 		wp_register_ability(
-			'ewpa/crear-post',
+			'ewpa/create-post',
 			array(
-				'label'               => __( 'Crear Post', 'enable-abilities-for-mcp' ),
-				'description'         => __( 'Crea un nuevo post/entrada en el blog. Acepta título, contenido HTML, extracto, categorías, etiquetas, imagen destacada y estado. Por defecto crea como borrador.', 'enable-abilities-for-mcp' ),
+				'label'               => __( 'Create Post', 'enable-abilities-for-mcp' ),
+				'description'         => __( 'Creates a new blog post. Accepts title, HTML content, excerpt, categories, tags, featured image, and status. Defaults to draft.', 'enable-abilities-for-mcp' ),
 				'category'            => 'content-management',
 				'input_schema'        => array(
 					'type'       => 'object',
@@ -816,55 +897,55 @@ function ewpa_register_custom_abilities(): void {
 					'properties' => array(
 						'title'             => array(
 							'type'        => 'string',
-							'description' => 'Título del post (obligatorio)',
+							'description' => 'Post title (required)',
 						),
 						'content'           => array(
 							'type'        => 'string',
-							'description' => 'Contenido del post en HTML o bloques Gutenberg (obligatorio)',
+							'description' => 'Post content in HTML or Gutenberg blocks (required)',
 						),
 						'excerpt'           => array(
 							'type'        => 'string',
-							'description' => 'Extracto/resumen del post (opcional)',
+							'description' => 'Post excerpt/summary (optional)',
 						),
 						'status'            => array(
 							'type'        => 'string',
-							'description' => 'Estado: draft, publish, pending, private, future',
+							'description' => 'Status: draft, publish, pending, private, future',
 							'enum'        => array( 'draft', 'publish', 'pending', 'private', 'future' ),
 							'default'     => 'draft',
 						),
 						'categories'        => array(
 							'type'        => 'array',
 							'items'       => array( 'type' => 'integer' ),
-							'description' => 'Array de IDs de categorías a asignar (opcional)',
+							'description' => 'Array of category IDs to assign (optional)',
 						),
 						'tags'              => array(
 							'type'        => 'array',
 							'items'       => array( 'type' => 'string' ),
-							'description' => 'Array de nombres de etiquetas a asignar (opcional)',
+							'description' => 'Array of tag names to assign (optional)',
 						),
 						'featured_image_id' => array(
 							'type'        => 'integer',
-							'description' => 'ID de la imagen destacada (opcional)',
+							'description' => 'Featured image ID (optional)',
 						),
 						'post_date'         => array(
 							'type'        => 'string',
-							'description' => 'Fecha de publicación YYYY-MM-DD HH:MM:SS (opcional)',
+							'description' => 'Publication date YYYY-MM-DD HH:MM:SS (optional)',
 						),
 						'author_id'         => array(
 							'type'        => 'integer',
-							'description' => 'ID del autor del post (opcional)',
+							'description' => 'Post author ID (optional)',
 						),
 						'slug'              => array(
 							'type'        => 'string',
-							'description' => 'Slug/permalink personalizado (opcional)',
+							'description' => 'Custom slug/permalink (optional)',
 						),
 						'meta_title'        => array(
 							'type'        => 'string',
-							'description' => 'Meta título SEO para Yoast/RankMath (opcional)',
+							'description' => 'SEO meta title for Yoast/RankMath (optional)',
 						),
 						'meta_description'  => array(
 							'type'        => 'string',
-							'description' => 'Meta descripción SEO para Yoast/RankMath (opcional)',
+							'description' => 'SEO meta description for Yoast/RankMath (optional)',
 						),
 					),
 				),
@@ -943,7 +1024,7 @@ function ewpa_register_custom_abilities(): void {
 						'post_id'   => $post_id,
 						'permalink' => get_permalink( $post_id ),
 						'status'    => $status,
-						'message'   => 'Post creado exitosamente.',
+						'message'   => 'Post created successfully.',
 					);
 				},
 				'meta'                => array(
@@ -956,13 +1037,13 @@ function ewpa_register_custom_abilities(): void {
 		);
 	}
 
-	// ── B2: Actualizar post ──────────────────────────────────────────────
-	if ( ewpa_is_ability_enabled( 'ewpa/actualizar-post' ) ) {
+	// ── B2: Update Post ─────────────────────────────────────────────────
+	if ( ewpa_is_ability_enabled( 'ewpa/update-post' ) ) {
 		wp_register_ability(
-			'ewpa/actualizar-post',
+			'ewpa/update-post',
 			array(
-				'label'               => __( 'Actualizar Post', 'enable-abilities-for-mcp' ),
-				'description'         => __( 'Actualiza un post existente. Solo se modifican los campos enviados, los demás permanecen intactos.', 'enable-abilities-for-mcp' ),
+				'label'               => __( 'Update Post', 'enable-abilities-for-mcp' ),
+				'description'         => __( 'Updates an existing post. Only the provided fields are modified, others remain unchanged.', 'enable-abilities-for-mcp' ),
 				'category'            => 'content-management',
 				'input_schema'        => array(
 					'type'       => 'object',
@@ -970,46 +1051,46 @@ function ewpa_register_custom_abilities(): void {
 					'properties' => array(
 						'post_id'           => array(
 							'type'        => 'integer',
-							'description' => 'ID del post a actualizar (obligatorio)',
+							'description' => 'Post ID to update (required)',
 						),
 						'title'             => array(
 							'type'        => 'string',
-							'description' => 'Nuevo título (opcional)',
+							'description' => 'New title (optional)',
 						),
 						'content'           => array(
 							'type'        => 'string',
-							'description' => 'Nuevo contenido en HTML (opcional)',
+							'description' => 'New content in HTML (optional)',
 						),
 						'excerpt'           => array(
 							'type'        => 'string',
-							'description' => 'Nuevo extracto (opcional)',
+							'description' => 'New excerpt (optional)',
 						),
 						'status'            => array(
 							'type'        => 'string',
-							'description' => 'Nuevo estado: draft, publish, pending, private',
+							'description' => 'New status: draft, publish, pending, private',
 							'enum'        => array( 'draft', 'publish', 'pending', 'private' ),
 						),
 						'categories'        => array(
 							'type'        => 'array',
 							'items'       => array( 'type' => 'integer' ),
-							'description' => 'Nuevos IDs de categorías (reemplaza las existentes)',
+							'description' => 'New category IDs (replaces existing ones)',
 						),
 						'tags'              => array(
 							'type'        => 'array',
 							'items'       => array( 'type' => 'string' ),
-							'description' => 'Nuevas etiquetas (reemplaza las existentes)',
+							'description' => 'New tags (replaces existing ones)',
 						),
 						'featured_image_id' => array(
 							'type'        => 'integer',
-							'description' => 'ID de nueva imagen destacada (0 para remover)',
+							'description' => 'New featured image ID (0 to remove)',
 						),
 						'meta_title'        => array(
 							'type'        => 'string',
-							'description' => 'Meta título SEO (opcional)',
+							'description' => 'SEO meta title (optional)',
 						),
 						'meta_description'  => array(
 							'type'        => 'string',
-							'description' => 'Meta descripción SEO (opcional)',
+							'description' => 'SEO meta description (optional)',
 						),
 					),
 				),
@@ -1028,10 +1109,10 @@ function ewpa_register_custom_abilities(): void {
 					$post_id = absint( $input['post_id'] );
 					$post = get_post( $post_id );
 					if ( ! $post ) {
-						return new WP_Error( 'not_found', 'Post no encontrado.' );
+						return new WP_Error( 'not_found', 'Post not found.' );
 					}
 					if ( ! current_user_can( 'edit_post', $post_id ) ) {
-						return new WP_Error( 'forbidden', 'No tienes permiso para editar este post.' );
+						return new WP_Error( 'forbidden', 'You do not have permission to edit this post.' );
 					}
 
 					$post_data = array( 'ID' => $post_id );
@@ -1084,7 +1165,7 @@ function ewpa_register_custom_abilities(): void {
 					return array(
 						'post_id'   => $post_id,
 						'permalink' => get_permalink( $post_id ),
-						'message'   => 'Post actualizado exitosamente.',
+						'message'   => 'Post updated successfully.',
 					);
 				},
 				'meta'                => array(
@@ -1097,13 +1178,13 @@ function ewpa_register_custom_abilities(): void {
 		);
 	}
 
-	// ── B3: Eliminar post ────────────────────────────────────────────────
-	if ( ewpa_is_ability_enabled( 'ewpa/eliminar-post' ) ) {
+	// ── B3: Delete Post ─────────────────────────────────────────────────
+	if ( ewpa_is_ability_enabled( 'ewpa/delete-post' ) ) {
 		wp_register_ability(
-			'ewpa/eliminar-post',
+			'ewpa/delete-post',
 			array(
-				'label'               => __( 'Eliminar Post', 'enable-abilities-for-mcp' ),
-				'description'         => __( 'Envía un post a la papelera o lo elimina permanentemente. Por defecto envía a la papelera.', 'enable-abilities-for-mcp' ),
+				'label'               => __( 'Delete Post', 'enable-abilities-for-mcp' ),
+				'description'         => __( 'Sends a post to trash or permanently deletes it. Defaults to trash.', 'enable-abilities-for-mcp' ),
 				'category'            => 'content-management',
 				'input_schema'        => array(
 					'type'       => 'object',
@@ -1111,11 +1192,11 @@ function ewpa_register_custom_abilities(): void {
 					'properties' => array(
 						'post_id'      => array(
 							'type'        => 'integer',
-							'description' => 'ID del post a eliminar (obligatorio)',
+							'description' => 'Post ID to delete (required)',
 						),
 						'force_delete' => array(
 							'type'        => 'boolean',
-							'description' => 'true = eliminar permanentemente, false = papelera',
+							'description' => 'true = permanently delete, false = trash',
 							'default'     => false,
 						),
 					),
@@ -1135,24 +1216,24 @@ function ewpa_register_custom_abilities(): void {
 					$post_id = absint( $input['post_id'] );
 					$post = get_post( $post_id );
 					if ( ! $post ) {
-						return new WP_Error( 'not_found', 'Post no encontrado.' );
+						return new WP_Error( 'not_found', 'Post not found.' );
 					}
 					if ( ! current_user_can( 'delete_post', $post_id ) ) {
-						return new WP_Error( 'forbidden', 'No tienes permiso para eliminar este post.' );
+						return new WP_Error( 'forbidden', 'You do not have permission to delete this post.' );
 					}
 
 					$force  = ! empty( $input['force_delete'] );
 					$result = wp_delete_post( $post_id, $force );
 
 					if ( ! $result ) {
-						return new WP_Error( 'delete_failed', 'No se pudo eliminar el post.' );
+						return new WP_Error( 'delete_failed', 'Could not delete the post.' );
 					}
 
-					$action = $force ? 'eliminado permanentemente' : 'enviado a la papelera';
+					$action = $force ? 'permanently deleted' : 'sent to trash';
 					return array(
 						'post_id' => $post_id,
 						'deleted' => true,
-						'message' => "Post {$action} exitosamente.",
+						'message' => "Post {$action} successfully.",
 					);
 				},
 				'meta'                => array(
@@ -1165,13 +1246,13 @@ function ewpa_register_custom_abilities(): void {
 		);
 	}
 
-	// ── B4: Crear categoría ──────────────────────────────────────────────
-	if ( ewpa_is_ability_enabled( 'ewpa/crear-categoria' ) ) {
+	// ── B4: Create Category ─────────────────────────────────────────────
+	if ( ewpa_is_ability_enabled( 'ewpa/create-category' ) ) {
 		wp_register_ability(
-			'ewpa/crear-categoria',
+			'ewpa/create-category',
 			array(
-				'label'               => __( 'Crear Categoría', 'enable-abilities-for-mcp' ),
-				'description'         => __( 'Crea una nueva categoría en el blog con nombre, slug, descripción y categoría padre (opcional).', 'enable-abilities-for-mcp' ),
+				'label'               => __( 'Create Category', 'enable-abilities-for-mcp' ),
+				'description'         => __( 'Creates a new blog category with name, slug, description, and parent category (optional).', 'enable-abilities-for-mcp' ),
 				'category'            => 'content-management',
 				'input_schema'        => array(
 					'type'       => 'object',
@@ -1179,19 +1260,19 @@ function ewpa_register_custom_abilities(): void {
 					'properties' => array(
 						'name'        => array(
 							'type'        => 'string',
-							'description' => 'Nombre de la categoría (obligatorio)',
+							'description' => 'Category name (required)',
 						),
 						'slug'        => array(
 							'type'        => 'string',
-							'description' => 'Slug de la categoría (opcional)',
+							'description' => 'Category slug (optional)',
 						),
 						'description' => array(
 							'type'        => 'string',
-							'description' => 'Descripción de la categoría (opcional)',
+							'description' => 'Category description (optional)',
 						),
 						'parent'      => array(
 							'type'        => 'integer',
-							'description' => 'ID de la categoría padre (0 = sin padre)',
+							'description' => 'Parent category ID (0 = no parent)',
 							'default'     => 0,
 						),
 					),
@@ -1235,7 +1316,7 @@ function ewpa_register_custom_abilities(): void {
 						'term_id' => $result['term_id'],
 						'name'    => $term->name,
 						'slug'    => $term->slug,
-						'message' => 'Categoría creada exitosamente.',
+						'message' => 'Category created successfully.',
 					);
 				},
 				'meta'                => array(
@@ -1248,13 +1329,13 @@ function ewpa_register_custom_abilities(): void {
 		);
 	}
 
-	// ── B5: Crear etiqueta ───────────────────────────────────────────────
-	if ( ewpa_is_ability_enabled( 'ewpa/crear-tag' ) ) {
+	// ── B5: Create Tag ──────────────────────────────────────────────────
+	if ( ewpa_is_ability_enabled( 'ewpa/create-tag' ) ) {
 		wp_register_ability(
-			'ewpa/crear-tag',
+			'ewpa/create-tag',
 			array(
-				'label'               => __( 'Crear Etiqueta', 'enable-abilities-for-mcp' ),
-				'description'         => __( 'Crea una nueva etiqueta (tag) en el blog con nombre, slug y descripción.', 'enable-abilities-for-mcp' ),
+				'label'               => __( 'Create Tag', 'enable-abilities-for-mcp' ),
+				'description'         => __( 'Creates a new blog tag with name, slug, and description.', 'enable-abilities-for-mcp' ),
 				'category'            => 'content-management',
 				'input_schema'        => array(
 					'type'       => 'object',
@@ -1262,15 +1343,15 @@ function ewpa_register_custom_abilities(): void {
 					'properties' => array(
 						'name'        => array(
 							'type'        => 'string',
-							'description' => 'Nombre de la etiqueta (obligatorio)',
+							'description' => 'Tag name (required)',
 						),
 						'slug'        => array(
 							'type'        => 'string',
-							'description' => 'Slug de la etiqueta (opcional)',
+							'description' => 'Tag slug (optional)',
 						),
 						'description' => array(
 							'type'        => 'string',
-							'description' => 'Descripción de la etiqueta (opcional)',
+							'description' => 'Tag description (optional)',
 						),
 					),
 				),
@@ -1310,7 +1391,7 @@ function ewpa_register_custom_abilities(): void {
 						'term_id' => $result['term_id'],
 						'name'    => $term->name,
 						'slug'    => $term->slug,
-						'message' => 'Etiqueta creada exitosamente.',
+						'message' => 'Tag created successfully.',
 					);
 				},
 				'meta'                => array(
@@ -1323,13 +1404,13 @@ function ewpa_register_custom_abilities(): void {
 		);
 	}
 
-	// ── B6: Crear página ─────────────────────────────────────────────────
-	if ( ewpa_is_ability_enabled( 'ewpa/crear-pagina' ) ) {
+	// ── B6: Create Page ─────────────────────────────────────────────────
+	if ( ewpa_is_ability_enabled( 'ewpa/create-page' ) ) {
 		wp_register_ability(
-			'ewpa/crear-pagina',
+			'ewpa/create-page',
 			array(
-				'label'               => __( 'Crear Página', 'enable-abilities-for-mcp' ),
-				'description'         => __( 'Crea una nueva página en WordPress con título, contenido, estado y página padre (para jerarquía).', 'enable-abilities-for-mcp' ),
+				'label'               => __( 'Create Page', 'enable-abilities-for-mcp' ),
+				'description'         => __( 'Creates a new WordPress page with title, content, status, and parent page (for hierarchy).', 'enable-abilities-for-mcp' ),
 				'category'            => 'content-management',
 				'input_schema'        => array(
 					'type'       => 'object',
@@ -1337,31 +1418,31 @@ function ewpa_register_custom_abilities(): void {
 					'properties' => array(
 						'title'      => array(
 							'type'        => 'string',
-							'description' => 'Título de la página (obligatorio)',
+							'description' => 'Page title (required)',
 						),
 						'content'    => array(
 							'type'        => 'string',
-							'description' => 'Contenido de la página en HTML (obligatorio)',
+							'description' => 'Page content in HTML (required)',
 						),
 						'status'     => array(
 							'type'        => 'string',
-							'description' => 'Estado: draft, publish, pending, private',
+							'description' => 'Status: draft, publish, pending, private',
 							'enum'        => array( 'draft', 'publish', 'pending', 'private' ),
 							'default'     => 'draft',
 						),
 						'parent_id'  => array(
 							'type'        => 'integer',
-							'description' => 'ID de la página padre (0 = sin padre)',
+							'description' => 'Parent page ID (0 = no parent)',
 							'default'     => 0,
 						),
 						'menu_order' => array(
 							'type'        => 'integer',
-							'description' => 'Orden en el menú',
+							'description' => 'Menu order',
 							'default'     => 0,
 						),
 						'template'   => array(
 							'type'        => 'string',
-							'description' => 'Template/plantilla de página a usar (opcional)',
+							'description' => 'Page template to use (optional)',
 						),
 					),
 				),
@@ -1405,7 +1486,7 @@ function ewpa_register_custom_abilities(): void {
 						'page_id'   => $page_id,
 						'permalink' => get_permalink( $page_id ),
 						'status'    => $status,
-						'message'   => 'Página creada exitosamente.',
+						'message'   => 'Page created successfully.',
 					);
 				},
 				'meta'                => array(
@@ -1418,13 +1499,13 @@ function ewpa_register_custom_abilities(): void {
 		);
 	}
 
-	// ── B7: Moderar comentario ───────────────────────────────────────────
-	if ( ewpa_is_ability_enabled( 'ewpa/moderar-comentario' ) ) {
+	// ── B7: Moderate Comment ────────────────────────────────────────────
+	if ( ewpa_is_ability_enabled( 'ewpa/moderate-comment' ) ) {
 		wp_register_ability(
-			'ewpa/moderar-comentario',
+			'ewpa/moderate-comment',
 			array(
-				'label'               => __( 'Moderar Comentario', 'enable-abilities-for-mcp' ),
-				'description'         => __( 'Cambia el estado de un comentario: aprobar, poner en espera, marcar como spam o enviar a la papelera.', 'enable-abilities-for-mcp' ),
+				'label'               => __( 'Moderate Comment', 'enable-abilities-for-mcp' ),
+				'description'         => __( 'Changes a comment status: approve, hold, mark as spam, or send to trash.', 'enable-abilities-for-mcp' ),
 				'category'            => 'content-management',
 				'input_schema'        => array(
 					'type'       => 'object',
@@ -1432,11 +1513,11 @@ function ewpa_register_custom_abilities(): void {
 					'properties' => array(
 						'comment_id' => array(
 							'type'        => 'integer',
-							'description' => 'ID del comentario a moderar (obligatorio)',
+							'description' => 'Comment ID to moderate (required)',
 						),
 						'action'     => array(
 							'type'        => 'string',
-							'description' => 'Acción: approve, hold, spam, trash',
+							'description' => 'Action: approve, hold, spam, trash',
 							'enum'        => array( 'approve', 'hold', 'spam', 'trash' ),
 						),
 					),
@@ -1456,7 +1537,7 @@ function ewpa_register_custom_abilities(): void {
 					$comment_id = absint( $input['comment_id'] );
 					$comment = get_comment( $comment_id );
 					if ( ! $comment ) {
-						return new WP_Error( 'not_found', 'Comentario no encontrado.' );
+						return new WP_Error( 'not_found', 'Comment not found.' );
 					}
 
 					$status_map = array(
@@ -1467,27 +1548,27 @@ function ewpa_register_custom_abilities(): void {
 					);
 
 					if ( ! isset( $status_map[ $input['action'] ] ) ) {
-						return new WP_Error( 'invalid_action', 'Acción no válida. Usa: approve, hold, spam o trash.' );
+						return new WP_Error( 'invalid_action', 'Invalid action. Use: approve, hold, spam, or trash.' );
 					}
 
 					$new_status = $status_map[ $input['action'] ];
 					$result = wp_set_comment_status( $comment_id, $new_status );
 
 					if ( ! $result ) {
-						return new WP_Error( 'update_failed', 'No se pudo moderar el comentario.' );
+						return new WP_Error( 'update_failed', 'Could not moderate the comment.' );
 					}
 
 					$action_labels = array(
-						'approve' => 'aprobado',
-						'hold'    => 'puesto en espera',
-						'spam'    => 'marcado como spam',
-						'trash'   => 'enviado a la papelera',
+						'approve' => 'approved',
+						'hold'    => 'put on hold',
+						'spam'    => 'marked as spam',
+						'trash'   => 'sent to trash',
 					);
 
 					return array(
 						'comment_id' => $comment_id,
 						'new_status' => $input['action'],
-						'message'    => 'Comentario ' . ( $action_labels[ $input['action'] ] ?? 'moderado' ) . ' exitosamente.',
+						'message'    => 'Comment ' . ( $action_labels[ $input['action'] ] ?? 'moderated' ) . ' successfully.',
 					);
 				},
 				'meta'                => array(
@@ -1500,13 +1581,13 @@ function ewpa_register_custom_abilities(): void {
 		);
 	}
 
-	// ── B8: Responder comentario ────────────────────────────────────────
-	if ( ewpa_is_ability_enabled( 'ewpa/responder-comentario' ) ) {
+	// ── B8: Reply to Comment ────────────────────────────────────────────
+	if ( ewpa_is_ability_enabled( 'ewpa/reply-comment' ) ) {
 		wp_register_ability(
-			'ewpa/responder-comentario',
+			'ewpa/reply-comment',
 			array(
-				'label'               => __( 'Responder Comentario', 'enable-abilities-for-mcp' ),
-				'description'         => __( 'Responde a un comentario existente en un post o página. La respuesta se publica como el usuario autenticado actual.', 'enable-abilities-for-mcp' ),
+				'label'               => __( 'Reply to Comment', 'enable-abilities-for-mcp' ),
+				'description'         => __( 'Replies to an existing comment on a post or page. The reply is published as the current authenticated user.', 'enable-abilities-for-mcp' ),
 				'category'            => 'content-management',
 				'input_schema'        => array(
 					'type'       => 'object',
@@ -1514,11 +1595,11 @@ function ewpa_register_custom_abilities(): void {
 					'properties' => array(
 						'comment_id' => array(
 							'type'        => 'integer',
-							'description' => 'ID del comentario al que se responde (obligatorio)',
+							'description' => 'Comment ID to reply to (required)',
 						),
 						'content'    => array(
 							'type'        => 'string',
-							'description' => 'Contenido de la respuesta (obligatorio)',
+							'description' => 'Reply content (required)',
 						),
 					),
 				),
@@ -1540,7 +1621,7 @@ function ewpa_register_custom_abilities(): void {
 				'execute_callback'    => function ( $input ) {
 					$parent_comment = get_comment( absint( $input['comment_id'] ) );
 					if ( ! $parent_comment ) {
-						return new WP_Error( 'not_found', 'Comentario padre no encontrado.' );
+						return new WP_Error( 'not_found', 'Parent comment not found.' );
 					}
 
 					$current_user = wp_get_current_user();
@@ -1556,7 +1637,7 @@ function ewpa_register_custom_abilities(): void {
 
 					$new_comment_id = wp_insert_comment( $comment_data );
 					if ( ! $new_comment_id ) {
-						return new WP_Error( 'insert_failed', 'No se pudo crear la respuesta al comentario.' );
+						return new WP_Error( 'insert_failed', 'Could not create the comment reply.' );
 					}
 
 					return array(
@@ -1566,7 +1647,7 @@ function ewpa_register_custom_abilities(): void {
 						'author'     => $current_user->display_name,
 						'content'    => wp_kses_post( $input['content'] ),
 						'date'       => current_time( 'mysql' ),
-						'message'    => 'Respuesta al comentario #' . absint( $input['comment_id'] ) . ' publicada exitosamente.',
+						'message'    => 'Reply to comment #' . absint( $input['comment_id'] ) . ' published successfully.',
 					);
 				},
 				'meta'                => array(
@@ -1579,13 +1660,13 @@ function ewpa_register_custom_abilities(): void {
 		);
 	}
 
-	// ── B9: Subir imagen desde URL ──────────────────────────────────────
-	if ( ewpa_is_ability_enabled( 'ewpa/subir-imagen' ) ) {
+	// ── B9: Upload Image from URL ───────────────────────────────────────
+	if ( ewpa_is_ability_enabled( 'ewpa/upload-image' ) ) {
 		wp_register_ability(
-			'ewpa/subir-imagen',
+			'ewpa/upload-image',
 			array(
-				'label'               => __( 'Subir Imagen desde URL', 'enable-abilities-for-mcp' ),
-				'description'         => __( 'Descarga una imagen desde una URL externa y la registra en la biblioteca de medios de WordPress. Opcionalmente puede asignarla como imagen destacada de un post. Retorna el ID del attachment y la URL local.', 'enable-abilities-for-mcp' ),
+				'label'               => __( 'Upload Image from URL', 'enable-abilities-for-mcp' ),
+				'description'         => __( 'Downloads an image from an external URL and registers it in the WordPress media library. Optionally assigns it as featured image for a post. Returns the attachment ID and local URL.', 'enable-abilities-for-mcp' ),
 				'category'            => 'content-management',
 				'input_schema'        => array(
 					'type'       => 'object',
@@ -1593,27 +1674,27 @@ function ewpa_register_custom_abilities(): void {
 					'properties' => array(
 						'url'         => array(
 							'type'        => 'string',
-							'description' => 'URL de la imagen a descargar (obligatorio)',
+							'description' => 'Image URL to download (required)',
 						),
 						'title'       => array(
 							'type'        => 'string',
-							'description' => 'Título para la imagen en la biblioteca de medios (opcional)',
+							'description' => 'Title for the image in the media library (optional)',
 						),
 						'alt_text'    => array(
 							'type'        => 'string',
-							'description' => 'Texto alternativo (alt) de la imagen (opcional)',
+							'description' => 'Image alt text (optional)',
 						),
 						'caption'     => array(
 							'type'        => 'string',
-							'description' => 'Leyenda/caption de la imagen (opcional)',
+							'description' => 'Image caption (optional)',
 						),
 						'description' => array(
 							'type'        => 'string',
-							'description' => 'Descripción de la imagen (opcional)',
+							'description' => 'Image description (optional)',
 						),
 						'post_id'     => array(
 							'type'        => 'integer',
-							'description' => 'ID del post al que adjuntar la imagen. Si se indica, también se asigna como imagen destacada (opcional)',
+							'description' => 'Post ID to attach the image to. If provided, also sets it as featured image (optional)',
 						),
 					),
 				),
@@ -1642,7 +1723,7 @@ function ewpa_register_custom_abilities(): void {
 
 					$url = esc_url_raw( $input['url'] );
 					if ( empty( $url ) ) {
-						return new WP_Error( 'invalid_url', 'La URL de la imagen no es válida.' );
+						return new WP_Error( 'invalid_url', 'The image URL is not valid.' );
 					}
 
 					// Validate that URL points to an image by extension.
@@ -1650,20 +1731,20 @@ function ewpa_register_custom_abilities(): void {
 					$path = wp_parse_url( $url, PHP_URL_PATH );
 					$ext  = $path ? strtolower( pathinfo( $path, PATHINFO_EXTENSION ) ) : '';
 					if ( ! in_array( $ext, $allowed_extensions, true ) ) {
-						return new WP_Error( 'invalid_type', 'La URL no apunta a un formato de imagen válido. Extensiones permitidas: ' . implode( ', ', $allowed_extensions ) );
+						return new WP_Error( 'invalid_type', 'The URL does not point to a valid image format. Allowed extensions: ' . implode( ', ', $allowed_extensions ) );
 					}
 
 					$parent_post_id = ! empty( $input['post_id'] ) ? absint( $input['post_id'] ) : 0;
 
 					// Validate parent post exists if provided.
 					if ( $parent_post_id > 0 && ! get_post( $parent_post_id ) ) {
-						return new WP_Error( 'post_not_found', 'El post indicado no existe.' );
+						return new WP_Error( 'post_not_found', 'The specified post does not exist.' );
 					}
 
 					// Download and sideload the image.
 					$tmp_file = download_url( $url, 30 );
 					if ( is_wp_error( $tmp_file ) ) {
-						return new WP_Error( 'download_failed', 'No se pudo descargar la imagen: ' . $tmp_file->get_error_message() );
+						return new WP_Error( 'download_failed', 'Could not download the image: ' . $tmp_file->get_error_message() );
 					}
 
 					// Build the file array for media_handle_sideload.
@@ -1678,7 +1759,7 @@ function ewpa_register_custom_abilities(): void {
 					// Clean up temp file on failure.
 					if ( is_wp_error( $attachment_id ) ) {
 						wp_delete_file( $tmp_file );
-						return new WP_Error( 'sideload_failed', 'No se pudo registrar la imagen: ' . $attachment_id->get_error_message() );
+						return new WP_Error( 'sideload_failed', 'Could not register the image: ' . $attachment_id->get_error_message() );
 					}
 
 					// Set title if provided.
@@ -1732,8 +1813,8 @@ function ewpa_register_custom_abilities(): void {
 						'mime_type'        => $attachment->post_mime_type,
 						'set_as_thumbnail' => $set_thumbnail,
 						'message'          => $set_thumbnail
-							? 'Imagen subida y asignada como imagen destacada exitosamente.'
-							: 'Imagen subida a la biblioteca de medios exitosamente.',
+							? 'Image uploaded and set as featured image successfully.'
+							: 'Image uploaded to the media library successfully.',
 					);
 				},
 				'meta'                => array(
@@ -1752,13 +1833,13 @@ function ewpa_register_custom_abilities(): void {
 	 * ======================================================================
 	 */
 
-	// ── S1: Obtener metadata Rank Math ───────────────────────────────────
-	if ( ewpa_is_ability_enabled( 'ewpa/obtener-rankmath' ) ) {
+	// ── S1: Get Rank Math Metadata ──────────────────────────────────────
+	if ( ewpa_is_ability_enabled( 'ewpa/get-rankmath' ) ) {
 		wp_register_ability(
-			'ewpa/obtener-rankmath',
+			'ewpa/get-rankmath',
 			array(
-				'label'               => __( 'Obtener Metadata Rank Math', 'enable-abilities-for-mcp' ),
-				'description'         => __( 'Obtiene toda la metadata SEO de Rank Math para un post o página: título, descripción, keywords, robots, robots avanzados, Open Graph, Twitter Card, schema, breadcrumb, cornerstone y score SEO.', 'enable-abilities-for-mcp' ),
+				'label'               => __( 'Get Rank Math Metadata', 'enable-abilities-for-mcp' ),
+				'description'         => __( 'Retrieves all Rank Math SEO metadata for a post or page: title, description, keywords, robots, advanced robots, Open Graph, Twitter Card, schema, breadcrumb, cornerstone, and SEO score.', 'enable-abilities-for-mcp' ),
 				'category'            => 'content-management',
 				'input_schema'        => array(
 					'type'       => 'object',
@@ -1766,7 +1847,7 @@ function ewpa_register_custom_abilities(): void {
 					'properties' => array(
 						'post_id' => array(
 							'type'        => 'integer',
-							'description' => 'ID del post o página a consultar',
+							'description' => 'Post or page ID to query',
 						),
 					),
 				),
@@ -1808,7 +1889,7 @@ function ewpa_register_custom_abilities(): void {
 					$post_id = absint( $input['post_id'] );
 					$post = get_post( $post_id );
 					if ( ! $post ) {
-						return new WP_Error( 'not_found', 'Post o página no encontrado.' );
+						return new WP_Error( 'not_found', 'Post or page not found.' );
 					}
 
 					$robots_raw = get_post_meta( $post_id, 'rank_math_robots', true );
@@ -1877,13 +1958,13 @@ function ewpa_register_custom_abilities(): void {
 		);
 	}
 
-	// ── S2: Actualizar metadata Rank Math ────────────────────────────────
-	if ( ewpa_is_ability_enabled( 'ewpa/actualizar-rankmath' ) ) {
+	// ── S2: Update Rank Math Metadata ───────────────────────────────────
+	if ( ewpa_is_ability_enabled( 'ewpa/update-rankmath' ) ) {
 		wp_register_ability(
-			'ewpa/actualizar-rankmath',
+			'ewpa/update-rankmath',
 			array(
-				'label'               => __( 'Actualizar SEO / Focus Keyword de Rank Math', 'enable-abilities-for-mcp' ),
-				'description'         => __( 'Actualiza la metadata SEO de Rank Math en un post o página (rank_math_focus_keyword, rank_math_title, rank_math_description, etc). Usa esta ability para establecer o cambiar la palabra clave objetivo (focus keyword), título SEO, meta descripción, canonical URL, robots, Open Graph, Twitter Card, breadcrumb, schema snippet, cornerstone y contenido pilar. Solo se modifican los campos enviados.', 'enable-abilities-for-mcp' ),
+				'label'               => __( 'Update Rank Math SEO / Focus Keyword', 'enable-abilities-for-mcp' ),
+				'description'         => __( 'Updates Rank Math SEO metadata on a post or page (rank_math_focus_keyword, rank_math_title, rank_math_description, etc). Use this ability to set or change the focus keyword, SEO title, meta description, canonical URL, robots, Open Graph, Twitter Card, breadcrumb, schema snippet, cornerstone, and pillar content. Only the provided fields are modified.', 'enable-abilities-for-mcp' ),
 				'category'            => 'content-management',
 				'input_schema'        => array(
 					'type'       => 'object',
@@ -1891,23 +1972,23 @@ function ewpa_register_custom_abilities(): void {
 					'properties' => array(
 						'post_id'              => array(
 							'type'        => 'integer',
-							'description' => 'ID del post o página a actualizar (obligatorio)',
+							'description' => 'Post or page ID to update (required)',
 						),
 						'titulo_seo'           => array(
 							'type'        => 'string',
-							'description' => 'Título SEO para Rank Math (opcional)',
+							'description' => 'SEO title for Rank Math (optional)',
 						),
 						'descripcion_seo'      => array(
 							'type'        => 'string',
-							'description' => 'Meta descripción SEO para Rank Math (opcional)',
+							'description' => 'SEO meta description for Rank Math (optional)',
 						),
 						'keyword'              => array(
 							'type'        => 'string',
-							'description' => 'Palabra clave objetivo (focus keyword) única para Rank Math. Se guarda en rank_math_focus_keyword. Ej: "recetas saludables" (opcional)',
+							'description' => 'Focus keyword for Rank Math. Stored in rank_math_focus_keyword. E.g.: "healthy recipes" (optional)',
 						),
 						'canonical_url'        => array(
 							'type'        => 'string',
-							'description' => 'URL canónica personalizada (opcional)',
+							'description' => 'Custom canonical URL (optional)',
 						),
 						'robots'               => array(
 							'type'        => 'array',
@@ -1915,74 +1996,74 @@ function ewpa_register_custom_abilities(): void {
 								'type' => 'string',
 								'enum' => array( 'index', 'noindex', 'follow', 'nofollow', 'noarchive', 'noimageindex', 'nosnippet' ),
 							),
-							'description' => 'Directivas robots, ej: ["index", "follow"] o ["noindex", "nofollow"] (opcional)',
+							'description' => 'Robots directives, e.g.: ["index", "follow"] or ["noindex", "nofollow"] (optional)',
 						),
 						'advanced_robots'      => array(
 							'type'        => 'object',
-							'description' => 'Robots avanzados, ej: {"max-snippet": -1, "max-image-preview": "large", "max-video-preview": -1} (opcional)',
+							'description' => 'Advanced robots, e.g.: {"max-snippet": -1, "max-image-preview": "large", "max-video-preview": -1} (optional)',
 							'properties'  => array(
 								'max-snippet'       => array(
 									'type'        => 'integer',
-									'description' => 'Máx. caracteres en snippet (-1 = sin límite)',
+									'description' => 'Max snippet characters (-1 = no limit)',
 								),
 								'max-image-preview' => array(
 									'type'        => 'string',
-									'description' => 'Tamaño máx. imagen: none, standard, large',
+									'description' => 'Max image size: none, standard, large',
 									'enum'        => array( 'none', 'standard', 'large' ),
 								),
 								'max-video-preview' => array(
 									'type'        => 'integer',
-									'description' => 'Máx. segundos de video preview (-1 = sin límite)',
+									'description' => 'Max video preview seconds (-1 = no limit)',
 								),
 							),
 						),
 						'og_title'             => array(
 							'type'        => 'string',
-							'description' => 'Título para Open Graph / Facebook (opcional)',
+							'description' => 'Open Graph / Facebook title (optional)',
 						),
 						'og_description'       => array(
 							'type'        => 'string',
-							'description' => 'Descripción para Open Graph / Facebook (opcional)',
+							'description' => 'Open Graph / Facebook description (optional)',
 						),
 						'og_image'             => array(
 							'type'        => 'string',
-							'description' => 'URL de imagen para Open Graph / Facebook (opcional)',
+							'description' => 'Open Graph / Facebook image URL (optional)',
 						),
 						'twitter_title'        => array(
 							'type'        => 'string',
-							'description' => 'Título para Twitter Card (opcional)',
+							'description' => 'Twitter Card title (optional)',
 						),
 						'twitter_description'  => array(
 							'type'        => 'string',
-							'description' => 'Descripción para Twitter Card (opcional)',
+							'description' => 'Twitter Card description (optional)',
 						),
 						'twitter_image'        => array(
 							'type'        => 'string',
-							'description' => 'URL de imagen para Twitter Card (opcional)',
+							'description' => 'Twitter Card image URL (optional)',
 						),
 						'twitter_use_facebook' => array(
 							'type'        => 'boolean',
-							'description' => 'Reusar datos de Facebook para Twitter (true/false) (opcional)',
+							'description' => 'Reuse Facebook data for Twitter (true/false) (optional)',
 						),
 						'primary_category'     => array(
 							'type'        => 'integer',
-							'description' => 'ID de la categoría primaria para Rank Math (opcional)',
+							'description' => 'Primary category ID for Rank Math (optional)',
 						),
 						'pillar_content'       => array(
 							'type'        => 'boolean',
-							'description' => 'Marcar como contenido pilar (true/false) (opcional)',
+							'description' => 'Mark as pillar content (true/false) (optional)',
 						),
 						'cornerstone'          => array(
 							'type'        => 'boolean',
-							'description' => 'Marcar como contenido cornerstone (true/false) (opcional)',
+							'description' => 'Mark as cornerstone content (true/false) (optional)',
 						),
 						'breadcrumb_title'     => array(
 							'type'        => 'string',
-							'description' => 'Título personalizado para breadcrumbs (opcional)',
+							'description' => 'Custom breadcrumb title (optional)',
 						),
 						'snippet_type'         => array(
 							'type'        => 'string',
-							'description' => 'Tipo de rich snippet: off, article, book, course, event, faq, howto, job_posting, local_business, music, product, recipe, restaurant, review, software, video (opcional)',
+							'description' => 'Rich snippet type: off, article, book, course, event, faq, howto, job_posting, local_business, music, product, recipe, restaurant, review, software, video (optional)',
 							'enum'        => array( 'off', 'article', 'book', 'course', 'event', 'faq', 'howto', 'job_posting', 'local_business', 'music', 'product', 'recipe', 'restaurant', 'review', 'software', 'video' ),
 						),
 					),
@@ -2005,15 +2086,15 @@ function ewpa_register_custom_abilities(): void {
 					$post_id = absint( $input['post_id'] );
 					$post = get_post( $post_id );
 					if ( ! $post ) {
-						return new WP_Error( 'not_found', 'Post o página no encontrado.' );
+						return new WP_Error( 'not_found', 'Post or page not found.' );
 					}
 					if ( ! current_user_can( 'edit_post', $post_id ) ) {
-						return new WP_Error( 'forbidden', 'No tienes permiso para editar este post.' );
+						return new WP_Error( 'forbidden', 'You do not have permission to edit this post.' );
 					}
 
 					$updated = array();
 
-					// ── General SEO ──────────────────────────────────────
+					// ── General SEO ─────────────────────────────────────
 					if ( isset( $input['titulo_seo'] ) ) {
 						update_post_meta( $post_id, 'rank_math_title', sanitize_text_field( $input['titulo_seo'] ) );
 						$updated[] = 'titulo_seo';
@@ -2106,7 +2187,7 @@ function ewpa_register_custom_abilities(): void {
 						$updated[] = 'twitter_use_facebook';
 					}
 
-					// ── Taxonomía y contenido ────────────────────────────
+					// ── Taxonomy and Content ─────────────────────────────
 					if ( isset( $input['primary_category'] ) ) {
 						$cat_id = absint( $input['primary_category'] );
 						if ( $cat_id > 0 && term_exists( $cat_id, 'category' ) ) {
@@ -2140,14 +2221,14 @@ function ewpa_register_custom_abilities(): void {
 					}
 
 					if ( empty( $updated ) ) {
-						return new WP_Error( 'no_fields', 'No se enviaron campos para actualizar.' );
+						return new WP_Error( 'no_fields', 'No fields were provided for update.' );
 					}
 
 					$count = count( $updated );
 					return array(
 						'post_id'        => $post_id,
 						'updated_fields' => $updated,
-						'message'        => "{$count} campo(s) de Rank Math actualizados exitosamente.",
+						'message'        => "{$count} Rank Math field(s) updated successfully.",
 					);
 				},
 				'meta'                => array(
@@ -2166,13 +2247,13 @@ function ewpa_register_custom_abilities(): void {
 	 * ======================================================================
 	 */
 
-	// ── C1: Buscar y reemplazar ──────────────────────────────────────────
-	if ( ewpa_is_ability_enabled( 'ewpa/buscar-reemplazar' ) ) {
+	// ── C1: Search and Replace ──────────────────────────────────────────
+	if ( ewpa_is_ability_enabled( 'ewpa/search-replace' ) ) {
 		wp_register_ability(
-			'ewpa/buscar-reemplazar',
+			'ewpa/search-replace',
 			array(
-				'label'               => __( 'Buscar y Reemplazar', 'enable-abilities-for-mcp' ),
-				'description'         => __( 'Busca un texto en el contenido de un post específico y lo reemplaza por otro. Útil para correcciones y actualizaciones.', 'enable-abilities-for-mcp' ),
+				'label'               => __( 'Search and Replace', 'enable-abilities-for-mcp' ),
+				'description'         => __( 'Searches for text in a specific post content and replaces it with another. Useful for corrections and updates.', 'enable-abilities-for-mcp' ),
 				'category'            => 'content-management',
 				'input_schema'        => array(
 					'type'       => 'object',
@@ -2180,15 +2261,15 @@ function ewpa_register_custom_abilities(): void {
 					'properties' => array(
 						'post_id' => array(
 							'type'        => 'integer',
-							'description' => 'ID del post donde buscar y reemplazar',
+							'description' => 'Post ID to search and replace in',
 						),
 						'search'  => array(
 							'type'        => 'string',
-							'description' => 'Texto a buscar',
+							'description' => 'Text to search for',
 						),
 						'replace' => array(
 							'type'        => 'string',
-							'description' => 'Texto de reemplazo',
+							'description' => 'Replacement text',
 						),
 					),
 				),
@@ -2207,17 +2288,17 @@ function ewpa_register_custom_abilities(): void {
 					$post_id = absint( $input['post_id'] );
 					$post = get_post( $post_id );
 					if ( ! $post ) {
-						return new WP_Error( 'not_found', 'Post no encontrado.' );
+						return new WP_Error( 'not_found', 'Post not found.' );
 					}
 					if ( ! current_user_can( 'edit_post', $post_id ) ) {
-						return new WP_Error( 'forbidden', 'No tienes permiso para editar este post.' );
+						return new WP_Error( 'forbidden', 'You do not have permission to edit this post.' );
 					}
 
 					$search  = sanitize_text_field( $input['search'] );
 					$replace = wp_kses_post( $input['replace'] );
 
 					if ( empty( $search ) ) {
-						return new WP_Error( 'invalid_input', 'El texto de búsqueda no puede estar vacío.' );
+						return new WP_Error( 'invalid_input', 'The search text cannot be empty.' );
 					}
 
 					$count       = 0;
@@ -2241,8 +2322,8 @@ function ewpa_register_custom_abilities(): void {
 						'post_id'      => $post_id,
 						'replacements' => $count,
 						'message'      => $count > 0
-							? "{$count} reemplazo(s) realizados exitosamente."
-							: 'No se encontraron coincidencias.',
+							? "{$count} replacement(s) made successfully."
+							: 'No matches found.',
 					);
 				},
 				'meta'                => array(
@@ -2255,13 +2336,13 @@ function ewpa_register_custom_abilities(): void {
 		);
 	}
 
-	// ── C2: Estadísticas del sitio ───────────────────────────────────────
-	if ( ewpa_is_ability_enabled( 'ewpa/estadisticas-sitio' ) ) {
+	// ── C2: Site Statistics ─────────────────────────────────────────────
+	if ( ewpa_is_ability_enabled( 'ewpa/site-stats' ) ) {
 		wp_register_ability(
-			'ewpa/estadisticas-sitio',
+			'ewpa/site-stats',
 			array(
-				'label'               => __( 'Estadísticas del Sitio', 'enable-abilities-for-mcp' ),
-				'description'         => __( 'Devuelve un resumen con el total de posts, páginas, categorías, etiquetas, comentarios y usuarios del sitio.', 'enable-abilities-for-mcp' ),
+				'label'               => __( 'Site Statistics', 'enable-abilities-for-mcp' ),
+				'description'         => __( 'Returns a summary with the total posts, pages, categories, tags, comments, and users of the site.', 'enable-abilities-for-mcp' ),
 				'category'            => 'site-information',
 				'input_schema'        => array(
 					'type'       => 'object',
@@ -2292,6 +2373,23 @@ function ewpa_register_custom_abilities(): void {
 					$comment_counts = wp_count_comments();
 					$media_counts   = wp_count_posts( 'attachment' );
 
+					// CPT counts.
+					$custom_post_types = array();
+					$cpt_list = get_post_types(
+						array(
+							'public'   => true,
+							'_builtin' => false,
+						),
+						'objects'
+					);
+					foreach ( $cpt_list as $cpt_slug => $cpt_obj ) {
+						$counts = wp_count_posts( $cpt_slug );
+						$custom_post_types[ $cpt_slug ] = array(
+							'label'     => $cpt_obj->label,
+							'published' => (int) $counts->publish,
+						);
+					}
+
 					return array(
 						'posts_published'   => (int) $post_counts->publish,
 						'posts_draft'       => (int) $post_counts->draft,
@@ -2304,6 +2402,1020 @@ function ewpa_register_custom_abilities(): void {
 						'comments_spam'     => (int) $comment_counts->spam,
 						'users_total'       => (int) count_users()['total_users'],
 						'media_total'       => (int) $media_counts->inherit,
+						'custom_post_types' => $custom_post_types,
+					);
+				},
+				'meta'                => array(
+					'show_in_rest' => true,
+					'mcp'          => array(
+						'public' => true,
+					),
+				),
+			)
+		);
+	}
+
+	/*
+	 * ======================================================================
+	 * SECTION D: CUSTOM POST TYPE ABILITIES
+	 * ======================================================================
+	 */
+
+	// ── D1: List Post Types ─────────────────────────────────────────────
+	if ( ewpa_is_ability_enabled( 'ewpa/list-post-types' ) ) {
+		wp_register_ability(
+			'ewpa/list-post-types',
+			array(
+				'label'               => __( 'List Post Types', 'enable-abilities-for-mcp' ),
+				'description'         => __( 'Lists all custom post types registered on the site, with their configuration, supported features, and associated taxonomies.', 'enable-abilities-for-mcp' ),
+				'category'            => 'cpt-management',
+				'input_schema'        => array(
+					'type'       => 'object',
+					'properties' => array(),
+				),
+				'output_schema'       => array(
+					'type'  => 'array',
+					'items' => array(
+						'type'       => 'object',
+						'properties' => array(
+							'name'         => array( 'type' => 'string' ),
+							'label'        => array( 'type' => 'string' ),
+							'description'  => array( 'type' => 'string' ),
+							'hierarchical' => array( 'type' => 'boolean' ),
+							'supports'     => array(
+								'type'  => 'array',
+								'items' => array( 'type' => 'string' ),
+							),
+							'taxonomies'   => array( 'type' => 'array' ),
+							'count'        => array( 'type' => 'integer' ),
+							'rest_base'    => array( 'type' => 'string' ),
+							'menu_icon'    => array( 'type' => 'string' ),
+						),
+					),
+				),
+				'permission_callback' => function () {
+					return current_user_can( 'read' );
+				},
+				'execute_callback'    => function () {
+					$public_cpts = get_post_types(
+						array(
+							'public'   => true,
+							'_builtin' => false,
+						),
+						'objects'
+					);
+					$rest_cpts   = get_post_types(
+						array(
+							'show_in_rest' => true,
+							'_builtin'     => false,
+						),
+						'objects'
+					);
+					$all_cpts    = array_merge( $public_cpts, $rest_cpts );
+					$result      = array();
+
+					foreach ( $all_cpts as $slug => $cpt_obj ) {
+						$taxonomies = array();
+						foreach ( get_object_taxonomies( $slug, 'objects' ) as $tax_slug => $tax_obj ) {
+							$taxonomies[] = array(
+								'slug'         => $tax_slug,
+								'label'        => $tax_obj->label,
+								'hierarchical' => $tax_obj->hierarchical,
+							);
+						}
+
+						$counts = wp_count_posts( $slug );
+
+						$result[] = array(
+							'name'         => $slug,
+							'label'        => $cpt_obj->label,
+							'description'  => $cpt_obj->description,
+							'hierarchical' => $cpt_obj->hierarchical,
+							'supports'     => array_keys( get_all_post_type_supports( $slug ) ),
+							'taxonomies'   => $taxonomies,
+							'count'        => isset( $counts->publish ) ? (int) $counts->publish : 0,
+							'rest_base'    => $cpt_obj->rest_base ? $cpt_obj->rest_base : $slug,
+							'menu_icon'    => $cpt_obj->menu_icon ? $cpt_obj->menu_icon : '',
+						);
+					}
+
+					if ( empty( $result ) ) {
+						return array(
+							'message'    => __( 'No custom post types detected on this site.', 'enable-abilities-for-mcp' ),
+							'post_types' => array(),
+						);
+					}
+
+					return $result;
+				},
+				'meta'                => array(
+					'show_in_rest' => true,
+					'mcp'          => array(
+						'public' => true,
+					),
+				),
+			)
+		);
+	}
+
+	// ── D2: Get CPT Items ───────────────────────────────────────────────
+	if ( ewpa_is_ability_enabled( 'ewpa/get-cpt-items' ) ) {
+		wp_register_ability(
+			'ewpa/get-cpt-items',
+			array(
+				'label'               => __( 'Get CPT Items', 'enable-abilities-for-mcp' ),
+				'description'         => __( 'Retrieves a list of items from a specific custom post type with filtering, search, and taxonomy query support.', 'enable-abilities-for-mcp' ),
+				'category'            => 'cpt-management',
+				'input_schema'        => array(
+					'type'       => 'object',
+					'required'   => array( 'post_type' ),
+					'properties' => array(
+						'post_type'   => array(
+							'type'        => 'string',
+							'description' => __( 'The custom post type slug (e.g. product, portfolio).', 'enable-abilities-for-mcp' ),
+						),
+						'numberposts' => array(
+							'type'        => 'integer',
+							'description' => __( 'Number of items to return (default 20, max 100).', 'enable-abilities-for-mcp' ),
+						),
+						'post_status' => array(
+							'type'        => 'string',
+							'description' => __( 'Filter by status: publish, draft, pending, private, any (default publish).', 'enable-abilities-for-mcp' ),
+						),
+						'orderby'     => array(
+							'type'        => 'string',
+							'description' => __( 'Order by: date, title, modified, menu_order, ID, rand (default date).', 'enable-abilities-for-mcp' ),
+						),
+						'order'       => array(
+							'type'        => 'string',
+							'description' => __( 'Sort direction: ASC or DESC (default DESC).', 'enable-abilities-for-mcp' ),
+						),
+						's'           => array(
+							'type'        => 'string',
+							'description' => __( 'Search keyword to filter items.', 'enable-abilities-for-mcp' ),
+						),
+						'tax_query'   => array(
+							'type'        => 'array',
+							'description' => __( 'Taxonomy query array. Each item: {taxonomy, terms, field (slug|id), operator (IN|NOT IN|AND)}.', 'enable-abilities-for-mcp' ),
+						),
+					),
+				),
+				'output_schema'       => array(
+					'type'  => 'array',
+					'items' => array(
+						'type'       => 'object',
+						'properties' => array(
+							'ID'           => array( 'type' => 'integer' ),
+							'post_title'   => array( 'type' => 'string' ),
+							'post_status'  => array( 'type' => 'string' ),
+							'post_date'    => array( 'type' => 'string' ),
+							'post_excerpt' => array( 'type' => 'string' ),
+							'post_author'  => array( 'type' => 'integer' ),
+							'permalink'    => array( 'type' => 'string' ),
+							'post_type'    => array( 'type' => 'string' ),
+							'taxonomies'   => array( 'type' => 'object' ),
+						),
+					),
+				),
+				'permission_callback' => function () {
+					return current_user_can( 'read' );
+				},
+				'execute_callback'    => function ( $input ) {
+					$cpt_obj = ewpa_validate_cpt( $input['post_type'] );
+					if ( is_wp_error( $cpt_obj ) ) {
+						return $cpt_obj;
+					}
+
+					$numberposts = min( absint( $input['numberposts'] ?? 20 ), 100 );
+					$post_status = sanitize_text_field( $input['post_status'] ?? 'publish' );
+					$orderby     = sanitize_text_field( $input['orderby'] ?? 'date' );
+					$order       = in_array( strtoupper( $input['order'] ?? 'DESC' ), array( 'ASC', 'DESC' ), true )
+						? strtoupper( $input['order'] )
+						: 'DESC';
+
+					$allowed_orderby = array( 'date', 'title', 'modified', 'menu_order', 'ID', 'rand' );
+					if ( ! in_array( $orderby, $allowed_orderby, true ) ) {
+						$orderby = 'date';
+					}
+
+					$args = array(
+						'post_type'        => $cpt_obj->name,
+						'numberposts'      => $numberposts,
+						'post_status'      => $post_status,
+						'orderby'          => $orderby,
+						'order'            => $order,
+						'suppress_filters' => false,
+					);
+
+					if ( ! empty( $input['s'] ) ) {
+						$args['s'] = sanitize_text_field( $input['s'] );
+					}
+
+					if ( ! empty( $input['tax_query'] ) && is_array( $input['tax_query'] ) ) {
+						$tax_query = array();
+						foreach ( $input['tax_query'] as $tq ) {
+							if ( empty( $tq['taxonomy'] ) || empty( $tq['terms'] ) ) {
+								continue;
+							}
+							$tax_query[] = array(
+								'taxonomy' => sanitize_key( $tq['taxonomy'] ),
+								'field'    => in_array( $tq['field'] ?? 'slug', array( 'slug', 'term_id', 'id' ), true )
+									? ( 'id' === $tq['field'] ? 'term_id' : $tq['field'] )
+									: 'slug',
+								'terms'    => is_array( $tq['terms'] ) ? array_map( 'sanitize_text_field', $tq['terms'] ) : array( sanitize_text_field( $tq['terms'] ) ),
+								'operator' => in_array( strtoupper( $tq['operator'] ?? 'IN' ), array( 'IN', 'NOT IN', 'AND' ), true )
+									? strtoupper( $tq['operator'] )
+									: 'IN',
+							);
+						}
+						if ( ! empty( $tax_query ) ) {
+							$args['tax_query'] = $tax_query;
+						}
+					}
+
+					$posts  = get_posts( $args );
+					$result = array();
+
+					foreach ( $posts as $p ) {
+						$taxonomies = array();
+						foreach ( get_object_taxonomies( $cpt_obj->name, 'objects' ) as $tax_slug => $tax_obj ) {
+							$terms = wp_get_object_terms( $p->ID, $tax_slug, array( 'fields' => 'all' ) );
+							if ( ! is_wp_error( $terms ) && ! empty( $terms ) ) {
+								$taxonomies[ $tax_slug ] = array_map(
+									function ( $term ) {
+										return array(
+											'term_id' => $term->term_id,
+											'name'    => $term->name,
+											'slug'    => $term->slug,
+										);
+									},
+									$terms
+								);
+							}
+						}
+
+						$result[] = array(
+							'ID'           => $p->ID,
+							'post_title'   => $p->post_title,
+							'post_status'  => $p->post_status,
+							'post_date'    => $p->post_date,
+							'post_excerpt' => $p->post_excerpt,
+							'post_author'  => (int) $p->post_author,
+							'permalink'    => get_permalink( $p->ID ),
+							'post_type'    => $p->post_type,
+							'taxonomies'   => $taxonomies,
+						);
+					}
+
+					return $result;
+				},
+				'meta'                => array(
+					'show_in_rest' => true,
+					'mcp'          => array(
+						'public' => true,
+					),
+				),
+			)
+		);
+	}
+
+	// ── D3: Get CPT Item ────────────────────────────────────────────────
+	if ( ewpa_is_ability_enabled( 'ewpa/get-cpt-item' ) ) {
+		wp_register_ability(
+			'ewpa/get-cpt-item',
+			array(
+				'label'               => __( 'Get CPT Item', 'enable-abilities-for-mcp' ),
+				'description'         => __( 'Retrieves full details of a single custom post type item, including all meta fields, taxonomies, and content.', 'enable-abilities-for-mcp' ),
+				'category'            => 'cpt-management',
+				'input_schema'        => array(
+					'type'       => 'object',
+					'required'   => array( 'post_id' ),
+					'properties' => array(
+						'post_id' => array(
+							'type'        => 'integer',
+							'description' => __( 'The ID of the item to retrieve.', 'enable-abilities-for-mcp' ),
+						),
+					),
+				),
+				'output_schema'       => array(
+					'type'       => 'object',
+					'properties' => array(
+						'ID'              => array( 'type' => 'integer' ),
+						'post_title'      => array( 'type' => 'string' ),
+						'post_content'    => array( 'type' => 'string' ),
+						'post_excerpt'    => array( 'type' => 'string' ),
+						'post_status'     => array( 'type' => 'string' ),
+						'post_date'       => array( 'type' => 'string' ),
+						'post_type'       => array( 'type' => 'string' ),
+						'post_type_label' => array( 'type' => 'string' ),
+						'post_parent'     => array( 'type' => 'integer' ),
+						'menu_order'      => array( 'type' => 'integer' ),
+						'post_author'     => array( 'type' => 'integer' ),
+						'permalink'       => array( 'type' => 'string' ),
+						'featured_image'  => array( 'type' => 'string' ),
+						'taxonomies'      => array( 'type' => 'object' ),
+						'meta'            => array( 'type' => 'object' ),
+					),
+				),
+				'permission_callback' => function () {
+					return current_user_can( 'read' );
+				},
+				'execute_callback'    => function ( $input ) {
+					$post_id = absint( $input['post_id'] );
+					$post    = get_post( $post_id );
+
+					if ( ! $post ) {
+						return new WP_Error( 'not_found', __( 'Item not found.', 'enable-abilities-for-mcp' ) );
+					}
+
+					$cpt_obj = ewpa_validate_cpt( $post->post_type );
+					if ( is_wp_error( $cpt_obj ) ) {
+						return $cpt_obj;
+					}
+
+					// Taxonomies.
+					$taxonomies = array();
+					foreach ( get_object_taxonomies( $post->post_type, 'objects' ) as $tax_slug => $tax_obj ) {
+						$terms = wp_get_object_terms( $post_id, $tax_slug, array( 'fields' => 'all' ) );
+						if ( ! is_wp_error( $terms ) && ! empty( $terms ) ) {
+							$taxonomies[ $tax_slug ] = array_map(
+								function ( $term ) {
+									return array(
+										'term_id' => $term->term_id,
+										'name'    => $term->name,
+										'slug'    => $term->slug,
+									);
+								},
+								$terms
+							);
+						}
+					}
+
+					// All meta fields.
+					$raw_meta = get_post_meta( $post_id );
+					$meta     = array();
+					if ( is_array( $raw_meta ) ) {
+						foreach ( $raw_meta as $key => $values ) {
+							$meta[ $key ] = count( $values ) === 1
+								? maybe_unserialize( $values[0] )
+								: array_map( 'maybe_unserialize', $values );
+						}
+					}
+
+					$featured = '';
+					$thumb_id = get_post_thumbnail_id( $post_id );
+					if ( $thumb_id ) {
+						$featured = wp_get_attachment_url( $thumb_id );
+					}
+
+					return array(
+						'ID'              => $post->ID,
+						'post_title'      => $post->post_title,
+						'post_content'    => $post->post_content,
+						'post_excerpt'    => $post->post_excerpt,
+						'post_status'     => $post->post_status,
+						'post_date'       => $post->post_date,
+						'post_type'       => $post->post_type,
+						'post_type_label' => $cpt_obj->labels->singular_name,
+						'post_parent'     => (int) $post->post_parent,
+						'menu_order'      => (int) $post->menu_order,
+						'post_author'     => (int) $post->post_author,
+						'permalink'       => get_permalink( $post_id ),
+						'featured_image'  => $featured,
+						'taxonomies'      => $taxonomies,
+						'meta'            => $meta,
+					);
+				},
+				'meta'                => array(
+					'show_in_rest' => true,
+					'mcp'          => array(
+						'public' => true,
+					),
+				),
+			)
+		);
+	}
+
+	// ── D4: Create CPT Item ─────────────────────────────────────────────
+	if ( ewpa_is_ability_enabled( 'ewpa/create-cpt-item' ) ) {
+		wp_register_ability(
+			'ewpa/create-cpt-item',
+			array(
+				'label'               => __( 'Create CPT Item', 'enable-abilities-for-mcp' ),
+				'description'         => __( 'Creates a new item in a custom post type. Content is optional as some CPTs store data in custom fields instead.', 'enable-abilities-for-mcp' ),
+				'category'            => 'cpt-management',
+				'input_schema'        => array(
+					'type'       => 'object',
+					'required'   => array( 'post_type', 'title' ),
+					'properties' => array(
+						'post_type'         => array(
+							'type'        => 'string',
+							'description' => __( 'The custom post type slug.', 'enable-abilities-for-mcp' ),
+						),
+						'title'             => array(
+							'type'        => 'string',
+							'description' => __( 'The item title.', 'enable-abilities-for-mcp' ),
+						),
+						'content'           => array(
+							'type'        => 'string',
+							'description' => __( 'The item content (optional — some CPTs store data in meta fields instead).', 'enable-abilities-for-mcp' ),
+						),
+						'excerpt'           => array(
+							'type'        => 'string',
+							'description' => __( 'The item excerpt.', 'enable-abilities-for-mcp' ),
+						),
+						'status'            => array(
+							'type'        => 'string',
+							'description' => __( 'Post status: draft, publish, pending, private (default draft).', 'enable-abilities-for-mcp' ),
+						),
+						'featured_image_id' => array(
+							'type'        => 'integer',
+							'description' => __( 'Attachment ID for the featured image.', 'enable-abilities-for-mcp' ),
+						),
+						'post_parent'       => array(
+							'type'        => 'integer',
+							'description' => __( 'Parent item ID (for hierarchical CPTs).', 'enable-abilities-for-mcp' ),
+						),
+						'menu_order'        => array(
+							'type'        => 'integer',
+							'description' => __( 'Menu order value.', 'enable-abilities-for-mcp' ),
+						),
+						'author_id'         => array(
+							'type'        => 'integer',
+							'description' => __( 'Author user ID.', 'enable-abilities-for-mcp' ),
+						),
+						'slug'              => array(
+							'type'        => 'string',
+							'description' => __( 'The URL slug for the item.', 'enable-abilities-for-mcp' ),
+						),
+						'taxonomies'        => array(
+							'type'        => 'object',
+							'description' => __( 'Object mapping taxonomy slugs to arrays of term slugs or IDs. Example: {"product_cat": ["clothing"], "product_tag": ["sale"]}.', 'enable-abilities-for-mcp' ),
+						),
+						'meta'              => array(
+							'type'        => 'object',
+							'description' => __( 'Object mapping meta keys to values. Supports plugin meta like _price, _sku, ACF fields, etc.', 'enable-abilities-for-mcp' ),
+						),
+					),
+				),
+				'output_schema'       => array(
+					'type'       => 'object',
+					'properties' => array(
+						'post_id'   => array( 'type' => 'integer' ),
+						'post_type' => array( 'type' => 'string' ),
+						'permalink' => array( 'type' => 'string' ),
+						'status'    => array( 'type' => 'string' ),
+						'message'   => array( 'type' => 'string' ),
+					),
+				),
+				'permission_callback' => function () {
+					return current_user_can( 'read' );
+				},
+				'execute_callback'    => function ( $input ) {
+					$cpt_obj = ewpa_validate_cpt( $input['post_type'] );
+					if ( is_wp_error( $cpt_obj ) ) {
+						return $cpt_obj;
+					}
+
+					if ( ! current_user_can( $cpt_obj->cap->create_posts ) ) {
+						return new WP_Error( 'forbidden', __( 'You do not have permission to create items of this type.', 'enable-abilities-for-mcp' ) );
+					}
+
+					$allowed_statuses = array( 'draft', 'publish', 'pending', 'private' );
+					$status           = in_array( $input['status'] ?? 'draft', $allowed_statuses, true )
+						? $input['status']
+						: 'draft';
+
+					$post_data = array(
+						'post_type'   => $cpt_obj->name,
+						'post_title'  => sanitize_text_field( $input['title'] ),
+						'post_status' => $status,
+					);
+
+					if ( isset( $input['content'] ) ) {
+						$post_data['post_content'] = wp_kses_post( $input['content'] );
+					}
+					if ( isset( $input['excerpt'] ) ) {
+						$post_data['post_excerpt'] = sanitize_textarea_field( $input['excerpt'] );
+					}
+					if ( isset( $input['post_parent'] ) ) {
+						$post_data['post_parent'] = absint( $input['post_parent'] );
+					}
+					if ( isset( $input['menu_order'] ) ) {
+						$post_data['menu_order'] = intval( $input['menu_order'] );
+					}
+					if ( isset( $input['author_id'] ) ) {
+						$post_data['post_author'] = absint( $input['author_id'] );
+					}
+					if ( isset( $input['slug'] ) ) {
+						$post_data['post_name'] = sanitize_title( $input['slug'] );
+					}
+
+					$post_id = wp_insert_post( $post_data, true );
+					if ( is_wp_error( $post_id ) ) {
+						return $post_id;
+					}
+
+					// Featured image.
+					if ( ! empty( $input['featured_image_id'] ) ) {
+						set_post_thumbnail( $post_id, absint( $input['featured_image_id'] ) );
+					}
+
+					// Taxonomies.
+					if ( ! empty( $input['taxonomies'] ) && is_array( $input['taxonomies'] ) ) {
+						foreach ( $input['taxonomies'] as $tax_slug => $terms ) {
+							$tax_slug = sanitize_key( $tax_slug );
+							if ( taxonomy_exists( $tax_slug ) && in_array( $tax_slug, get_object_taxonomies( $cpt_obj->name ), true ) ) {
+								$term_values = is_array( $terms ) ? $terms : array( $terms );
+								wp_set_object_terms( $post_id, $term_values, $tax_slug );
+							}
+						}
+					}
+
+					// Meta fields.
+					if ( ! empty( $input['meta'] ) && is_array( $input['meta'] ) ) {
+						$blocked_keys = ewpa_get_wp_internal_meta_keys();
+						foreach ( $input['meta'] as $key => $value ) {
+							$key = sanitize_text_field( $key );
+							if ( ! in_array( $key, $blocked_keys, true ) ) {
+								update_post_meta( $post_id, $key, $value );
+							}
+						}
+					}
+
+					return array(
+						'post_id'   => $post_id,
+						'post_type' => $cpt_obj->name,
+						'permalink' => get_permalink( $post_id ),
+						'status'    => $status,
+						'message'   => sprintf(
+							/* translators: %s: post type label */
+							__( '%s created successfully.', 'enable-abilities-for-mcp' ),
+							$cpt_obj->labels->singular_name
+						),
+					);
+				},
+				'meta'                => array(
+					'show_in_rest' => true,
+					'mcp'          => array(
+						'public' => true,
+					),
+				),
+			)
+		);
+	}
+
+	// ── D5: Update CPT Item ─────────────────────────────────────────────
+	if ( ewpa_is_ability_enabled( 'ewpa/update-cpt-item' ) ) {
+		wp_register_ability(
+			'ewpa/update-cpt-item',
+			array(
+				'label'               => __( 'Update CPT Item', 'enable-abilities-for-mcp' ),
+				'description'         => __( 'Updates an existing custom post type item. Only provided fields are modified (partial update).', 'enable-abilities-for-mcp' ),
+				'category'            => 'cpt-management',
+				'input_schema'        => array(
+					'type'       => 'object',
+					'required'   => array( 'post_id' ),
+					'properties' => array(
+						'post_id'           => array(
+							'type'        => 'integer',
+							'description' => __( 'The ID of the item to update.', 'enable-abilities-for-mcp' ),
+						),
+						'title'             => array(
+							'type'        => 'string',
+							'description' => __( 'New title.', 'enable-abilities-for-mcp' ),
+						),
+						'content'           => array(
+							'type'        => 'string',
+							'description' => __( 'New content (optional — some CPTs use meta fields instead).', 'enable-abilities-for-mcp' ),
+						),
+						'excerpt'           => array(
+							'type'        => 'string',
+							'description' => __( 'New excerpt.', 'enable-abilities-for-mcp' ),
+						),
+						'status'            => array(
+							'type'        => 'string',
+							'description' => __( 'New status: draft, publish, pending, private.', 'enable-abilities-for-mcp' ),
+						),
+						'featured_image_id' => array(
+							'type'        => 'integer',
+							'description' => __( 'Attachment ID for the featured image. Pass 0 to remove.', 'enable-abilities-for-mcp' ),
+						),
+						'slug'              => array(
+							'type'        => 'string',
+							'description' => __( 'New URL slug.', 'enable-abilities-for-mcp' ),
+						),
+						'taxonomies'        => array(
+							'type'        => 'object',
+							'description' => __( 'Object mapping taxonomy slugs to arrays of term slugs or IDs. Replaces existing terms.', 'enable-abilities-for-mcp' ),
+						),
+						'meta'              => array(
+							'type'        => 'object',
+							'description' => __( 'Object mapping meta keys to values. Supports plugin meta like _price, _sku, ACF fields, etc.', 'enable-abilities-for-mcp' ),
+						),
+					),
+				),
+				'output_schema'       => array(
+					'type'       => 'object',
+					'properties' => array(
+						'post_id'   => array( 'type' => 'integer' ),
+						'post_type' => array( 'type' => 'string' ),
+						'permalink' => array( 'type' => 'string' ),
+						'message'   => array( 'type' => 'string' ),
+					),
+				),
+				'permission_callback' => function () {
+					return current_user_can( 'read' );
+				},
+				'execute_callback'    => function ( $input ) {
+					$post_id = absint( $input['post_id'] );
+					$post    = get_post( $post_id );
+
+					if ( ! $post ) {
+						return new WP_Error( 'not_found', __( 'Item not found.', 'enable-abilities-for-mcp' ) );
+					}
+
+					$cpt_obj = ewpa_validate_cpt( $post->post_type );
+					if ( is_wp_error( $cpt_obj ) ) {
+						return $cpt_obj;
+					}
+
+					if ( ! current_user_can( $cpt_obj->cap->edit_posts ) || ! current_user_can( 'edit_post', $post_id ) ) {
+						return new WP_Error( 'forbidden', __( 'You do not have permission to edit this item.', 'enable-abilities-for-mcp' ) );
+					}
+
+					$post_data = array( 'ID' => $post_id );
+
+					if ( isset( $input['title'] ) ) {
+						$post_data['post_title'] = sanitize_text_field( $input['title'] );
+					}
+					if ( isset( $input['content'] ) ) {
+						$post_data['post_content'] = wp_kses_post( $input['content'] );
+					}
+					if ( isset( $input['excerpt'] ) ) {
+						$post_data['post_excerpt'] = sanitize_textarea_field( $input['excerpt'] );
+					}
+					if ( isset( $input['status'] ) ) {
+						$allowed_statuses = array( 'draft', 'publish', 'pending', 'private' );
+						if ( in_array( $input['status'], $allowed_statuses, true ) ) {
+							$post_data['post_status'] = $input['status'];
+						}
+					}
+					if ( isset( $input['slug'] ) ) {
+						$post_data['post_name'] = sanitize_title( $input['slug'] );
+					}
+
+					$result = wp_update_post( $post_data, true );
+					if ( is_wp_error( $result ) ) {
+						return $result;
+					}
+
+					// Featured image.
+					if ( isset( $input['featured_image_id'] ) ) {
+						$img_id = absint( $input['featured_image_id'] );
+						if ( 0 === $img_id ) {
+							delete_post_thumbnail( $post_id );
+						} else {
+							set_post_thumbnail( $post_id, $img_id );
+						}
+					}
+
+					// Taxonomies.
+					if ( ! empty( $input['taxonomies'] ) && is_array( $input['taxonomies'] ) ) {
+						foreach ( $input['taxonomies'] as $tax_slug => $terms ) {
+							$tax_slug = sanitize_key( $tax_slug );
+							if ( taxonomy_exists( $tax_slug ) && in_array( $tax_slug, get_object_taxonomies( $cpt_obj->name ), true ) ) {
+								$term_values = is_array( $terms ) ? $terms : array( $terms );
+								wp_set_object_terms( $post_id, $term_values, $tax_slug );
+							}
+						}
+					}
+
+					// Meta fields.
+					if ( ! empty( $input['meta'] ) && is_array( $input['meta'] ) ) {
+						$blocked_keys = ewpa_get_wp_internal_meta_keys();
+						foreach ( $input['meta'] as $key => $value ) {
+							$key = sanitize_text_field( $key );
+							if ( ! in_array( $key, $blocked_keys, true ) ) {
+								update_post_meta( $post_id, $key, $value );
+							}
+						}
+					}
+
+					return array(
+						'post_id'   => $post_id,
+						'post_type' => $cpt_obj->name,
+						'permalink' => get_permalink( $post_id ),
+						'message'   => sprintf(
+							/* translators: %s: post type label */
+							__( '%s updated successfully.', 'enable-abilities-for-mcp' ),
+							$cpt_obj->labels->singular_name
+						),
+					);
+				},
+				'meta'                => array(
+					'show_in_rest' => true,
+					'mcp'          => array(
+						'public' => true,
+					),
+				),
+			)
+		);
+	}
+
+	// ── D6: Delete CPT Item ─────────────────────────────────────────────
+	if ( ewpa_is_ability_enabled( 'ewpa/delete-cpt-item' ) ) {
+		wp_register_ability(
+			'ewpa/delete-cpt-item',
+			array(
+				'label'               => __( 'Delete CPT Item', 'enable-abilities-for-mcp' ),
+				'description'         => __( 'Deletes a custom post type item. By default moves to trash; use force_delete to permanently remove.', 'enable-abilities-for-mcp' ),
+				'category'            => 'cpt-management',
+				'input_schema'        => array(
+					'type'       => 'object',
+					'required'   => array( 'post_id' ),
+					'properties' => array(
+						'post_id'      => array(
+							'type'        => 'integer',
+							'description' => __( 'The ID of the item to delete.', 'enable-abilities-for-mcp' ),
+						),
+						'force_delete' => array(
+							'type'        => 'boolean',
+							'description' => __( 'If true, permanently deletes instead of trashing (default false).', 'enable-abilities-for-mcp' ),
+						),
+					),
+				),
+				'output_schema'       => array(
+					'type'       => 'object',
+					'properties' => array(
+						'post_id'   => array( 'type' => 'integer' ),
+						'post_type' => array( 'type' => 'string' ),
+						'deleted'   => array( 'type' => 'boolean' ),
+						'message'   => array( 'type' => 'string' ),
+					),
+				),
+				'permission_callback' => function () {
+					return current_user_can( 'read' );
+				},
+				'execute_callback'    => function ( $input ) {
+					$post_id = absint( $input['post_id'] );
+					$post    = get_post( $post_id );
+
+					if ( ! $post ) {
+						return new WP_Error( 'not_found', __( 'Item not found.', 'enable-abilities-for-mcp' ) );
+					}
+
+					$cpt_obj = ewpa_validate_cpt( $post->post_type );
+					if ( is_wp_error( $cpt_obj ) ) {
+						return $cpt_obj;
+					}
+
+					if ( ! current_user_can( 'delete_post', $post_id ) ) {
+						return new WP_Error( 'forbidden', __( 'You do not have permission to delete this item.', 'enable-abilities-for-mcp' ) );
+					}
+
+					$force  = ! empty( $input['force_delete'] );
+					$result = wp_delete_post( $post_id, $force );
+
+					if ( ! $result ) {
+						return new WP_Error( 'delete_failed', __( 'Failed to delete the item.', 'enable-abilities-for-mcp' ) );
+					}
+
+					return array(
+						'post_id'   => $post_id,
+						'post_type' => $cpt_obj->name,
+						'deleted'   => true,
+						'message'   => $force
+							? sprintf(
+								/* translators: %s: post type label */
+								__( '%s permanently deleted.', 'enable-abilities-for-mcp' ),
+								$cpt_obj->labels->singular_name
+							)
+							: sprintf(
+								/* translators: %s: post type label */
+								__( '%s moved to trash.', 'enable-abilities-for-mcp' ),
+								$cpt_obj->labels->singular_name
+							),
+					);
+				},
+				'meta'                => array(
+					'show_in_rest' => true,
+					'mcp'          => array(
+						'public' => true,
+					),
+				),
+			)
+		);
+	}
+
+	// ── D7: Get CPT Taxonomies ──────────────────────────────────────────
+	if ( ewpa_is_ability_enabled( 'ewpa/get-cpt-taxonomies' ) ) {
+		wp_register_ability(
+			'ewpa/get-cpt-taxonomies',
+			array(
+				'label'               => __( 'Get CPT Taxonomies', 'enable-abilities-for-mcp' ),
+				'description'         => __( 'Retrieves all taxonomies associated with a custom post type, including their terms.', 'enable-abilities-for-mcp' ),
+				'category'            => 'cpt-management',
+				'input_schema'        => array(
+					'type'       => 'object',
+					'required'   => array( 'post_type' ),
+					'properties' => array(
+						'post_type'  => array(
+							'type'        => 'string',
+							'description' => __( 'The custom post type slug.', 'enable-abilities-for-mcp' ),
+						),
+						'hide_empty' => array(
+							'type'        => 'boolean',
+							'description' => __( 'If true, only show terms with posts (default false).', 'enable-abilities-for-mcp' ),
+						),
+						'number'     => array(
+							'type'        => 'integer',
+							'description' => __( 'Max number of terms per taxonomy (default 100, max 500).', 'enable-abilities-for-mcp' ),
+						),
+					),
+				),
+				'output_schema'       => array(
+					'type'  => 'array',
+					'items' => array(
+						'type'       => 'object',
+						'properties' => array(
+							'taxonomy'     => array( 'type' => 'string' ),
+							'label'        => array( 'type' => 'string' ),
+							'hierarchical' => array( 'type' => 'boolean' ),
+							'terms'        => array( 'type' => 'array' ),
+						),
+					),
+				),
+				'permission_callback' => function () {
+					return current_user_can( 'read' );
+				},
+				'execute_callback'    => function ( $input ) {
+					$cpt_obj = ewpa_validate_cpt( $input['post_type'] );
+					if ( is_wp_error( $cpt_obj ) ) {
+						return $cpt_obj;
+					}
+
+					$hide_empty = ! empty( $input['hide_empty'] );
+					$number     = min( absint( $input['number'] ?? 100 ), 500 );
+					$result     = array();
+
+					foreach ( get_object_taxonomies( $cpt_obj->name, 'objects' ) as $tax_slug => $tax_obj ) {
+						$terms = get_terms(
+							array(
+								'taxonomy'   => $tax_slug,
+								'hide_empty' => $hide_empty,
+								'number'     => $number,
+							)
+						);
+
+						$term_data = array();
+						if ( ! is_wp_error( $terms ) ) {
+							foreach ( $terms as $term ) {
+								$term_data[] = array(
+									'term_id'     => $term->term_id,
+									'name'        => $term->name,
+									'slug'        => $term->slug,
+									'description' => $term->description,
+									'parent'      => $term->parent,
+									'count'       => $term->count,
+								);
+							}
+						}
+
+						$result[] = array(
+							'taxonomy'     => $tax_slug,
+							'label'        => $tax_obj->label,
+							'hierarchical' => $tax_obj->hierarchical,
+							'terms'        => $term_data,
+						);
+					}
+
+					return $result;
+				},
+				'meta'                => array(
+					'show_in_rest' => true,
+					'mcp'          => array(
+						'public' => true,
+					),
+				),
+			)
+		);
+	}
+
+	// ── D8: Assign CPT Terms ────────────────────────────────────────────
+	if ( ewpa_is_ability_enabled( 'ewpa/assign-cpt-terms' ) ) {
+		wp_register_ability(
+			'ewpa/assign-cpt-terms',
+			array(
+				'label'               => __( 'Assign CPT Terms', 'enable-abilities-for-mcp' ),
+				'description'         => __( 'Assigns taxonomy terms to a custom post type item. Can replace or append terms.', 'enable-abilities-for-mcp' ),
+				'category'            => 'cpt-management',
+				'input_schema'        => array(
+					'type'       => 'object',
+					'required'   => array( 'post_id', 'taxonomy', 'terms' ),
+					'properties' => array(
+						'post_id'  => array(
+							'type'        => 'integer',
+							'description' => __( 'The ID of the item to assign terms to.', 'enable-abilities-for-mcp' ),
+						),
+						'taxonomy' => array(
+							'type'        => 'string',
+							'description' => __( 'The taxonomy slug.', 'enable-abilities-for-mcp' ),
+						),
+						'terms'    => array(
+							'type'        => 'array',
+							'description' => __( 'Array of term slugs or IDs to assign.', 'enable-abilities-for-mcp' ),
+						),
+						'append'   => array(
+							'type'        => 'boolean',
+							'description' => __( 'If true, appends terms instead of replacing (default false).', 'enable-abilities-for-mcp' ),
+						),
+					),
+				),
+				'output_schema'       => array(
+					'type'       => 'object',
+					'properties' => array(
+						'post_id'   => array( 'type' => 'integer' ),
+						'taxonomy'  => array( 'type' => 'string' ),
+						'terms_set' => array( 'type' => 'array' ),
+						'message'   => array( 'type' => 'string' ),
+					),
+				),
+				'permission_callback' => function () {
+					return current_user_can( 'read' );
+				},
+				'execute_callback'    => function ( $input ) {
+					$post_id = absint( $input['post_id'] );
+					$post    = get_post( $post_id );
+
+					if ( ! $post ) {
+						return new WP_Error( 'not_found', __( 'Item not found.', 'enable-abilities-for-mcp' ) );
+					}
+
+					$cpt_obj = ewpa_validate_cpt( $post->post_type );
+					if ( is_wp_error( $cpt_obj ) ) {
+						return $cpt_obj;
+					}
+
+					if ( ! current_user_can( 'edit_post', $post_id ) ) {
+						return new WP_Error( 'forbidden', __( 'You do not have permission to edit this item.', 'enable-abilities-for-mcp' ) );
+					}
+
+					$taxonomy = sanitize_key( $input['taxonomy'] );
+
+					if ( ! taxonomy_exists( $taxonomy ) ) {
+						return new WP_Error( 'invalid_taxonomy', __( 'The specified taxonomy does not exist.', 'enable-abilities-for-mcp' ) );
+					}
+
+					if ( ! in_array( $taxonomy, get_object_taxonomies( $post->post_type ), true ) ) {
+						return new WP_Error(
+							'taxonomy_mismatch',
+							sprintf(
+								/* translators: %1$s: taxonomy slug, %2$s: post type label */
+								__( 'The taxonomy "%1$s" is not associated with the "%2$s" post type.', 'enable-abilities-for-mcp' ),
+								$taxonomy,
+								$cpt_obj->labels->singular_name
+							)
+						);
+					}
+
+					$tax_obj = get_taxonomy( $taxonomy );
+					if ( ! current_user_can( $tax_obj->cap->assign_terms ) ) {
+						return new WP_Error( 'forbidden', __( 'You do not have permission to assign terms for this taxonomy.', 'enable-abilities-for-mcp' ) );
+					}
+
+					$terms  = is_array( $input['terms'] ) ? $input['terms'] : array( $input['terms'] );
+					$append = ! empty( $input['append'] );
+
+					$result = wp_set_object_terms( $post_id, $terms, $taxonomy, $append );
+
+					if ( is_wp_error( $result ) ) {
+						return $result;
+					}
+
+					// Get the final assigned terms for confirmation.
+					$final_terms = wp_get_object_terms( $post_id, $taxonomy, array( 'fields' => 'all' ) );
+					$terms_set   = array();
+					if ( ! is_wp_error( $final_terms ) ) {
+						foreach ( $final_terms as $term ) {
+							$terms_set[] = array(
+								'term_id' => $term->term_id,
+								'name'    => $term->name,
+								'slug'    => $term->slug,
+							);
+						}
+					}
+
+					return array(
+						'post_id'   => $post_id,
+						'taxonomy'  => $taxonomy,
+						'terms_set' => $terms_set,
+						'message'   => sprintf(
+							/* translators: %1$d: number of terms, %2$s: taxonomy label */
+							__( '%1$d term(s) assigned for %2$s.', 'enable-abilities-for-mcp' ),
+							count( $terms_set ),
+							$tax_obj->label
+						),
 					);
 				},
 				'meta'                => array(
