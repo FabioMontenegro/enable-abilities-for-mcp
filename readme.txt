@@ -9,7 +9,7 @@ Stable tag: 1.8.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
-Manage which WordPress Abilities are exposed to MCP (Model Context Protocol) servers. Compatible with WooCommerce, ACF, JetEngine, and any custom post type. Enable or disable each ability individually from the dashboard.
+Manage which WordPress Abilities are exposed to MCP servers. Compatible with WooCommerce, ACF, and any custom post type.
 
 == Description ==
 
