@@ -426,6 +426,94 @@ function ewpa_register_custom_abilities(): void {
 		);
 	}
 
+	// ── A2b: Get Single Page ────────────────────────────────────────────
+	if ( ewpa_is_ability_enabled( 'ewpa/get-page' ) ) {
+		wp_register_ability(
+			'ewpa/get-page',
+			array(
+				'label'               => __( 'Get Single Page', 'enable-abilities-for-mcp' ),
+				'description'         => __( 'Retrieves all details of a specific page by ID, including full content, template, hierarchy, and SEO metadata.', 'enable-abilities-for-mcp' ),
+				'category'            => 'content-management',
+				'input_schema'        => array(
+					'type'       => 'object',
+					'required'   => array( 'page_id' ),
+					'properties' => array(
+						'page_id' => array(
+							'type'        => 'integer',
+							'description' => 'Page ID to retrieve',
+						),
+					),
+				),
+				'output_schema'       => array(
+					'type'       => 'object',
+					'properties' => array(
+						'ID'               => array( 'type' => 'integer' ),
+						'post_title'       => array( 'type' => 'string' ),
+						'post_content'     => array( 'type' => 'string' ),
+						'post_excerpt'     => array( 'type' => 'string' ),
+						'post_status'      => array( 'type' => 'string' ),
+						'post_date'        => array( 'type' => 'string' ),
+						'post_modified'    => array( 'type' => 'string' ),
+						'post_author'      => array( 'type' => 'string' ),
+						'permalink'        => array( 'type' => 'string' ),
+						'featured_image'   => array( 'type' => 'string' ),
+						'post_parent'      => array( 'type' => 'integer' ),
+						'menu_order'       => array( 'type' => 'integer' ),
+						'page_template'    => array( 'type' => 'string' ),
+						'meta_title'       => array( 'type' => 'string' ),
+						'meta_description' => array( 'type' => 'string' ),
+					),
+				),
+				'permission_callback' => function () {
+					return current_user_can( 'read' );
+				},
+				'execute_callback'    => function ( $input ) {
+					$page_id = absint( $input['page_id'] );
+					$page    = get_post( $page_id );
+
+					if ( ! $page || 'page' !== $page->post_type ) {
+						return new WP_Error( 'not_found', 'Page not found.' );
+					}
+
+					$thumbnail_url = get_the_post_thumbnail_url( $page->ID, 'full' );
+
+					$meta_title = get_post_meta( $page->ID, '_yoast_wpseo_title', true );
+					if ( ! $meta_title ) {
+						$meta_title = get_post_meta( $page->ID, 'rank_math_title', true );
+					}
+					$meta_desc = get_post_meta( $page->ID, '_yoast_wpseo_metadesc', true );
+					if ( ! $meta_desc ) {
+						$meta_desc = get_post_meta( $page->ID, 'rank_math_description', true );
+					}
+
+					return array(
+						'ID'               => $page->ID,
+						'post_title'       => $page->post_title,
+						'post_content'     => $page->post_content,
+						'post_excerpt'     => $page->post_excerpt,
+						'post_status'      => $page->post_status,
+						'post_date'        => $page->post_date,
+						'post_modified'    => $page->post_modified,
+						'post_author'      => get_the_author_meta( 'display_name', $page->post_author ),
+						'permalink'        => get_permalink( $page->ID ),
+						'featured_image'   => $thumbnail_url ? $thumbnail_url : '',
+						'post_parent'      => (int) $page->post_parent,
+						'menu_order'       => (int) $page->menu_order,
+						'page_template'    => get_page_template_slug( $page->ID ),
+						'meta_title'       => $meta_title ? $meta_title : '',
+						'meta_description' => $meta_desc ? $meta_desc : '',
+					);
+				},
+				'meta'                => array(
+					'show_in_rest' => true,
+					'mcp'          => array(
+						'public' => true,
+					),
+				),
+			)
+		);
+	}
+
 	// ── A3: Get Categories ──────────────────────────────────────────────
 	if ( ewpa_is_ability_enabled( 'ewpa/get-categories' ) ) {
 		wp_register_ability(
@@ -3416,6 +3504,1089 @@ function ewpa_register_custom_abilities(): void {
 							count( $terms_set ),
 							$tax_obj->label
 						),
+					);
+				},
+				'meta'                => array(
+					'show_in_rest' => true,
+					'mcp'          => array(
+						'public' => true,
+					),
+				),
+			)
+		);
+	}
+
+	// -------------------------------------------------------------------------
+	// Section E: WooCommerce abilities
+	// -------------------------------------------------------------------------
+
+	if ( ewpa_is_ability_enabled( 'ewpa/wc-get-products' ) && class_exists( 'WooCommerce' ) ) {
+		wp_register_ability(
+			'ewpa/wc-get-products',
+			array(
+				'name'                => __( 'List WooCommerce products', 'enable-abilities-for-mcp' ),
+				'description'         => __( 'Returns a paginated list of WooCommerce products with price, stock, and status.', 'enable-abilities-for-mcp' ),
+				'input_schema'        => array(
+					'type'       => 'object',
+					'properties' => array(
+						'status'   => array(
+							'type'        => 'string',
+							'description' => __( 'Product status: publish, draft, pending. Default: publish.', 'enable-abilities-for-mcp' ),
+						),
+						'per_page' => array(
+							'type'        => 'integer',
+							'description' => __( 'Results per page (1–100). Default: 10.', 'enable-abilities-for-mcp' ),
+						),
+						'page'     => array(
+							'type'        => 'integer',
+							'description' => __( 'Page number. Default: 1.', 'enable-abilities-for-mcp' ),
+						),
+						'search'   => array(
+							'type'        => 'string',
+							'description' => __( 'Keyword search in product name.', 'enable-abilities-for-mcp' ),
+						),
+						'category' => array(
+							'type'        => 'string',
+							'description' => __( 'Filter by product category slug.', 'enable-abilities-for-mcp' ),
+						),
+						'orderby'  => array(
+							'type'        => 'string',
+							'description' => __( 'Order by: date, price, popularity, rating. Default: date.', 'enable-abilities-for-mcp' ),
+						),
+						'order'    => array(
+							'type'        => 'string',
+							'description' => __( 'Sort order: ASC or DESC. Default: DESC.', 'enable-abilities-for-mcp' ),
+						),
+					),
+				),
+				'permission_callback' => function ( $args ) {
+					return current_user_can( 'edit_products' );
+				},
+				'callback'            => function ( $args ) {
+					$status   = isset( $args['status'] ) ? sanitize_text_field( $args['status'] ) : 'publish';
+					$per_page = isset( $args['per_page'] ) ? max( 1, min( 100, intval( $args['per_page'] ) ) ) : 10;
+					$page     = isset( $args['page'] ) ? max( 1, intval( $args['page'] ) ) : 1;
+					$search   = isset( $args['search'] ) ? sanitize_text_field( $args['search'] ) : '';
+					$category = isset( $args['category'] ) ? sanitize_text_field( $args['category'] ) : '';
+					$orderby  = isset( $args['orderby'] ) ? sanitize_text_field( $args['orderby'] ) : 'date';
+					$order    = isset( $args['order'] ) && strtoupper( $args['order'] ) === 'ASC' ? 'ASC' : 'DESC';
+
+					$query_args = array(
+						'status'  => $status,
+						'limit'   => $per_page,
+						'page'    => $page,
+						'orderby' => $orderby,
+						'order'   => $order,
+						'return'  => 'objects',
+					);
+
+					if ( $search ) {
+						$query_args['s'] = $search;
+					}
+
+					if ( $category ) {
+						$query_args['category'] = array( $category );
+					}
+
+					$products = wc_get_products( $query_args );
+					$items    = array();
+
+					foreach ( $products as $product ) {
+						$items[] = array(
+							'id'            => $product->get_id(),
+							'name'          => $product->get_name(),
+							'sku'           => $product->get_sku(),
+							'status'        => $product->get_status(),
+							'type'          => $product->get_type(),
+							'price'         => $product->get_price(),
+							'regular_price' => $product->get_regular_price(),
+							'sale_price'    => $product->get_sale_price(),
+							'stock_status'  => $product->get_stock_status(),
+							'stock_qty'     => $product->get_stock_quantity(),
+							'permalink'     => get_permalink( $product->get_id() ),
+						);
+					}
+
+					return array(
+						'products' => $items,
+						'page'     => $page,
+						'per_page' => $per_page,
+						'total'    => count( $items ),
+					);
+				},
+				'meta'                => array(
+					'show_in_rest' => true,
+					'mcp'          => array(
+						'public' => true,
+					),
+				),
+			)
+		);
+	}
+
+	if ( ewpa_is_ability_enabled( 'ewpa/wc-get-product' ) && class_exists( 'WooCommerce' ) ) {
+		wp_register_ability(
+			'ewpa/wc-get-product',
+			array(
+				'name'                => __( 'Get WooCommerce product', 'enable-abilities-for-mcp' ),
+				'description'         => __( 'Returns full details of a single WooCommerce product by ID.', 'enable-abilities-for-mcp' ),
+				'input_schema'        => array(
+					'type'       => 'object',
+					'properties' => array(
+						'product_id' => array(
+							'type'        => 'integer',
+							'description' => __( 'The product post ID.', 'enable-abilities-for-mcp' ),
+						),
+					),
+					'required'   => array( 'product_id' ),
+				),
+				'permission_callback' => function ( $args ) {
+					return current_user_can( 'edit_products' );
+				},
+				'callback'            => function ( $args ) {
+					$product_id = intval( $args['product_id'] );
+					$product    = wc_get_product( $product_id );
+
+					if ( ! $product ) {
+						return new WP_Error( 'not_found', __( 'Product not found.', 'enable-abilities-for-mcp' ), array( 'status' => 404 ) );
+					}
+
+					$categories = array();
+					foreach ( $product->get_category_ids() as $cat_id ) {
+						$term = get_term( $cat_id, 'product_cat' );
+						if ( $term && ! is_wp_error( $term ) ) {
+							$categories[] = array(
+								'id'   => $term->term_id,
+								'name' => $term->name,
+								'slug' => $term->slug,
+							);
+						}
+					}
+
+					$tags = array();
+					foreach ( $product->get_tag_ids() as $tag_id ) {
+						$term = get_term( $tag_id, 'product_tag' );
+						if ( $term && ! is_wp_error( $term ) ) {
+							$tags[] = array(
+								'id'   => $term->term_id,
+								'name' => $term->name,
+								'slug' => $term->slug,
+							);
+						}
+					}
+
+					$attributes = array();
+					foreach ( $product->get_attributes() as $key => $attribute ) {
+						$attributes[] = array(
+							'name'    => $attribute->get_name(),
+							'options' => $attribute->get_options(),
+						);
+					}
+
+					return array(
+						'id'                => $product->get_id(),
+						'name'              => $product->get_name(),
+						'slug'              => $product->get_slug(),
+						'sku'               => $product->get_sku(),
+						'status'            => $product->get_status(),
+						'type'              => $product->get_type(),
+						'description'       => $product->get_description(),
+						'short_description' => $product->get_short_description(),
+						'price'             => $product->get_price(),
+						'regular_price'     => $product->get_regular_price(),
+						'sale_price'        => $product->get_sale_price(),
+						'on_sale'           => $product->is_on_sale(),
+						'stock_status'      => $product->get_stock_status(),
+						'stock_qty'         => $product->get_stock_quantity(),
+						'manage_stock'      => $product->get_manage_stock(),
+						'weight'            => $product->get_weight(),
+						'categories'        => $categories,
+						'tags'              => $tags,
+						'attributes'        => $attributes,
+						'permalink'         => get_permalink( $product->get_id() ),
+						'date_created'      => $product->get_date_created() ? $product->get_date_created()->date( 'Y-m-d H:i:s' ) : null,
+						'date_modified'     => $product->get_date_modified() ? $product->get_date_modified()->date( 'Y-m-d H:i:s' ) : null,
+					);
+				},
+				'meta'                => array(
+					'show_in_rest' => true,
+					'mcp'          => array(
+						'public' => true,
+					),
+				),
+			)
+		);
+	}
+
+	if ( ewpa_is_ability_enabled( 'ewpa/wc-update-product' ) && class_exists( 'WooCommerce' ) ) {
+		wp_register_ability(
+			'ewpa/wc-update-product',
+			array(
+				'name'                => __( 'Update WooCommerce product', 'enable-abilities-for-mcp' ),
+				'description'         => __( 'Updates price, stock, status, or description of a WooCommerce product using WooCommerce hooks.', 'enable-abilities-for-mcp' ),
+				'input_schema'        => array(
+					'type'       => 'object',
+					'properties' => array(
+						'product_id'    => array(
+							'type'        => 'integer',
+							'description' => __( 'The product post ID.', 'enable-abilities-for-mcp' ),
+						),
+						'regular_price' => array(
+							'type'        => 'string',
+							'description' => __( 'New regular price (numeric string).', 'enable-abilities-for-mcp' ),
+						),
+						'sale_price'    => array(
+							'type'        => 'string',
+							'description' => __( 'New sale price (numeric string, empty to clear).', 'enable-abilities-for-mcp' ),
+						),
+						'stock_qty'     => array(
+							'type'        => 'integer',
+							'description' => __( 'New stock quantity. Requires manage_stock to be enabled.', 'enable-abilities-for-mcp' ),
+						),
+						'stock_status'  => array(
+							'type'        => 'string',
+							'description' => __( 'Stock status: instock, outofstock, onbackorder.', 'enable-abilities-for-mcp' ),
+						),
+						'status'        => array(
+							'type'        => 'string',
+							'description' => __( 'Product status: publish, draft, pending.', 'enable-abilities-for-mcp' ),
+						),
+						'description'   => array(
+							'type'        => 'string',
+							'description' => __( 'Full product description.', 'enable-abilities-for-mcp' ),
+						),
+					),
+					'required'   => array( 'product_id' ),
+				),
+				'permission_callback' => function ( $args ) {
+					return current_user_can( 'edit_products' );
+				},
+				'callback'            => function ( $args ) {
+					$product_id = intval( $args['product_id'] );
+					$product    = wc_get_product( $product_id );
+
+					if ( ! $product ) {
+						return new WP_Error( 'not_found', __( 'Product not found.', 'enable-abilities-for-mcp' ), array( 'status' => 404 ) );
+					}
+
+					if ( isset( $args['regular_price'] ) ) {
+						$product->set_regular_price( wc_format_decimal( $args['regular_price'] ) );
+					}
+					if ( array_key_exists( 'sale_price', $args ) ) {
+						$product->set_sale_price( '' !== $args['sale_price'] ? wc_format_decimal( $args['sale_price'] ) : '' );
+					}
+					if ( isset( $args['stock_qty'] ) ) {
+						$product->set_manage_stock( true );
+						$product->set_stock_quantity( intval( $args['stock_qty'] ) );
+					}
+					if ( isset( $args['stock_status'] ) ) {
+						$product->set_stock_status( sanitize_text_field( $args['stock_status'] ) );
+					}
+					if ( isset( $args['status'] ) ) {
+						$product->set_status( sanitize_text_field( $args['status'] ) );
+					}
+					if ( isset( $args['description'] ) ) {
+						$product->set_description( wp_kses_post( $args['description'] ) );
+					}
+
+					$saved_id = $product->save();
+
+					if ( is_wp_error( $saved_id ) ) {
+						return $saved_id;
+					}
+
+					return array(
+						'product_id'    => $product->get_id(),
+						'regular_price' => $product->get_regular_price(),
+						'sale_price'    => $product->get_sale_price(),
+						'stock_status'  => $product->get_stock_status(),
+						'stock_qty'     => $product->get_stock_quantity(),
+						'status'        => $product->get_status(),
+						'message'       => __( 'Product updated successfully.', 'enable-abilities-for-mcp' ),
+					);
+				},
+				'meta'                => array(
+					'show_in_rest' => true,
+					'mcp'          => array(
+						'public' => true,
+					),
+				),
+			)
+		);
+	}
+
+	if ( ewpa_is_ability_enabled( 'ewpa/wc-get-orders' ) && class_exists( 'WooCommerce' ) ) {
+		wp_register_ability(
+			'ewpa/wc-get-orders',
+			array(
+				'name'                => __( 'List WooCommerce orders', 'enable-abilities-for-mcp' ),
+				'description'         => __( 'Returns a paginated list of WooCommerce orders. HPOS-compatible.', 'enable-abilities-for-mcp' ),
+				'input_schema'        => array(
+					'type'       => 'object',
+					'properties' => array(
+						'status'      => array(
+							'type'        => 'string',
+							'description' => __( 'Order status: pending, processing, on-hold, completed, cancelled, refunded, failed. Default: any.', 'enable-abilities-for-mcp' ),
+						),
+						'per_page'    => array(
+							'type'        => 'integer',
+							'description' => __( 'Results per page (1–100). Default: 10.', 'enable-abilities-for-mcp' ),
+						),
+						'page'        => array(
+							'type'        => 'integer',
+							'description' => __( 'Page number. Default: 1.', 'enable-abilities-for-mcp' ),
+						),
+						'customer_id' => array(
+							'type'        => 'integer',
+							'description' => __( 'Filter by customer user ID.', 'enable-abilities-for-mcp' ),
+						),
+						'date_after'  => array(
+							'type'        => 'string',
+							'description' => __( 'Filter orders created after this date (YYYY-MM-DD).', 'enable-abilities-for-mcp' ),
+						),
+						'date_before' => array(
+							'type'        => 'string',
+							'description' => __( 'Filter orders created before this date (YYYY-MM-DD).', 'enable-abilities-for-mcp' ),
+						),
+					),
+				),
+				'permission_callback' => function ( $args ) {
+					return current_user_can( 'edit_shop_orders' );
+				},
+				'callback'            => function ( $args ) {
+					$status   = isset( $args['status'] ) ? sanitize_text_field( $args['status'] ) : 'any';
+					$per_page = isset( $args['per_page'] ) ? max( 1, min( 100, intval( $args['per_page'] ) ) ) : 10;
+					$page     = isset( $args['page'] ) ? max( 1, intval( $args['page'] ) ) : 1;
+
+					$query_args = array(
+						'status'  => $status,
+						'limit'   => $per_page,
+						'paged'   => $page,
+						'return'  => 'objects',
+						'orderby' => 'date',
+						'order'   => 'DESC',
+					);
+
+					if ( isset( $args['customer_id'] ) ) {
+						$query_args['customer_id'] = intval( $args['customer_id'] );
+					}
+					if ( isset( $args['date_after'] ) ) {
+						$query_args['date_after'] = sanitize_text_field( $args['date_after'] );
+					}
+					if ( isset( $args['date_before'] ) ) {
+						$query_args['date_before'] = sanitize_text_field( $args['date_before'] );
+					}
+
+					$orders = wc_get_orders( $query_args );
+					$items  = array();
+
+					foreach ( $orders as $order ) {
+						$items[] = array(
+							'id'             => $order->get_id(),
+							'status'         => $order->get_status(),
+							'total'          => $order->get_total(),
+							'currency'       => $order->get_currency(),
+							'customer_id'    => $order->get_customer_id(),
+							'customer_email' => $order->get_billing_email(),
+							'customer_name'  => trim( $order->get_billing_first_name() . ' ' . $order->get_billing_last_name() ),
+							'items_count'    => $order->get_item_count(),
+							'date_created'   => $order->get_date_created() ? $order->get_date_created()->date( 'Y-m-d H:i:s' ) : null,
+							'payment_method' => $order->get_payment_method_title(),
+						);
+					}
+
+					return array(
+						'orders'   => $items,
+						'page'     => $page,
+						'per_page' => $per_page,
+						'total'    => count( $items ),
+					);
+				},
+				'meta'                => array(
+					'show_in_rest' => true,
+					'mcp'          => array(
+						'public' => true,
+					),
+				),
+			)
+		);
+	}
+
+	if ( ewpa_is_ability_enabled( 'ewpa/wc-get-order' ) && class_exists( 'WooCommerce' ) ) {
+		wp_register_ability(
+			'ewpa/wc-get-order',
+			array(
+				'name'                => __( 'Get WooCommerce order', 'enable-abilities-for-mcp' ),
+				'description'         => __( 'Returns full details of a single WooCommerce order including line items and billing address. HPOS-compatible.', 'enable-abilities-for-mcp' ),
+				'input_schema'        => array(
+					'type'       => 'object',
+					'properties' => array(
+						'order_id' => array(
+							'type'        => 'integer',
+							'description' => __( 'The order ID.', 'enable-abilities-for-mcp' ),
+						),
+					),
+					'required'   => array( 'order_id' ),
+				),
+				'permission_callback' => function ( $args ) {
+					return current_user_can( 'edit_shop_orders' );
+				},
+				'callback'            => function ( $args ) {
+					$order_id = intval( $args['order_id'] );
+					$order    = wc_get_order( $order_id );
+
+					if ( ! $order ) {
+						return new WP_Error( 'not_found', __( 'Order not found.', 'enable-abilities-for-mcp' ), array( 'status' => 404 ) );
+					}
+
+					$line_items = array();
+					foreach ( $order->get_items() as $item_id => $item ) {
+						$line_items[] = array(
+							'item_id'    => $item_id,
+							'name'       => $item->get_name(),
+							'product_id' => $item->get_product_id(),
+							'qty'        => $item->get_quantity(),
+							'total'      => $item->get_total(),
+						);
+					}
+
+					return array(
+						'id'             => $order->get_id(),
+						'status'         => $order->get_status(),
+						'currency'       => $order->get_currency(),
+						'total'          => $order->get_total(),
+						'subtotal'       => $order->get_subtotal(),
+						'total_tax'      => $order->get_total_tax(),
+						'shipping_total' => $order->get_shipping_total(),
+						'payment_method' => $order->get_payment_method(),
+						'payment_title'  => $order->get_payment_method_title(),
+						'customer_id'    => $order->get_customer_id(),
+						'customer_note'  => $order->get_customer_note(),
+						'billing'        => array(
+							'first_name' => $order->get_billing_first_name(),
+							'last_name'  => $order->get_billing_last_name(),
+							'email'      => $order->get_billing_email(),
+							'phone'      => $order->get_billing_phone(),
+							'address_1'  => $order->get_billing_address_1(),
+							'address_2'  => $order->get_billing_address_2(),
+							'city'       => $order->get_billing_city(),
+							'state'      => $order->get_billing_state(),
+							'postcode'   => $order->get_billing_postcode(),
+							'country'    => $order->get_billing_country(),
+						),
+						'shipping'       => array(
+							'first_name' => $order->get_shipping_first_name(),
+							'last_name'  => $order->get_shipping_last_name(),
+							'address_1'  => $order->get_shipping_address_1(),
+							'address_2'  => $order->get_shipping_address_2(),
+							'city'       => $order->get_shipping_city(),
+							'state'      => $order->get_shipping_state(),
+							'postcode'   => $order->get_shipping_postcode(),
+							'country'    => $order->get_shipping_country(),
+						),
+						'line_items'     => $line_items,
+						'date_created'   => $order->get_date_created() ? $order->get_date_created()->date( 'Y-m-d H:i:s' ) : null,
+						'date_modified'  => $order->get_date_modified() ? $order->get_date_modified()->date( 'Y-m-d H:i:s' ) : null,
+						'date_completed' => $order->get_date_completed() ? $order->get_date_completed()->date( 'Y-m-d H:i:s' ) : null,
+					);
+				},
+				'meta'                => array(
+					'show_in_rest' => true,
+					'mcp'          => array(
+						'public' => true,
+					),
+				),
+			)
+		);
+	}
+
+	if ( ewpa_is_ability_enabled( 'ewpa/wc-update-order-status' ) && class_exists( 'WooCommerce' ) ) {
+		wp_register_ability(
+			'ewpa/wc-update-order-status',
+			array(
+				'name'                => __( 'Update WooCommerce order status', 'enable-abilities-for-mcp' ),
+				'description'         => __( 'Changes the status of a WooCommerce order and optionally adds a note. HPOS-compatible.', 'enable-abilities-for-mcp' ),
+				'input_schema'        => array(
+					'type'       => 'object',
+					'properties' => array(
+						'order_id' => array(
+							'type'        => 'integer',
+							'description' => __( 'The order ID.', 'enable-abilities-for-mcp' ),
+						),
+						'status'   => array(
+							'type'        => 'string',
+							'description' => __( 'New status: pending, processing, on-hold, completed, cancelled, refunded, failed.', 'enable-abilities-for-mcp' ),
+						),
+						'note'     => array(
+							'type'        => 'string',
+							'description' => __( 'Optional note to add to the order.', 'enable-abilities-for-mcp' ),
+						),
+					),
+					'required'   => array( 'order_id', 'status' ),
+				),
+				'permission_callback' => function ( $args ) {
+					return current_user_can( 'edit_shop_orders' );
+				},
+				'callback'            => function ( $args ) {
+					$order_id = intval( $args['order_id'] );
+					$order    = wc_get_order( $order_id );
+
+					if ( ! $order ) {
+						return new WP_Error( 'not_found', __( 'Order not found.', 'enable-abilities-for-mcp' ), array( 'status' => 404 ) );
+					}
+
+					$valid_statuses = array_keys( wc_get_order_statuses() );
+					$new_status     = sanitize_text_field( $args['status'] );
+					$prefixed       = 'wc-' . $new_status;
+
+					if ( ! in_array( $prefixed, $valid_statuses, true ) && ! in_array( $new_status, $valid_statuses, true ) ) {
+						return new WP_Error( 'invalid_status', __( 'Invalid order status.', 'enable-abilities-for-mcp' ), array( 'status' => 400 ) );
+					}
+
+					$old_status = $order->get_status();
+					$order->update_status( $new_status, isset( $args['note'] ) ? sanitize_textarea_field( $args['note'] ) : '' );
+
+					return array(
+						'order_id'   => $order->get_id(),
+						'old_status' => $old_status,
+						'new_status' => $order->get_status(),
+						'message'    => __( 'Order status updated.', 'enable-abilities-for-mcp' ),
+					);
+				},
+				'meta'                => array(
+					'show_in_rest' => true,
+					'mcp'          => array(
+						'public' => true,
+					),
+				),
+			)
+		);
+	}
+
+	if ( ewpa_is_ability_enabled( 'ewpa/wc-get-customers' ) && class_exists( 'WooCommerce' ) ) {
+		wp_register_ability(
+			'ewpa/wc-get-customers',
+			array(
+				'name'                => __( 'List WooCommerce customers', 'enable-abilities-for-mcp' ),
+				'description'         => __( 'Returns a list of WooCommerce customers with order stats.', 'enable-abilities-for-mcp' ),
+				'input_schema'        => array(
+					'type'       => 'object',
+					'properties' => array(
+						'per_page' => array(
+							'type'        => 'integer',
+							'description' => __( 'Results per page (1–100). Default: 10.', 'enable-abilities-for-mcp' ),
+						),
+						'page'     => array(
+							'type'        => 'integer',
+							'description' => __( 'Page number. Default: 1.', 'enable-abilities-for-mcp' ),
+						),
+						'search'   => array(
+							'type'        => 'string',
+							'description' => __( 'Search by name or email.', 'enable-abilities-for-mcp' ),
+						),
+						'orderby'  => array(
+							'type'        => 'string',
+							'description' => __( 'Order by: registered, name, email. Default: registered.', 'enable-abilities-for-mcp' ),
+						),
+						'order'    => array(
+							'type'        => 'string',
+							'description' => __( 'Sort order: ASC or DESC. Default: DESC.', 'enable-abilities-for-mcp' ),
+						),
+					),
+				),
+				'permission_callback' => function ( $args ) {
+					return current_user_can( 'list_users' );
+				},
+				'callback'            => function ( $args ) {
+					$per_page = isset( $args['per_page'] ) ? max( 1, min( 100, intval( $args['per_page'] ) ) ) : 10;
+					$page     = isset( $args['page'] ) ? max( 1, intval( $args['page'] ) ) : 1;
+					$search   = isset( $args['search'] ) ? sanitize_text_field( $args['search'] ) : '';
+					$orderby  = isset( $args['orderby'] ) ? sanitize_text_field( $args['orderby'] ) : 'registered';
+					$order    = isset( $args['order'] ) && strtoupper( $args['order'] ) === 'ASC' ? 'ASC' : 'DESC';
+
+					$query_args = array(
+						'role__in' => array( 'customer', 'subscriber' ),
+						'number'   => $per_page,
+						'paged'    => $page,
+						'orderby'  => $orderby,
+						'order'    => $order,
+					);
+
+					if ( $search ) {
+						$query_args['search'] = '*' . $search . '*';
+					}
+
+					$user_query = new WP_User_Query( $query_args );
+					$users      = $user_query->get_results();
+					$items      = array();
+
+					foreach ( $users as $user ) {
+						$customer = new WC_Customer( $user->ID );
+						$items[]  = array(
+							'id'              => $user->ID,
+							'username'        => $user->user_login,
+							'email'           => $user->user_email,
+							'first_name'      => $customer->get_first_name(),
+							'last_name'       => $customer->get_last_name(),
+							'orders_count'    => $customer->get_order_count(),
+							'total_spent'     => $customer->get_total_spent(),
+							'date_registered' => $user->user_registered,
+							'billing_city'    => $customer->get_billing_city(),
+							'billing_country' => $customer->get_billing_country(),
+						);
+					}
+
+					return array(
+						'customers' => $items,
+						'page'      => $page,
+						'per_page'  => $per_page,
+						'total'     => $user_query->get_total(),
+					);
+				},
+				'meta'                => array(
+					'show_in_rest' => true,
+					'mcp'          => array(
+						'public' => true,
+					),
+				),
+			)
+		);
+	}
+
+	// -------------------------------------------------------------------------
+	// Section F: The Events Calendar abilities
+	// -------------------------------------------------------------------------
+
+	if ( ewpa_is_ability_enabled( 'ewpa/tec-get-events' ) && class_exists( 'Tribe__Events__Main' ) ) {
+		wp_register_ability(
+			'ewpa/tec-get-events',
+			array(
+				'name'                => __( 'List Events Calendar events', 'enable-abilities-for-mcp' ),
+				'description'         => __( 'Returns a list of upcoming or filtered events from The Events Calendar.', 'enable-abilities-for-mcp' ),
+				'input_schema'        => array(
+					'type'       => 'object',
+					'properties' => array(
+						'per_page'     => array(
+							'type'        => 'integer',
+							'description' => __( 'Results per page (1–100). Default: 10.', 'enable-abilities-for-mcp' ),
+						),
+						'page'         => array(
+							'type'        => 'integer',
+							'description' => __( 'Page number. Default: 1.', 'enable-abilities-for-mcp' ),
+						),
+						'start_after'  => array(
+							'type'        => 'string',
+							'description' => __( 'Return events starting after this date (YYYY-MM-DD). Default: today.', 'enable-abilities-for-mcp' ),
+						),
+						'start_before' => array(
+							'type'        => 'string',
+							'description' => __( 'Return events starting before this date (YYYY-MM-DD).', 'enable-abilities-for-mcp' ),
+						),
+						'search'       => array(
+							'type'        => 'string',
+							'description' => __( 'Keyword search in event title.', 'enable-abilities-for-mcp' ),
+						),
+					),
+				),
+				'permission_callback' => function ( $args ) {
+					return current_user_can( 'edit_tribe_events' );
+				},
+				'callback'            => function ( $args ) {
+					$per_page     = isset( $args['per_page'] ) ? max( 1, min( 100, intval( $args['per_page'] ) ) ) : 10;
+					$page         = isset( $args['page'] ) ? max( 1, intval( $args['page'] ) ) : 1;
+					$start_after  = isset( $args['start_after'] ) ? sanitize_text_field( $args['start_after'] ) : gmdate( 'Y-m-d' );
+					$start_before = isset( $args['start_before'] ) ? sanitize_text_field( $args['start_before'] ) : '';
+					$search       = isset( $args['search'] ) ? sanitize_text_field( $args['search'] ) : '';
+
+					$query_args = array(
+						'post_type'      => Tribe__Events__Main::POSTTYPE,
+						'posts_per_page' => $per_page,
+						'paged'          => $page,
+						'post_status'    => 'publish',
+						'orderby'        => 'meta_value',
+						'meta_key'       => '_EventStartDate',
+						'order'          => 'ASC',
+						'meta_query'     => array(
+							array(
+								'key'     => '_EventStartDate',
+								'value'   => $start_after . ' 00:00:00',
+								'compare' => '>=',
+								'type'    => 'DATETIME',
+							),
+						),
+					);
+
+					if ( $start_before ) {
+						$query_args['meta_query'][] = array(
+							'key'     => '_EventStartDate',
+							'value'   => $start_before . ' 23:59:59',
+							'compare' => '<=',
+							'type'    => 'DATETIME',
+						);
+					}
+
+					if ( $search ) {
+						$query_args['s'] = $search;
+					}
+
+					$query = new WP_Query( $query_args );
+					$items = array();
+
+					foreach ( $query->posts as $post ) {
+						$items[] = array(
+							'id'         => $post->ID,
+							'title'      => $post->post_title,
+							'start_date' => get_post_meta( $post->ID, '_EventStartDate', true ),
+							'end_date'   => get_post_meta( $post->ID, '_EventEndDate', true ),
+							'timezone'   => get_post_meta( $post->ID, '_EventTimezone', true ),
+							'venue_id'   => get_post_meta( $post->ID, '_EventVenueID', true ),
+							'permalink'  => get_permalink( $post->ID ),
+							'status'     => $post->post_status,
+						);
+					}
+
+					return array(
+						'events'    => $items,
+						'page'      => $page,
+						'per_page'  => $per_page,
+						'total'     => $query->found_posts,
+						'max_pages' => $query->max_num_pages,
+					);
+				},
+				'meta'                => array(
+					'show_in_rest' => true,
+					'mcp'          => array(
+						'public' => true,
+					),
+				),
+			)
+		);
+	}
+
+	if ( ewpa_is_ability_enabled( 'ewpa/tec-get-event' ) && class_exists( 'Tribe__Events__Main' ) ) {
+		wp_register_ability(
+			'ewpa/tec-get-event',
+			array(
+				'name'                => __( 'Get Events Calendar event', 'enable-abilities-for-mcp' ),
+				'description'         => __( 'Returns full details of a single event including venue address and organizer.', 'enable-abilities-for-mcp' ),
+				'input_schema'        => array(
+					'type'       => 'object',
+					'properties' => array(
+						'event_id' => array(
+							'type'        => 'integer',
+							'description' => __( 'The event post ID.', 'enable-abilities-for-mcp' ),
+						),
+					),
+					'required'   => array( 'event_id' ),
+				),
+				'permission_callback' => function ( $args ) {
+					return current_user_can( 'edit_tribe_events' );
+				},
+				'callback'            => function ( $args ) {
+					$event_id = intval( $args['event_id'] );
+					$post     = get_post( $event_id );
+
+					if ( ! $post || Tribe__Events__Main::POSTTYPE !== $post->post_type ) {
+						return new WP_Error( 'not_found', __( 'Event not found.', 'enable-abilities-for-mcp' ), array( 'status' => 404 ) );
+					}
+
+					// Resolve venue details from the linked tribe_venue post.
+					$venue_id   = get_post_meta( $event_id, '_EventVenueID', true );
+					$venue_data = array();
+					if ( $venue_id ) {
+						$venue_post = get_post( intval( $venue_id ) );
+						if ( $venue_post ) {
+							$venue_data = array(
+								'id'      => $venue_post->ID,
+								'name'    => $venue_post->post_title,
+								'address' => get_post_meta( $venue_post->ID, '_VenueAddress', true ),
+								'city'    => get_post_meta( $venue_post->ID, '_VenueCity', true ),
+								'state'   => get_post_meta( $venue_post->ID, '_VenueStateProvince', true ),
+								'zip'     => get_post_meta( $venue_post->ID, '_VenueZip', true ),
+								'country' => get_post_meta( $venue_post->ID, '_VenueCountry', true ),
+								'phone'   => get_post_meta( $venue_post->ID, '_VenuePhone', true ),
+								'website' => get_post_meta( $venue_post->ID, '_VenueURL', true ),
+							);
+						}
+					}
+
+					// Resolve organizer details.
+					$organizer_id   = get_post_meta( $event_id, '_EventOrganizerID', true );
+					$organizer_data = array();
+					if ( $organizer_id ) {
+						$org_post = get_post( intval( $organizer_id ) );
+						if ( $org_post ) {
+							$organizer_data = array(
+								'id'      => $org_post->ID,
+								'name'    => $org_post->post_title,
+								'email'   => get_post_meta( $org_post->ID, '_OrganizerEmail', true ),
+								'website' => get_post_meta( $org_post->ID, '_OrganizerWebsite', true ),
+								'phone'   => get_post_meta( $org_post->ID, '_OrganizerPhone', true ),
+							);
+						}
+					}
+
+					return array(
+						'id'           => $post->ID,
+						'title'        => $post->post_title,
+						'description'  => $post->post_content,
+						'status'       => $post->post_status,
+						'start_date'   => get_post_meta( $event_id, '_EventStartDate', true ),
+						'end_date'     => get_post_meta( $event_id, '_EventEndDate', true ),
+						'timezone'     => get_post_meta( $event_id, '_EventTimezone', true ),
+						'all_day'      => (bool) get_post_meta( $event_id, '_EventAllDay', true ),
+						'cost'         => get_post_meta( $event_id, '_EventCost', true ),
+						'currency'     => get_post_meta( $event_id, '_EventCurrencySymbol', true ),
+						'website'      => get_post_meta( $event_id, '_EventURL', true ),
+						'venue'        => $venue_data,
+						'organizer'    => $organizer_data,
+						'permalink'    => get_permalink( $post->ID ),
+						'date_created' => $post->post_date,
+					);
+				},
+				'meta'                => array(
+					'show_in_rest' => true,
+					'mcp'          => array(
+						'public' => true,
+					),
+				),
+			)
+		);
+	}
+
+	if ( ewpa_is_ability_enabled( 'ewpa/tec-create-event' ) && class_exists( 'Tribe__Events__Main' ) ) {
+		wp_register_ability(
+			'ewpa/tec-create-event',
+			array(
+				'name'                => __( 'Create Events Calendar event', 'enable-abilities-for-mcp' ),
+				'description'         => __( 'Creates a new event in The Events Calendar with title, dates, and optional venue.', 'enable-abilities-for-mcp' ),
+				'input_schema'        => array(
+					'type'       => 'object',
+					'properties' => array(
+						'title'        => array(
+							'type'        => 'string',
+							'description' => __( 'Event title.', 'enable-abilities-for-mcp' ),
+						),
+						'description'  => array(
+							'type'        => 'string',
+							'description' => __( 'Event description (HTML allowed).', 'enable-abilities-for-mcp' ),
+						),
+						'start_date'   => array(
+							'type'        => 'string',
+							'description' => __( 'Start date and time (YYYY-MM-DD HH:MM:SS).', 'enable-abilities-for-mcp' ),
+						),
+						'end_date'     => array(
+							'type'        => 'string',
+							'description' => __( 'End date and time (YYYY-MM-DD HH:MM:SS).', 'enable-abilities-for-mcp' ),
+						),
+						'timezone'     => array(
+							'type'        => 'string',
+							'description' => __( 'Timezone string, e.g. America/New_York. Defaults to site timezone.', 'enable-abilities-for-mcp' ),
+						),
+						'venue_id'     => array(
+							'type'        => 'integer',
+							'description' => __( 'Existing tribe_venue post ID to link.', 'enable-abilities-for-mcp' ),
+						),
+						'organizer_id' => array(
+							'type'        => 'integer',
+							'description' => __( 'Existing tribe_organizer post ID to link.', 'enable-abilities-for-mcp' ),
+						),
+						'cost'         => array(
+							'type'        => 'string',
+							'description' => __( 'Ticket/admission cost (free-form string).', 'enable-abilities-for-mcp' ),
+						),
+						'website'      => array(
+							'type'        => 'string',
+							'description' => __( 'External event URL.', 'enable-abilities-for-mcp' ),
+						),
+						'status'       => array(
+							'type'        => 'string',
+							'description' => __( 'Post status: publish, draft. Default: publish.', 'enable-abilities-for-mcp' ),
+						),
+					),
+					'required'   => array( 'title', 'start_date', 'end_date' ),
+				),
+				'permission_callback' => function ( $args ) {
+					return current_user_can( 'publish_tribe_events' );
+				},
+				'callback'            => function ( $args ) {
+					$title       = sanitize_text_field( $args['title'] );
+					$description = isset( $args['description'] ) ? wp_kses_post( $args['description'] ) : '';
+					$start_date  = sanitize_text_field( $args['start_date'] );
+					$end_date    = sanitize_text_field( $args['end_date'] );
+					$status      = isset( $args['status'] ) ? sanitize_text_field( $args['status'] ) : 'publish';
+					$timezone    = isset( $args['timezone'] ) ? sanitize_text_field( $args['timezone'] ) : get_option( 'timezone_string', 'UTC' );
+
+					$post_args = array(
+						'post_title'   => $title,
+						'post_content' => $description,
+						'post_status'  => $status,
+						'post_type'    => Tribe__Events__Main::POSTTYPE,
+					);
+
+					$event_id = wp_insert_post( $post_args, true );
+
+					if ( is_wp_error( $event_id ) ) {
+						return $event_id;
+					}
+
+					update_post_meta( $event_id, '_EventStartDate', $start_date );
+					update_post_meta( $event_id, '_EventEndDate', $end_date );
+					update_post_meta( $event_id, '_EventTimezone', $timezone );
+					update_post_meta( $event_id, '_EventStartDateUTC', $start_date );
+					update_post_meta( $event_id, '_EventEndDateUTC', $end_date );
+
+					if ( isset( $args['venue_id'] ) ) {
+						update_post_meta( $event_id, '_EventVenueID', intval( $args['venue_id'] ) );
+					}
+					if ( isset( $args['organizer_id'] ) ) {
+						update_post_meta( $event_id, '_EventOrganizerID', intval( $args['organizer_id'] ) );
+					}
+					if ( isset( $args['cost'] ) ) {
+						update_post_meta( $event_id, '_EventCost', sanitize_text_field( $args['cost'] ) );
+					}
+					if ( isset( $args['website'] ) ) {
+						update_post_meta( $event_id, '_EventURL', esc_url_raw( $args['website'] ) );
+					}
+
+					return array(
+						'event_id'   => $event_id,
+						'title'      => $title,
+						'start_date' => $start_date,
+						'end_date'   => $end_date,
+						'permalink'  => get_permalink( $event_id ),
+						'message'    => __( 'Event created successfully.', 'enable-abilities-for-mcp' ),
+					);
+				},
+				'meta'                => array(
+					'show_in_rest' => true,
+					'mcp'          => array(
+						'public' => true,
+					),
+				),
+			)
+		);
+	}
+
+	if ( ewpa_is_ability_enabled( 'ewpa/tec-update-event' ) && class_exists( 'Tribe__Events__Main' ) ) {
+		wp_register_ability(
+			'ewpa/tec-update-event',
+			array(
+				'name'                => __( 'Update Events Calendar event', 'enable-abilities-for-mcp' ),
+				'description'         => __( 'Updates an existing event\'s dates, title, description, venue, or status.', 'enable-abilities-for-mcp' ),
+				'input_schema'        => array(
+					'type'       => 'object',
+					'properties' => array(
+						'event_id'     => array(
+							'type'        => 'integer',
+							'description' => __( 'The event post ID.', 'enable-abilities-for-mcp' ),
+						),
+						'title'        => array(
+							'type'        => 'string',
+							'description' => __( 'New event title.', 'enable-abilities-for-mcp' ),
+						),
+						'description'  => array(
+							'type'        => 'string',
+							'description' => __( 'New event description.', 'enable-abilities-for-mcp' ),
+						),
+						'start_date'   => array(
+							'type'        => 'string',
+							'description' => __( 'New start date and time (YYYY-MM-DD HH:MM:SS).', 'enable-abilities-for-mcp' ),
+						),
+						'end_date'     => array(
+							'type'        => 'string',
+							'description' => __( 'New end date and time (YYYY-MM-DD HH:MM:SS).', 'enable-abilities-for-mcp' ),
+						),
+						'timezone'     => array(
+							'type'        => 'string',
+							'description' => __( 'Timezone string.', 'enable-abilities-for-mcp' ),
+						),
+						'venue_id'     => array(
+							'type'        => 'integer',
+							'description' => __( 'Venue post ID to link.', 'enable-abilities-for-mcp' ),
+						),
+						'organizer_id' => array(
+							'type'        => 'integer',
+							'description' => __( 'Organizer post ID to link.', 'enable-abilities-for-mcp' ),
+						),
+						'cost'         => array(
+							'type'        => 'string',
+							'description' => __( 'Admission cost.', 'enable-abilities-for-mcp' ),
+						),
+						'website'      => array(
+							'type'        => 'string',
+							'description' => __( 'External event URL.', 'enable-abilities-for-mcp' ),
+						),
+						'status'       => array(
+							'type'        => 'string',
+							'description' => __( 'Post status: publish, draft, private.', 'enable-abilities-for-mcp' ),
+						),
+					),
+					'required'   => array( 'event_id' ),
+				),
+				'permission_callback' => function ( $args ) {
+					return current_user_can( 'edit_tribe_events' );
+				},
+				'callback'            => function ( $args ) {
+					$event_id = intval( $args['event_id'] );
+					$post     = get_post( $event_id );
+
+					if ( ! $post || Tribe__Events__Main::POSTTYPE !== $post->post_type ) {
+						return new WP_Error( 'not_found', __( 'Event not found.', 'enable-abilities-for-mcp' ), array( 'status' => 404 ) );
+					}
+
+					$post_args = array( 'ID' => $event_id );
+					if ( isset( $args['title'] ) ) {
+						$post_args['post_title'] = sanitize_text_field( $args['title'] );
+					}
+					if ( isset( $args['description'] ) ) {
+						$post_args['post_content'] = wp_kses_post( $args['description'] );
+					}
+					if ( isset( $args['status'] ) ) {
+						$post_args['post_status'] = sanitize_text_field( $args['status'] );
+					}
+
+					if ( count( $post_args ) > 1 ) {
+						$result = wp_update_post( $post_args, true );
+						if ( is_wp_error( $result ) ) {
+							return $result;
+						}
+					}
+
+					if ( isset( $args['start_date'] ) ) {
+						update_post_meta( $event_id, '_EventStartDate', sanitize_text_field( $args['start_date'] ) );
+						update_post_meta( $event_id, '_EventStartDateUTC', sanitize_text_field( $args['start_date'] ) );
+					}
+					if ( isset( $args['end_date'] ) ) {
+						update_post_meta( $event_id, '_EventEndDate', sanitize_text_field( $args['end_date'] ) );
+						update_post_meta( $event_id, '_EventEndDateUTC', sanitize_text_field( $args['end_date'] ) );
+					}
+					if ( isset( $args['timezone'] ) ) {
+						update_post_meta( $event_id, '_EventTimezone', sanitize_text_field( $args['timezone'] ) );
+					}
+					if ( isset( $args['venue_id'] ) ) {
+						update_post_meta( $event_id, '_EventVenueID', intval( $args['venue_id'] ) );
+					}
+					if ( isset( $args['organizer_id'] ) ) {
+						update_post_meta( $event_id, '_EventOrganizerID', intval( $args['organizer_id'] ) );
+					}
+					if ( isset( $args['cost'] ) ) {
+						update_post_meta( $event_id, '_EventCost', sanitize_text_field( $args['cost'] ) );
+					}
+					if ( isset( $args['website'] ) ) {
+						update_post_meta( $event_id, '_EventURL', esc_url_raw( $args['website'] ) );
+					}
+
+					$updated_post = get_post( $event_id );
+
+					return array(
+						'event_id'   => $event_id,
+						'title'      => $updated_post->post_title,
+						'start_date' => get_post_meta( $event_id, '_EventStartDate', true ),
+						'end_date'   => get_post_meta( $event_id, '_EventEndDate', true ),
+						'status'     => $updated_post->post_status,
+						'permalink'  => get_permalink( $event_id ),
+						'message'    => __( 'Event updated successfully.', 'enable-abilities-for-mcp' ),
 					);
 				},
 				'meta'                => array(

@@ -15,6 +15,7 @@ if ( ! defined( 'WP_UNINSTALL_PLUGIN' ) ) {
 delete_option( 'ewpa_enabled_abilities' );
 delete_option( 'ewpa_api_key' );
 delete_option( 'ewpa_keys_migrated_v18' );
+delete_option( 'ewpa_keys_migrated_v19' );
 
 // Multisite: clean each site.
 if ( is_multisite() ) {
@@ -29,6 +30,7 @@ if ( is_multisite() ) {
 		delete_option( 'ewpa_enabled_abilities' );
 		delete_option( 'ewpa_api_key' );
 		delete_option( 'ewpa_keys_migrated_v18' );
+		delete_option( 'ewpa_keys_migrated_v19' );
 		restore_current_blog();
 	}
 }

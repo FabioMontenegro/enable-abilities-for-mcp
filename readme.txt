@@ -5,11 +5,11 @@ Tags: mcp, ai, rest-api, content-management, woocommerce
 Requires at least: 6.9
 Tested up to: 6.9
 Requires PHP: 8.0
-Stable tag: 1.8.0
+Stable tag: 1.9.2
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
-Manage which WordPress Abilities are exposed to MCP servers. Compatible with WooCommerce, ACF, and any custom post type.
+Manage which WordPress Abilities are exposed to MCP servers. Supports WooCommerce, The Events Calendar, and any custom post type.
 
 == Description ==
 
@@ -19,8 +19,9 @@ WordPress 6.9 introduced the Abilities API, allowing external tools to discover 
 
 = Features =
 
-* **32 abilities** organized in 6 categories: Core, Read, Write, SEO, Utility, and Custom Post Types
-* **WooCommerce compatible** — manage products, orders, and any custom post type with full meta field access (_price, _sku, _stock, etc.)
+* **40 abilities** organized in 8 categories: Core, Read, Write, SEO, Utility, Custom Post Types, WooCommerce, and The Events Calendar
+* **WooCommerce integration** — dedicated abilities to manage products, orders, and customers using the native WooCommerce API (HPOS-compatible, formally declared)
+* **The Events Calendar integration** — list, get, create, and update events with venue, organizer, and date filters
 * **Admin dashboard** with toggle switches for each ability
 * **Per-ability control** — expose only what you need
 * **Secure by design** — proper capability checks, input sanitization, and per-post permission validation
@@ -58,10 +59,27 @@ WordPress 6.9 introduced the Abilities API, allowing external tools to discover 
 * Get CPT taxonomies with their terms
 * Assign taxonomy terms to CPT items
 
+**WooCommerce:**
+
+* List products with price, SKU, stock status, categories, and type
+* Get full product detail including gallery, attributes, and variations
+* Update product price, sale price, stock quantity, and status
+* List orders with customer, total, status, and date (HPOS-compatible)
+* Get full order detail: line items, billing/shipping, totals, and notes
+* Update order status with optional note
+* List customers with email, name, total spent, and order count
+
+**The Events Calendar:**
+
+* List events with start/end date, venue, organizer, and date range filter
+* Get full event detail with resolved venue address and organizer contact
+* Create new events with title, description, dates, venue, and organizer
+* Update existing events
+
 **Utility:**
 
 * Search and replace text in post content
-* Site statistics overview (now includes custom post type counts)
+* Site statistics overview (includes custom post type counts)
 
 = Requirements =
 
@@ -107,6 +125,20 @@ This plugin registers abilities using the standard `wp_register_ability()` API. 
 1. Admin settings page showing all abilities organized by category with toggle switches.
 
 == Changelog ==
+
+= 1.9.2 =
+* New: Get Single Page ability (ewpa/get-page) — retrieves full page detail by ID including content, template, hierarchy, and SEO metadata
+
+= 1.9.1 =
+* Fix: Formally declare WooCommerce HPOS (High-Performance Order Storage) compatibility via FeaturesUtil::declare_compatibility(), resolving the WooCommerce compatibility warning in WP Admin
+
+= 1.9.0 =
+* Fix: Replace date() with gmdate() to avoid timezone-related display issues
+* New: WooCommerce section with 7 dedicated abilities (products, orders, customers) — HPOS-compatible
+* New: The Events Calendar section with 4 abilities (list, get, create, update events)
+* Updated: Total abilities increased from 32 to 40
+* Code quality: Added phpcs.xml.dist ruleset declaring WooCommerce and The Events Calendar custom capabilities
+* Code quality: Zero errors, zero warnings across all plugin files
 
 = 1.8.0 =
 * New: 8 Custom Post Type abilities — list, get, create, update, delete CPT items, get taxonomies, and assign terms
@@ -178,6 +210,15 @@ This plugin registers abilities using the standard `wp_register_ability()` API. 
 * Admin settings page with per-ability toggles
 
 == Upgrade Notice ==
+
+= 1.9.2 =
+New: Get Single Page ability (ewpa/get-page). Retrieves full page detail by ID including content, template, parent, and SEO metadata.
+
+= 1.9.1 =
+Adds formal WooCommerce HPOS compatibility declaration. Resolves the WooCommerce compatibility warning in WP Admin for sites using High-Performance Order Storage.
+
+= 1.9.0 =
+New WooCommerce (7) and The Events Calendar (4) ability sections. Total 40 abilities. Plus date() timezone fix and zero-error WPCS compliance.
 
 = 1.8.0 =
 Major update: 8 new Custom Post Type abilities for WooCommerce, ACF, JetEngine, and more. All keys standardized to English with automatic migration. Contextual admin notices for missing dependencies.

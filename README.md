@@ -8,7 +8,9 @@ WordPress 6.9 introduced the **Abilities API**, allowing external tools to disco
 
 ### Features
 
-- **24 abilities** organized in 5 categories: Core, Read, Write, SEO, and Utility
+- **40 abilities** organized in 8 categories: Core, Read, Write, SEO, Utility, Custom Post Types, WooCommerce, and The Events Calendar
+- **WooCommerce integration** — manage products, orders, and customers via the native WooCommerce API (HPOS-compatible, formally declared)
+- **The Events Calendar integration** — list, get, create, and update events
 - **Admin dashboard** with toggle switches for each ability
 - **Per-ability control** — expose only what you need
 - **Secure by design** — proper capability checks, input sanitization, and per-post permission validation
@@ -33,6 +35,12 @@ WordPress 6.9 introduced the **Abilities API**, allowing external tools to disco
 **SEO — Rank Math:**
 - Get full Rank Math metadata for any post/page (title, description, keywords, robots, Open Graph, SEO score)
 - Update Rank Math metadata: SEO title, description, focus keyword, canonical URL, robots, Open Graph, primary category, pillar content
+
+**WooCommerce:**
+- Manage products, orders, and customers using the native WooCommerce API (HPOS-compatible)
+
+**The Events Calendar:**
+- List, get, create, and update events with venue, organizer, and date filters
 
 **Utility:**
 - Search and replace text in post content

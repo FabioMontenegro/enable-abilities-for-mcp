@@ -43,3 +43,6 @@ error_log
 
 # Plugin Check reports
 enable-abilities-for-mcp-alegra-*.md
+
+# Internal planning docs (never ship)
+future-plans.md

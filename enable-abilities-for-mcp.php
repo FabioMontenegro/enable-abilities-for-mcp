@@ -2,7 +2,7 @@
 /**
  * Plugin Name:       Enable Abilities for MCP
  * Description:       Manage which WordPress Abilities are exposed to MCP servers. Enable or disable each ability individually from the dashboard.
- * Version:           1.8.0
+ * Version:           1.9.2
  * Requires at least: 6.9
  * Requires PHP:      8.0
  * Author:            Fabio Montenegro
@@ -18,11 +18,25 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'EWPA_VERSION', '1.8.0' );
+define( 'EWPA_VERSION', '1.9.2' );
 define( 'EWPA_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'EWPA_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 define( 'EWPA_OPTION_KEY', 'ewpa_enabled_abilities' );
 define( 'EWPA_API_KEY_OPTION', 'ewpa_api_key' );
+
+// Declare WooCommerce HPOS (High-Performance Order Storage) compatibility.
+add_action(
+	'before_woocommerce_init',
+	function () {
+		if ( class_exists( '\Automattic\WooCommerce\Utilities\FeaturesUtil' ) ) {
+			\Automattic\WooCommerce\Utilities\FeaturesUtil::declare_compatibility(
+				'custom_order_tables',
+				__FILE__,
+				true
+			);
+		}
+	}
+);
 
 // Includes.
 require_once EWPA_PLUGIN_DIR . 'includes/admin.php';
@@ -56,7 +70,7 @@ add_action( 'plugins_loaded', 'ewpa_maybe_migrate_keys' );
 
 /*
  * ==========================================================================
- * KEY MIGRATION (v1.7 → v1.8)
+ * KEY MIGRATION (v1.7 → v1.9)
  * ==========================================================================
  * Renames Spanish ability keys to English while preserving enabled/disabled
  * state. Runs once on upgrade.
@@ -69,13 +83,13 @@ add_action( 'plugins_loaded', 'ewpa_maybe_migrate_keys' );
  * @return void
  */
 function ewpa_maybe_migrate_keys() {
-	if ( get_option( 'ewpa_keys_migrated_v18' ) ) {
+	if ( get_option( 'ewpa_keys_migrated_v19' ) ) {
 		return;
 	}
 
 	$enabled = get_option( EWPA_OPTION_KEY );
 	if ( ! is_array( $enabled ) ) {
-		update_option( 'ewpa_keys_migrated_v18', true );
+		update_option( 'ewpa_keys_migrated_v19', true );
 		return;
 	}
 
@@ -91,7 +105,7 @@ function ewpa_maybe_migrate_keys() {
 	}
 
 	if ( ! $has_old_keys ) {
-		update_option( 'ewpa_keys_migrated_v18', true );
+		update_option( 'ewpa_keys_migrated_v19', true );
 		return;
 	}
 
@@ -101,7 +115,7 @@ function ewpa_maybe_migrate_keys() {
 		$migrated[] = isset( $key_map[ $key ] ) ? $key_map[ $key ] : $key;
 	}
 
-	// Add new CPT abilities (enabled by default on upgrade).
+	// Add new abilities (enabled by default on upgrade).
 	$new_abilities = array(
 		'ewpa/list-post-types',
 		'ewpa/get-cpt-items',
@@ -111,6 +125,21 @@ function ewpa_maybe_migrate_keys() {
 		'ewpa/delete-cpt-item',
 		'ewpa/get-cpt-taxonomies',
 		'ewpa/assign-cpt-terms',
+		// WooCommerce abilities (v1.9+).
+		'ewpa/wc-get-products',
+		'ewpa/wc-get-product',
+		'ewpa/wc-update-product',
+		'ewpa/wc-get-orders',
+		'ewpa/wc-get-order',
+		'ewpa/wc-update-order-status',
+		'ewpa/wc-get-customers',
+		// The Events Calendar abilities (v1.9+).
+		'ewpa/tec-get-events',
+		'ewpa/tec-get-event',
+		'ewpa/tec-create-event',
+		'ewpa/tec-update-event',
+		// v1.9.2+.
+		'ewpa/get-page',
 	);
 	foreach ( $new_abilities as $key ) {
 		if ( ! in_array( $key, $migrated, true ) ) {
@@ -119,7 +148,7 @@ function ewpa_maybe_migrate_keys() {
 	}
 
 	update_option( EWPA_OPTION_KEY, $migrated );
-	update_option( 'ewpa_keys_migrated_v18', true );
+	update_option( 'ewpa_keys_migrated_v19', true );
 
 	// Schedule a one-time admin notice.
 	set_transient( 'ewpa_migration_notice', true, 60 );
@@ -173,7 +202,7 @@ function ewpa_get_legacy_key_map() {
  */
 function ewpa_get_abilities_registry() {
 	return array(
-		'core'    => array(
+		'core'        => array(
 			'section_label' => __( 'WordPress Core', 'enable-abilities-for-mcp' ),
 			'section_desc'  => __( 'Native WordPress core abilities. Exposed to MCP with the public flag.', 'enable-abilities-for-mcp' ),
 			'section_icon'  => 'dashicons-wordpress',
@@ -192,7 +221,7 @@ function ewpa_get_abilities_registry() {
 				),
 			),
 		),
-		'read'    => array(
+		'read'        => array(
 			'section_label' => __( 'Read (Query Only)', 'enable-abilities-for-mcp' ),
 			'section_desc'  => __( 'Only query data, do not modify anything. Safest to expose via MCP.', 'enable-abilities-for-mcp' ),
 			'section_icon'  => 'dashicons-visibility',
@@ -217,6 +246,10 @@ function ewpa_get_abilities_registry() {
 					'label' => __( 'Get Pages', 'enable-abilities-for-mcp' ),
 					'desc'  => __( 'List site pages with title, status, and hierarchy.', 'enable-abilities-for-mcp' ),
 				),
+				'ewpa/get-page'       => array(
+					'label' => __( 'Get Single Page', 'enable-abilities-for-mcp' ),
+					'desc'  => __( 'Full page detail by ID, including content, template, hierarchy, and SEO metadata.', 'enable-abilities-for-mcp' ),
+				),
 				'ewpa/get-comments'   => array(
 					'label' => __( 'Get Comments', 'enable-abilities-for-mcp' ),
 					'desc'  => __( 'List comments with filters by status, post, and count.', 'enable-abilities-for-mcp' ),
@@ -231,7 +264,7 @@ function ewpa_get_abilities_registry() {
 				),
 			),
 		),
-		'write'   => array(
+		'write'       => array(
 			'section_label' => __( 'Write (Create & Modify)', 'enable-abilities-for-mcp' ),
 			'section_desc'  => __( 'Create or modify content. Require appropriate MCP user permissions.', 'enable-abilities-for-mcp' ),
 			'section_icon'  => 'dashicons-edit',
@@ -275,7 +308,7 @@ function ewpa_get_abilities_registry() {
 				),
 			),
 		),
-		'seo'     => array(
+		'seo'         => array(
 			'section_label'  => __( 'SEO — Rank Math', 'enable-abilities-for-mcp' ),
 			'section_desc'   => __( 'Query and update Rank Math SEO metadata on posts and pages.', 'enable-abilities-for-mcp' ),
 			'section_icon'   => 'dashicons-search',
@@ -291,7 +324,7 @@ function ewpa_get_abilities_registry() {
 				),
 			),
 		),
-		'utility' => array(
+		'utility'     => array(
 			'section_label' => __( 'Utility', 'enable-abilities-for-mcp' ),
 			'section_desc'  => __( 'Auxiliary tools that complement the workflow.', 'enable-abilities-for-mcp' ),
 			'section_icon'  => 'dashicons-admin-tools',
@@ -306,7 +339,68 @@ function ewpa_get_abilities_registry() {
 				),
 			),
 		),
-		'cpt'     => array(
+		'woocommerce' => array(
+			'section_label'  => __( 'WooCommerce', 'enable-abilities-for-mcp' ),
+			'section_desc'   => __( 'Query and manage WooCommerce products, orders, and customers using the native WooCommerce API (HPOS-compatible).', 'enable-abilities-for-mcp' ),
+			'section_icon'   => 'dashicons-cart',
+			'section_badge'  => 'warning',
+			'section_notice' => 'ewpa_section_notice_woocommerce',
+			'abilities'      => array(
+				'ewpa/wc-get-products'        => array(
+					'label' => __( 'Get Products', 'enable-abilities-for-mcp' ),
+					'desc'  => __( 'List products with price, SKU, stock status, categories, and type. Supports search and category filter.', 'enable-abilities-for-mcp' ),
+				),
+				'ewpa/wc-get-product'         => array(
+					'label' => __( 'Get Single Product', 'enable-abilities-for-mcp' ),
+					'desc'  => __( 'Full product detail: price, SKU, stock, description, gallery, attributes, and variations for variable products.', 'enable-abilities-for-mcp' ),
+				),
+				'ewpa/wc-update-product'      => array(
+					'label' => __( 'Update Product', 'enable-abilities-for-mcp' ),
+					'desc'  => __( 'Update product price, sale price, stock quantity, status, or description using the WooCommerce API.', 'enable-abilities-for-mcp' ),
+				),
+				'ewpa/wc-get-orders'          => array(
+					'label' => __( 'Get Orders', 'enable-abilities-for-mcp' ),
+					'desc'  => __( 'List orders with customer, total, status, and date. HPOS-compatible. Supports filter by status.', 'enable-abilities-for-mcp' ),
+				),
+				'ewpa/wc-get-order'           => array(
+					'label' => __( 'Get Single Order', 'enable-abilities-for-mcp' ),
+					'desc'  => __( 'Full order detail: line items, customer billing/shipping, totals, status history, and notes.', 'enable-abilities-for-mcp' ),
+				),
+				'ewpa/wc-update-order-status' => array(
+					'label' => __( 'Update Order Status', 'enable-abilities-for-mcp' ),
+					'desc'  => __( 'Change the status of an order (e.g., pending → processing → completed) with an optional note.', 'enable-abilities-for-mcp' ),
+				),
+				'ewpa/wc-get-customers'       => array(
+					'label' => __( 'Get Customers', 'enable-abilities-for-mcp' ),
+					'desc'  => __( 'List customers with email, name, total spent, and order count. Supports search by email or name.', 'enable-abilities-for-mcp' ),
+				),
+			),
+		),
+		'tec'         => array(
+			'section_label'  => __( 'The Events Calendar', 'enable-abilities-for-mcp' ),
+			'section_desc'   => __( 'Query and manage events from The Events Calendar plugin, including dates, venues, and organizers.', 'enable-abilities-for-mcp' ),
+			'section_icon'   => 'dashicons-calendar-alt',
+			'section_notice' => 'ewpa_section_notice_tec',
+			'abilities'      => array(
+				'ewpa/tec-get-events'   => array(
+					'label' => __( 'Get Events', 'enable-abilities-for-mcp' ),
+					'desc'  => __( 'List events with start/end date, venue, and organizer. Supports upcoming/past filter and date range.', 'enable-abilities-for-mcp' ),
+				),
+				'ewpa/tec-get-event'    => array(
+					'label' => __( 'Get Single Event', 'enable-abilities-for-mcp' ),
+					'desc'  => __( 'Full event detail with resolved venue address and organizer contact info in a single call.', 'enable-abilities-for-mcp' ),
+				),
+				'ewpa/tec-create-event' => array(
+					'label' => __( 'Create Event', 'enable-abilities-for-mcp' ),
+					'desc'  => __( 'Create a new event with title, description, start/end dates, timezone, and venue (by ID or name).', 'enable-abilities-for-mcp' ),
+				),
+				'ewpa/tec-update-event' => array(
+					'label' => __( 'Update Event', 'enable-abilities-for-mcp' ),
+					'desc'  => __( 'Update an existing event: title, description, start/end dates, timezone, or venue.', 'enable-abilities-for-mcp' ),
+				),
+			),
+		),
+		'cpt'         => array(
 			'section_label'  => __( 'Custom Post Types', 'enable-abilities-for-mcp' ),
 			'section_desc'   => __( 'Discover and manage Custom Post Types registered by plugins or themes. Excludes posts, pages, and attachments which have dedicated abilities.', 'enable-abilities-for-mcp' ),
 			'section_icon'   => 'dashicons-archive',
@@ -443,5 +537,37 @@ function ewpa_section_notice_rankmath() {
 	return '<div class="ewpa-section-notice ewpa-section-notice-info">'
 		. '<span class="dashicons dashicons-info"></span> '
 		. esc_html__( 'Rank Math SEO plugin is not active. These abilities require Rank Math to function.', 'enable-abilities-for-mcp' )
+		. '</div>';
+}
+
+/**
+ * Section notice for WooCommerce: shows info when WooCommerce is not active.
+ *
+ * @return string
+ */
+function ewpa_section_notice_woocommerce() {
+	if ( class_exists( 'WooCommerce' ) ) {
+		return '';
+	}
+
+	return '<div class="ewpa-section-notice ewpa-section-notice-info">'
+		. '<span class="dashicons dashicons-info"></span> '
+		. esc_html__( 'WooCommerce is not active. These abilities require WooCommerce to function.', 'enable-abilities-for-mcp' )
+		. '</div>';
+}
+
+/**
+ * Section notice for The Events Calendar: shows info when the plugin is not active.
+ *
+ * @return string
+ */
+function ewpa_section_notice_tec() {
+	if ( class_exists( 'Tribe__Events__Main' ) ) {
+		return '';
+	}
+
+	return '<div class="ewpa-section-notice ewpa-section-notice-info">'
+		. '<span class="dashicons dashicons-info"></span> '
+		. esc_html__( 'The Events Calendar plugin is not active. These abilities require The Events Calendar to function.', 'enable-abilities-for-mcp' )
 		. '</div>';
 }

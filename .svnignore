@@ -1,0 +1,18 @@
+# Files excluded from WordPress.org SVN trunk
+.gitignore
+.svnignore
+.vscode
+.idea
+.claude
+node_modules
+vendor
+composer.lock
+package-lock.json
+*.zip
+*.tar.gz
+dist
+*.log
+debug.log
+error_log
+future-plans.md
+enable-abilities-for-mcp-alegra-*.md
