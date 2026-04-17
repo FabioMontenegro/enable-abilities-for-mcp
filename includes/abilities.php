@@ -1748,7 +1748,128 @@ function ewpa_register_custom_abilities(): void {
 		);
 	}
 
-	// ── B9: Upload Image from URL ───────────────────────────────────────
+	// ── B9: Update Comment ─────────────────────────────────────────────
+	if ( ewpa_is_ability_enabled( 'ewpa/update-comment' ) ) {
+		wp_register_ability(
+			'ewpa/update-comment',
+			array(
+				'label'               => __( 'Update Comment', 'enable-abilities-for-mcp' ),
+				'description'         => __( 'Updates an existing comment. Allows changing the content, author name, author email, and the WordPress user associated with the comment.', 'enable-abilities-for-mcp' ),
+				'category'            => 'content-management',
+				'input_schema'        => array(
+					'type'       => 'object',
+					'required'   => array( 'comment_id' ),
+					'properties' => array(
+						'comment_id'           => array(
+							'type'        => 'integer',
+							'description' => 'ID of the comment to update (required)',
+						),
+						'content'              => array(
+							'type'        => 'string',
+							'description' => 'New comment content',
+						),
+						'comment_author'       => array(
+							'type'        => 'string',
+							'description' => 'Display name of the comment author',
+						),
+						'comment_author_email' => array(
+							'type'        => 'string',
+							'description' => 'Email address of the comment author',
+						),
+						'user_id'              => array(
+							'type'        => 'integer',
+							'description' => 'WordPress user ID to associate with the comment (0 = guest)',
+						),
+					),
+				),
+				'output_schema'       => array(
+					'type'       => 'object',
+					'properties' => array(
+						'comment_id'           => array( 'type' => 'integer' ),
+						'content'              => array( 'type' => 'string' ),
+						'comment_author'       => array( 'type' => 'string' ),
+						'comment_author_email' => array( 'type' => 'string' ),
+						'user_id'              => array( 'type' => 'integer' ),
+						'message'              => array( 'type' => 'string' ),
+					),
+				),
+				'permission_callback' => function () {
+					return current_user_can( 'moderate_comments' );
+				},
+				'execute_callback'    => function ( $input ) {
+					$comment_id = absint( $input['comment_id'] );
+					$comment    = get_comment( $comment_id );
+
+					if ( ! $comment ) {
+						return new WP_Error( 'not_found', 'Comment not found.' );
+					}
+
+					$update_data = array(
+						'comment_ID' => $comment_id,
+					);
+
+					if ( isset( $input['content'] ) ) {
+						$update_data['comment_content'] = wp_kses_post( $input['content'] );
+					}
+
+					if ( isset( $input['comment_author'] ) ) {
+						$update_data['comment_author'] = sanitize_text_field( $input['comment_author'] );
+					}
+
+					if ( isset( $input['comment_author_email'] ) ) {
+						$update_data['comment_author_email'] = sanitize_email( $input['comment_author_email'] );
+					}
+
+					if ( isset( $input['user_id'] ) ) {
+						$user_id = absint( $input['user_id'] );
+						if ( 0 < $user_id ) {
+							$user = get_userdata( $user_id );
+							if ( ! $user ) {
+								return new WP_Error( 'invalid_user', 'User ID ' . $user_id . ' does not exist.' );
+							}
+							$update_data['user_id'] = $user_id;
+							// Sync author fields from user if not explicitly overridden.
+							if ( ! isset( $input['comment_author'] ) ) {
+								$update_data['comment_author'] = $user->display_name;
+							}
+							if ( ! isset( $input['comment_author_email'] ) ) {
+								$update_data['comment_author_email'] = $user->user_email;
+							}
+						} else {
+							$update_data['user_id'] = 0;
+						}
+					}
+
+					$result = wp_update_comment( $update_data );
+					if ( is_wp_error( $result ) ) {
+						return $result;
+					}
+					if ( ! $result ) {
+						return new WP_Error( 'update_failed', 'Comment could not be updated.' );
+					}
+
+					$updated = get_comment( $comment_id );
+
+					return array(
+						'comment_id'           => $comment_id,
+						'content'              => $updated->comment_content,
+						'comment_author'       => $updated->comment_author,
+						'comment_author_email' => $updated->comment_author_email,
+						'user_id'              => (int) $updated->user_id,
+						'message'              => 'Comment #' . $comment_id . ' updated successfully.',
+					);
+				},
+				'meta'                => array(
+					'show_in_rest' => true,
+					'mcp'          => array(
+						'public' => true,
+					),
+				),
+			)
+		);
+	}
+
+	// ── B10: Upload Image from URL ──────────────────────────────────────
 	if ( ewpa_is_ability_enabled( 'ewpa/upload-image' ) ) {
 		wp_register_ability(
 			'ewpa/upload-image',

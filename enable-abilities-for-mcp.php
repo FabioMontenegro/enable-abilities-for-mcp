@@ -2,7 +2,7 @@
 /**
  * Plugin Name:       Enable Abilities for MCP
  * Description:       Manage which WordPress Abilities are exposed to MCP servers. Enable or disable each ability individually from the dashboard.
- * Version:           1.9.2
+ * Version:           1.9.3
  * Requires at least: 6.9
  * Requires PHP:      8.0
  * Author:            Fabio Montenegro
@@ -18,7 +18,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'EWPA_VERSION', '1.9.2' );
+define( 'EWPA_VERSION', '1.9.3' );
 define( 'EWPA_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'EWPA_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 define( 'EWPA_OPTION_KEY', 'ewpa_enabled_abilities' );
@@ -140,6 +140,7 @@ function ewpa_maybe_migrate_keys() {
 		'ewpa/tec-update-event',
 		// v1.9.2+.
 		'ewpa/get-page',
+		'ewpa/update-comment',
 	);
 	foreach ( $new_abilities as $key ) {
 		if ( ! in_array( $key, $migrated, true ) ) {
@@ -301,6 +302,10 @@ function ewpa_get_abilities_registry() {
 				'ewpa/reply-comment'    => array(
 					'label' => __( 'Reply to Comment', 'enable-abilities-for-mcp' ),
 					'desc'  => __( 'Reply to an existing comment as the authenticated user.', 'enable-abilities-for-mcp' ),
+				),
+				'ewpa/update-comment'   => array(
+					'label' => __( 'Update Comment', 'enable-abilities-for-mcp' ),
+					'desc'  => __( 'Update content, author name, email, or WordPress user of an existing comment.', 'enable-abilities-for-mcp' ),
 				),
 				'ewpa/upload-image'     => array(
 					'label' => __( 'Upload Image from URL', 'enable-abilities-for-mcp' ),

@@ -5,7 +5,7 @@ Tags: mcp, ai, rest-api, content-management, woocommerce
 Requires at least: 6.9
 Tested up to: 6.9
 Requires PHP: 8.0
-Stable tag: 1.9.2
+Stable tag: 1.9.3
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -126,6 +126,9 @@ This plugin registers abilities using the standard `wp_register_ability()` API. 
 
 == Changelog ==
 
+= 1.9.3 =
+* New: Update Comment ability (ewpa/update-comment) — update content, author name, email, or WordPress user of an existing comment
+
 = 1.9.2 =
 * New: Get Single Page ability (ewpa/get-page) — retrieves full page detail by ID including content, template, hierarchy, and SEO metadata
 
@@ -210,6 +213,9 @@ This plugin registers abilities using the standard `wp_register_ability()` API. 
 * Admin settings page with per-ability toggles
 
 == Upgrade Notice ==
+
+= 1.9.3 =
+New: Update Comment ability (ewpa/update-comment). Change content, author, email, or associated WordPress user of any existing comment.
 
 = 1.9.2 =
 New: Get Single Page ability (ewpa/get-page). Retrieves full page detail by ID including content, template, parent, and SEO metadata.
