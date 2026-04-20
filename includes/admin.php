@@ -277,20 +277,20 @@ function ewpa_render_settings_page(): void {
 		<?php settings_errors( 'ewpa_settings' ); ?>
 
 		<?php /* ── Tab navigation ──────────────────────────────────────────── */ ?>
-		<div class="ewpa-tabs-nav" role="tablist">
-			<button class="ewpa-tab-btn" data-tab="connection" role="tab">
+		<nav class="ewpa-tabs-nav nav-tab-wrapper" role="tablist">
+			<button class="ewpa-tab-btn nav-tab" data-tab="connection" role="tab">
 				<span class="dashicons dashicons-admin-network"></span>
 				<?php esc_html_e( 'Connection', 'enable-abilities-for-mcp' ); ?>
 			</button>
-			<button class="ewpa-tab-btn" data-tab="logs" role="tab">
+			<button class="ewpa-tab-btn nav-tab" data-tab="logs" role="tab">
 				<span class="dashicons dashicons-chart-bar"></span>
 				<?php esc_html_e( 'Activity Log', 'enable-abilities-for-mcp' ); ?>
 			</button>
-			<button class="ewpa-tab-btn" data-tab="abilities" role="tab">
+			<button class="ewpa-tab-btn nav-tab" data-tab="abilities" role="tab">
 				<span class="dashicons dashicons-superhero-alt"></span>
 				<?php esc_html_e( 'Abilities', 'enable-abilities-for-mcp' ); ?>
 			</button>
-		</div>
+		</nav>
 
 		<?php /* ══ TAB: Connection ══════════════════════════════════════════ */ ?>
 		<div class="ewpa-tab-panel" id="ewpa-tab-connection" role="tabpanel">

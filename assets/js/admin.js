@@ -1,11 +1,14 @@
 ( function () {
+	function ewpaAdminInit() {
 	/* ── Tab navigation ─────────────────────────────────────────────── */
 	var tabBtns   = document.querySelectorAll( '.ewpa-tab-btn' );
 	var tabPanels = document.querySelectorAll( '.ewpa-tab-panel' );
 
 	function activateTab( tabId ) {
 		tabBtns.forEach( function ( btn ) {
-			btn.classList.toggle( 'is-active', btn.getAttribute( 'data-tab' ) === tabId );
+			var active = btn.getAttribute( 'data-tab' ) === tabId;
+			btn.classList.toggle( 'is-active', active );
+			btn.classList.toggle( 'nav-tab-active', active );
 		} );
 		tabPanels.forEach( function ( panel ) {
 			panel.classList.toggle( 'is-active', panel.id === 'ewpa-tab-' + tabId );
@@ -296,4 +299,12 @@
 
 	updateCount();
 	sectionChecks.forEach( function ( sc ) { updateSectionCheck( sc.getAttribute( 'data-section' ) ); } );
+	} // end ewpaAdminInit
+
+	// Run now if DOM is ready, otherwise wait — handles defer/async/bundled scripts.
+	if ( document.readyState === 'loading' ) {
+		document.addEventListener( 'DOMContentLoaded', ewpaAdminInit );
+	} else {
+		ewpaAdminInit();
+	}
 } )();

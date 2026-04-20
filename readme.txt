@@ -131,9 +131,12 @@ This plugin registers abilities using the standard `wp_register_ability()` API. 
 * Fix: `ewpa_log_activity()` is self-healing — auto-creates table on first failed insert, no manual intervention required
 * Fix: Input parameter unified to `status` (was `post_status`) across `ewpa/get-posts`, `ewpa/get-pages`, and `ewpa/get-cpt-items` for consistency with write abilities
 * Fix: Uninstall now cleans up `ewpa_bearer_enabled` and `ewpa_db_version` options (previously leaked on uninstall)
+* Fix: Admin tabs now use WordPress native `nav-tab` classes — resolves broken button styling on sites where themes or plugins override default button CSS
+* Fix: Admin JavaScript wrapped in `document.readyState` guard — tabs and toggle now work correctly on sites with optimization plugins (WP Rocket, LiteSpeed, etc.) that defer or combine scripts
 * Code quality: WPCS auto-fixed 14 issues; short ternary operators and docblock corrections applied manually
 * Code quality: `phpcs.xml` ruleset updated — WooCommerce and The Events Calendar custom capabilities declared
 * Code quality: Zero errors across all core plugin files
+* Note: If tabs or the Bearer toggle appear broken after updating, purge your Cloudflare or CDN cache — CDNs may serve stale JS/CSS files regardless of the plugin version parameter
 
 = 2.0.0 =
 * New: Activity log — tracks every MCP ability execution per user with timestamp; viewable and clearable from the admin
@@ -235,10 +238,10 @@ This plugin registers abilities using the standard `wp_register_ability()` API. 
 == Upgrade Notice ==
 
 = 2.0.1 =
-Fix: activity log now records correctly after file-only updates. Input parameter unified to `status` across get-posts, get-pages, and get-cpt-items. Uninstall cleanup improved.
+Fix: activity log now records correctly after file-only updates. Input parameter unified to `status` across get-posts, get-pages, and get-cpt-items. Uninstall cleanup improved. **If you use Cloudflare or a CDN, purge your cache after updating** — otherwise the admin interface (tabs, toggle) may show stale assets.
 
 = 2.0.0 =
-Major update: activity log per user, new three-tab admin interface, Bearer token now optional with toggle, and in-browser credential generator for Application Passwords. No breaking changes — existing Bearer token installs auto-migrated.
+Major update: activity log per user, new three-tab admin interface, Bearer token now optional with toggle, and in-browser credential generator for Application Passwords. No breaking changes — existing Bearer token installs auto-migrated. If you use Cloudflare or a CDN, purge your cache after updating.
 
 = 1.9.3 =
 New: Update Comment ability (ewpa/update-comment). Change content, author, email, or associated WordPress user of any existing comment.
