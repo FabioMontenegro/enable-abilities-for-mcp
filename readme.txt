@@ -5,7 +5,7 @@ Tags: mcp, ai, rest-api, content-management, woocommerce
 Requires at least: 6.9
 Tested up to: 6.9
 Requires PHP: 8.0
-Stable tag: 2.0.1
+Stable tag: 2.0.2
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -19,7 +19,7 @@ WordPress 6.9 introduced the Abilities API, allowing external tools to discover 
 
 = Features =
 
-* **40 abilities** organized in 8 categories: Core, Read, Write, SEO, Utility, Custom Post Types, WooCommerce, and The Events Calendar
+* **42 abilities** organized in 8 categories: Core, Read, Write, SEO, Utility, Custom Post Types, WooCommerce, and The Events Calendar
 * **WooCommerce integration** — dedicated abilities to manage products, orders, and customers using the native WooCommerce API (HPOS-compatible, formally declared)
 * **The Events Calendar integration** — list, get, create, and update events with venue, organizer, and date filters
 * **Admin dashboard** with toggle switches for each ability
@@ -125,6 +125,10 @@ This plugin registers abilities using the standard `wp_register_ability()` API. 
 1. Admin settings page showing all abilities organized by category with toggle switches.
 
 == Changelog ==
+
+= 2.0.2 =
+* Fix: Re-release to ensure all users receive the corrected admin CSS and JavaScript — sites that auto-updated to 2.0.1 before the tab and JS fixes were in place will now receive the correct assets
+* Fix: Ability count in plugin description corrected to 42 (get-page and update-comment were added in 1.9.2/1.9.3)
 
 = 2.0.1 =
 * Fix: Activity log DB table now created correctly — `PRIMARY KEY` SQL formatted for dbDelta
@@ -236,6 +240,9 @@ This plugin registers abilities using the standard `wp_register_ability()` API. 
 * Admin settings page with per-ability toggles
 
 == Upgrade Notice ==
+
+= 2.0.2 =
+Re-release of 2.0.1 fixes. If your admin tabs still appear as plain buttons after updating to 2.0.1, update to 2.0.2 and purge your Cloudflare or CDN cache.
 
 = 2.0.1 =
 Fix: activity log now records correctly after file-only updates. Input parameter unified to `status` across get-posts, get-pages, and get-cpt-items. Uninstall cleanup improved. **If you use Cloudflare or a CDN, purge your cache after updating** — otherwise the admin interface (tabs, toggle) may show stale assets.
