@@ -8,6 +8,7 @@
 	<file>includes/abilities.php</file>
 	<file>includes/admin.php</file>
 	<file>includes/auth.php</file>
+	<file>includes/activity-log.php</file>
 
 	<!-- Exclude vendor -->
 	<exclude-pattern>vendor/*</exclude-pattern>
@@ -26,6 +27,16 @@
 			filtering. These are known slow queries, acknowledged and acceptable.
 		-->
 		<exclude name="WordPress.DB.SlowDBQuery"/>
+	</rule>
+
+	<!--
+		activity-log.php and uninstall.php manage a custom DB table and must use
+		direct $wpdb calls (CREATE TABLE via dbDelta, DROP TABLE, INSERT, SELECT).
+		Caching is not applicable for an append-only log or a one-time DROP.
+	-->
+	<rule ref="WordPress.DB.DirectDatabaseQuery">
+		<exclude-pattern>*/includes/activity-log.php</exclude-pattern>
+		<exclude-pattern>*/uninstall.php</exclude-pattern>
 	</rule>
 
 	<!-- Declare WooCommerce custom capabilities -->

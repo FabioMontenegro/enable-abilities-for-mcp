@@ -212,3 +212,124 @@
 	padding: 6px 24px;
 	height: auto;
 }
+
+/* ── Tabs ─────────────────────────────────────────────────────────── */
+.ewpa-tabs-nav {
+	display: flex;
+	gap: 2px;
+	margin: 0 0 20px;
+	border-bottom: 2px solid #c3c4c7;
+}
+
+.ewpa-tab-btn {
+	background: none;
+	border: none;
+	border-bottom: 2px solid transparent;
+	margin-bottom: -2px;
+	padding: 8px 18px;
+	font-size: 14px;
+	font-weight: 500;
+	color: #50575e;
+	cursor: pointer;
+	border-radius: 4px 4px 0 0;
+	transition: color .15s, border-color .15s, background .15s;
+	display: flex;
+	align-items: center;
+	gap: 6px;
+}
+
+.ewpa-tab-btn:hover {
+	color: #2271b1;
+	background: #f0f5fb;
+}
+
+.ewpa-tab-btn.is-active {
+	color: #2271b1;
+	border-bottom-color: #2271b1;
+	background: #fff;
+}
+
+.ewpa-tab-btn .dashicons {
+	font-size: 17px;
+	width: 17px;
+	height: 17px;
+}
+
+.ewpa-tab-panel {
+	display: none;
+}
+
+.ewpa-tab-panel.is-active {
+	display: block;
+}
+
+/* ── Credential generator ─────────────────────────────────────────── */
+.ewpa-cred-generator {
+	background: #f6f7f7;
+	border: 1px solid #dcdcde;
+	border-radius: 4px;
+	padding: 16px 20px;
+	margin-top: 12px;
+}
+
+.ewpa-cred-generator h4 {
+	margin: 0 0 6px;
+	font-size: 13px;
+}
+
+.ewpa-cred-field {
+	margin-bottom: 12px;
+}
+
+.ewpa-cred-field label {
+	display: block;
+	font-size: 12px;
+	font-weight: 600;
+	color: #50575e;
+	margin-bottom: 4px;
+}
+
+.ewpa-cred-field input[type="text"],
+.ewpa-cred-field input[type="password"] {
+	width: 100%;
+	max-width: 360px;
+}
+
+.ewpa-cred-output {
+	margin-top: 14px;
+	padding: 12px 14px;
+	background: #fff;
+	border: 1px solid #c3c4c7;
+	border-radius: 4px;
+}
+
+.ewpa-cred-output code {
+	display: block;
+	word-break: break-all;
+	padding: 8px 10px;
+	background: #f6f7f7;
+	border: 1px solid #dcdcde;
+	border-radius: 3px;
+	font-size: 13px;
+	margin: 8px 0;
+}
+
+/* ── Section notice (dependency warnings) ────────────────────────── */
+.ewpa-section-notice {
+	display: flex;
+	align-items: flex-start;
+	gap: 8px;
+	padding: 10px 16px;
+	font-size: 13px;
+	border-bottom: 1px solid #f0f0f1;
+}
+
+.ewpa-section-notice-info {
+	background: #f0f6fc;
+	color: #0a4b78;
+}
+
+.ewpa-section-notice .dashicons {
+	flex-shrink: 0;
+	margin-top: 1px;
+}

@@ -120,8 +120,19 @@ function ewpa_filter_core_abilities( array $args, string $ability_name ): array 
 		'core/get-environment-info',
 	);
 
-	if ( in_array( $ability_name, $core_abilities, true ) && ewpa_is_ability_enabled( $ability_name ) ) {
-		$args['meta']['mcp']['public'] = true;
+	if ( ! in_array( $ability_name, $core_abilities, true ) || ! ewpa_is_ability_enabled( $ability_name ) ) {
+		return $args;
+	}
+
+	$args['meta']['mcp']['public'] = true;
+
+	if ( ! empty( $args['execute_callback'] ) && is_callable( $args['execute_callback'] ) ) {
+		$original                 = $args['execute_callback'];
+		$args['execute_callback'] = static function ( $input ) use ( $ability_name, $original ) {
+			$result = $original( $input );
+			ewpa_log_activity( get_current_user_id(), $ability_name );
+			return $result;
+		};
 	}
 
 	return $args;
@@ -194,7 +205,7 @@ function ewpa_register_custom_abilities(): void {
 
 	// ── A1: Get Posts ───────────────────────────────────────────────────
 	if ( ewpa_is_ability_enabled( 'ewpa/get-posts' ) ) {
-		wp_register_ability(
+		ewpa_register_ability_with_log(
 			'ewpa/get-posts',
 			array(
 				'label'               => __( 'Get Posts', 'enable-abilities-for-mcp' ),
@@ -210,7 +221,7 @@ function ewpa_register_custom_abilities(): void {
 							'minimum'     => 1,
 							'maximum'     => 100,
 						),
-						'post_status'   => array(
+						'status'        => array(
 							'type'        => 'string',
 							'description' => 'Post status: publish, draft, pending, private, trash',
 							'enum'        => array( 'publish', 'draft', 'pending', 'private', 'trash', 'any' ),
@@ -274,8 +285,8 @@ function ewpa_register_custom_abilities(): void {
 					$allowed_order   = array( 'ASC', 'DESC' );
 
 					$numberposts = min( 100, max( 1, absint( $input['numberposts'] ?? 10 ) ) );
-					$post_status = in_array( $input['post_status'] ?? 'publish', $allowed_status, true )
-						? $input['post_status'] : 'publish';
+					$post_status = in_array( $input['status'] ?? 'publish', $allowed_status, true )
+						? $input['status'] : 'publish';
 					$orderby = in_array( $input['orderby'] ?? 'date', $allowed_orderby, true )
 						? $input['orderby'] : 'date';
 					$order = in_array( $input['order'] ?? 'DESC', $allowed_order, true )
@@ -335,7 +346,7 @@ function ewpa_register_custom_abilities(): void {
 
 	// ── A2: Get Single Post ─────────────────────────────────────────────
 	if ( ewpa_is_ability_enabled( 'ewpa/get-post' ) ) {
-		wp_register_ability(
+		ewpa_register_ability_with_log(
 			'ewpa/get-post',
 			array(
 				'label'               => __( 'Get Single Post', 'enable-abilities-for-mcp' ),
@@ -428,7 +439,7 @@ function ewpa_register_custom_abilities(): void {
 
 	// ── A2b: Get Single Page ────────────────────────────────────────────
 	if ( ewpa_is_ability_enabled( 'ewpa/get-page' ) ) {
-		wp_register_ability(
+		ewpa_register_ability_with_log(
 			'ewpa/get-page',
 			array(
 				'label'               => __( 'Get Single Page', 'enable-abilities-for-mcp' ),
@@ -516,7 +527,7 @@ function ewpa_register_custom_abilities(): void {
 
 	// ── A3: Get Categories ──────────────────────────────────────────────
 	if ( ewpa_is_ability_enabled( 'ewpa/get-categories' ) ) {
-		wp_register_ability(
+		ewpa_register_ability_with_log(
 			'ewpa/get-categories',
 			array(
 				'label'               => __( 'Get Categories', 'enable-abilities-for-mcp' ),
@@ -580,7 +591,7 @@ function ewpa_register_custom_abilities(): void {
 
 	// ── A4: Get Tags ────────────────────────────────────────────────────
 	if ( ewpa_is_ability_enabled( 'ewpa/get-tags' ) ) {
-		wp_register_ability(
+		ewpa_register_ability_with_log(
 			'ewpa/get-tags',
 			array(
 				'label'               => __( 'Get Tags', 'enable-abilities-for-mcp' ),
@@ -648,7 +659,7 @@ function ewpa_register_custom_abilities(): void {
 
 	// ── A5: Get Pages ───────────────────────────────────────────────────
 	if ( ewpa_is_ability_enabled( 'ewpa/get-pages' ) ) {
-		wp_register_ability(
+		ewpa_register_ability_with_log(
 			'ewpa/get-pages',
 			array(
 				'label'               => __( 'Get Pages', 'enable-abilities-for-mcp' ),
@@ -664,7 +675,7 @@ function ewpa_register_custom_abilities(): void {
 							'minimum'     => 1,
 							'maximum'     => 100,
 						),
-						'post_status' => array(
+						'status'      => array(
 							'type'        => 'string',
 							'description' => 'Page status: publish, draft, private',
 							'enum'        => array( 'publish', 'draft', 'private', 'any' ),
@@ -692,8 +703,8 @@ function ewpa_register_custom_abilities(): void {
 				'execute_callback'    => function ( $input ) {
 					$allowed_status = array( 'publish', 'draft', 'private', 'any' );
 					$numberposts = min( 100, max( 1, absint( $input['numberposts'] ?? 20 ) ) );
-					$post_status = in_array( $input['post_status'] ?? 'publish', $allowed_status, true )
-						? $input['post_status'] : 'publish';
+					$post_status = in_array( $input['status'] ?? 'publish', $allowed_status, true )
+						? $input['status'] : 'publish';
 
 					$pages = get_posts(
 						array(
@@ -729,7 +740,7 @@ function ewpa_register_custom_abilities(): void {
 
 	// ── A6: Get Comments ────────────────────────────────────────────────
 	if ( ewpa_is_ability_enabled( 'ewpa/get-comments' ) ) {
-		wp_register_ability(
+		ewpa_register_ability_with_log(
 			'ewpa/get-comments',
 			array(
 				'label'               => __( 'Get Comments', 'enable-abilities-for-mcp' ),
@@ -816,7 +827,7 @@ function ewpa_register_custom_abilities(): void {
 
 	// ── A7: Get Media ───────────────────────────────────────────────────
 	if ( ewpa_is_ability_enabled( 'ewpa/get-media' ) ) {
-		wp_register_ability(
+		ewpa_register_ability_with_log(
 			'ewpa/get-media',
 			array(
 				'label'               => __( 'Get Media', 'enable-abilities-for-mcp' ),
@@ -903,7 +914,7 @@ function ewpa_register_custom_abilities(): void {
 
 	// ── A8: Get Users ───────────────────────────────────────────────────
 	if ( ewpa_is_ability_enabled( 'ewpa/get-users' ) ) {
-		wp_register_ability(
+		ewpa_register_ability_with_log(
 			'ewpa/get-users',
 			array(
 				'label'               => __( 'Get Users', 'enable-abilities-for-mcp' ),
@@ -973,7 +984,7 @@ function ewpa_register_custom_abilities(): void {
 
 	// ── B1: Create Post ─────────────────────────────────────────────────
 	if ( ewpa_is_ability_enabled( 'ewpa/create-post' ) ) {
-		wp_register_ability(
+		ewpa_register_ability_with_log(
 			'ewpa/create-post',
 			array(
 				'label'               => __( 'Create Post', 'enable-abilities-for-mcp' ),
@@ -1127,7 +1138,7 @@ function ewpa_register_custom_abilities(): void {
 
 	// ── B2: Update Post ─────────────────────────────────────────────────
 	if ( ewpa_is_ability_enabled( 'ewpa/update-post' ) ) {
-		wp_register_ability(
+		ewpa_register_ability_with_log(
 			'ewpa/update-post',
 			array(
 				'label'               => __( 'Update Post', 'enable-abilities-for-mcp' ),
@@ -1268,7 +1279,7 @@ function ewpa_register_custom_abilities(): void {
 
 	// ── B3: Delete Post ─────────────────────────────────────────────────
 	if ( ewpa_is_ability_enabled( 'ewpa/delete-post' ) ) {
-		wp_register_ability(
+		ewpa_register_ability_with_log(
 			'ewpa/delete-post',
 			array(
 				'label'               => __( 'Delete Post', 'enable-abilities-for-mcp' ),
@@ -1336,7 +1347,7 @@ function ewpa_register_custom_abilities(): void {
 
 	// ── B4: Create Category ─────────────────────────────────────────────
 	if ( ewpa_is_ability_enabled( 'ewpa/create-category' ) ) {
-		wp_register_ability(
+		ewpa_register_ability_with_log(
 			'ewpa/create-category',
 			array(
 				'label'               => __( 'Create Category', 'enable-abilities-for-mcp' ),
@@ -1419,7 +1430,7 @@ function ewpa_register_custom_abilities(): void {
 
 	// ── B5: Create Tag ──────────────────────────────────────────────────
 	if ( ewpa_is_ability_enabled( 'ewpa/create-tag' ) ) {
-		wp_register_ability(
+		ewpa_register_ability_with_log(
 			'ewpa/create-tag',
 			array(
 				'label'               => __( 'Create Tag', 'enable-abilities-for-mcp' ),
@@ -1494,7 +1505,7 @@ function ewpa_register_custom_abilities(): void {
 
 	// ── B6: Create Page ─────────────────────────────────────────────────
 	if ( ewpa_is_ability_enabled( 'ewpa/create-page' ) ) {
-		wp_register_ability(
+		ewpa_register_ability_with_log(
 			'ewpa/create-page',
 			array(
 				'label'               => __( 'Create Page', 'enable-abilities-for-mcp' ),
@@ -1589,7 +1600,7 @@ function ewpa_register_custom_abilities(): void {
 
 	// ── B7: Moderate Comment ────────────────────────────────────────────
 	if ( ewpa_is_ability_enabled( 'ewpa/moderate-comment' ) ) {
-		wp_register_ability(
+		ewpa_register_ability_with_log(
 			'ewpa/moderate-comment',
 			array(
 				'label'               => __( 'Moderate Comment', 'enable-abilities-for-mcp' ),
@@ -1671,7 +1682,7 @@ function ewpa_register_custom_abilities(): void {
 
 	// ── B8: Reply to Comment ────────────────────────────────────────────
 	if ( ewpa_is_ability_enabled( 'ewpa/reply-comment' ) ) {
-		wp_register_ability(
+		ewpa_register_ability_with_log(
 			'ewpa/reply-comment',
 			array(
 				'label'               => __( 'Reply to Comment', 'enable-abilities-for-mcp' ),
@@ -1750,7 +1761,7 @@ function ewpa_register_custom_abilities(): void {
 
 	// ── B9: Update Comment ─────────────────────────────────────────────
 	if ( ewpa_is_ability_enabled( 'ewpa/update-comment' ) ) {
-		wp_register_ability(
+		ewpa_register_ability_with_log(
 			'ewpa/update-comment',
 			array(
 				'label'               => __( 'Update Comment', 'enable-abilities-for-mcp' ),
@@ -1871,7 +1882,7 @@ function ewpa_register_custom_abilities(): void {
 
 	// ── B10: Upload Image from URL ──────────────────────────────────────
 	if ( ewpa_is_ability_enabled( 'ewpa/upload-image' ) ) {
-		wp_register_ability(
+		ewpa_register_ability_with_log(
 			'ewpa/upload-image',
 			array(
 				'label'               => __( 'Upload Image from URL', 'enable-abilities-for-mcp' ),
@@ -2044,7 +2055,7 @@ function ewpa_register_custom_abilities(): void {
 
 	// ── S1: Get Rank Math Metadata ──────────────────────────────────────
 	if ( ewpa_is_ability_enabled( 'ewpa/get-rankmath' ) ) {
-		wp_register_ability(
+		ewpa_register_ability_with_log(
 			'ewpa/get-rankmath',
 			array(
 				'label'               => __( 'Get Rank Math Metadata', 'enable-abilities-for-mcp' ),
@@ -2169,7 +2180,7 @@ function ewpa_register_custom_abilities(): void {
 
 	// ── S2: Update Rank Math Metadata ───────────────────────────────────
 	if ( ewpa_is_ability_enabled( 'ewpa/update-rankmath' ) ) {
-		wp_register_ability(
+		ewpa_register_ability_with_log(
 			'ewpa/update-rankmath',
 			array(
 				'label'               => __( 'Update Rank Math SEO / Focus Keyword', 'enable-abilities-for-mcp' ),
@@ -2458,7 +2469,7 @@ function ewpa_register_custom_abilities(): void {
 
 	// ── C1: Search and Replace ──────────────────────────────────────────
 	if ( ewpa_is_ability_enabled( 'ewpa/search-replace' ) ) {
-		wp_register_ability(
+		ewpa_register_ability_with_log(
 			'ewpa/search-replace',
 			array(
 				'label'               => __( 'Search and Replace', 'enable-abilities-for-mcp' ),
@@ -2547,7 +2558,7 @@ function ewpa_register_custom_abilities(): void {
 
 	// ── C2: Site Statistics ─────────────────────────────────────────────
 	if ( ewpa_is_ability_enabled( 'ewpa/site-stats' ) ) {
-		wp_register_ability(
+		ewpa_register_ability_with_log(
 			'ewpa/site-stats',
 			array(
 				'label'               => __( 'Site Statistics', 'enable-abilities-for-mcp' ),
@@ -2632,7 +2643,7 @@ function ewpa_register_custom_abilities(): void {
 
 	// ── D1: List Post Types ─────────────────────────────────────────────
 	if ( ewpa_is_ability_enabled( 'ewpa/list-post-types' ) ) {
-		wp_register_ability(
+		ewpa_register_ability_with_log(
 			'ewpa/list-post-types',
 			array(
 				'label'               => __( 'List Post Types', 'enable-abilities-for-mcp' ),
@@ -2729,7 +2740,7 @@ function ewpa_register_custom_abilities(): void {
 
 	// ── D2: Get CPT Items ───────────────────────────────────────────────
 	if ( ewpa_is_ability_enabled( 'ewpa/get-cpt-items' ) ) {
-		wp_register_ability(
+		ewpa_register_ability_with_log(
 			'ewpa/get-cpt-items',
 			array(
 				'label'               => __( 'Get CPT Items', 'enable-abilities-for-mcp' ),
@@ -2747,7 +2758,7 @@ function ewpa_register_custom_abilities(): void {
 							'type'        => 'integer',
 							'description' => __( 'Number of items to return (default 20, max 100).', 'enable-abilities-for-mcp' ),
 						),
-						'post_status' => array(
+						'status'      => array(
 							'type'        => 'string',
 							'description' => __( 'Filter by status: publish, draft, pending, private, any (default publish).', 'enable-abilities-for-mcp' ),
 						),
@@ -2796,7 +2807,7 @@ function ewpa_register_custom_abilities(): void {
 					}
 
 					$numberposts = min( absint( $input['numberposts'] ?? 20 ), 100 );
-					$post_status = sanitize_text_field( $input['post_status'] ?? 'publish' );
+					$post_status = sanitize_text_field( $input['status'] ?? 'publish' );
 					$orderby     = sanitize_text_field( $input['orderby'] ?? 'date' );
 					$order       = in_array( strtoupper( $input['order'] ?? 'DESC' ), array( 'ASC', 'DESC' ), true )
 						? strtoupper( $input['order'] )
@@ -2890,7 +2901,7 @@ function ewpa_register_custom_abilities(): void {
 
 	// ── D3: Get CPT Item ────────────────────────────────────────────────
 	if ( ewpa_is_ability_enabled( 'ewpa/get-cpt-item' ) ) {
-		wp_register_ability(
+		ewpa_register_ability_with_log(
 			'ewpa/get-cpt-item',
 			array(
 				'label'               => __( 'Get CPT Item', 'enable-abilities-for-mcp' ),
@@ -3007,7 +3018,7 @@ function ewpa_register_custom_abilities(): void {
 
 	// ── D4: Create CPT Item ─────────────────────────────────────────────
 	if ( ewpa_is_ability_enabled( 'ewpa/create-cpt-item' ) ) {
-		wp_register_ability(
+		ewpa_register_ability_with_log(
 			'ewpa/create-cpt-item',
 			array(
 				'label'               => __( 'Create CPT Item', 'enable-abilities-for-mcp' ),
@@ -3176,7 +3187,7 @@ function ewpa_register_custom_abilities(): void {
 
 	// ── D5: Update CPT Item ─────────────────────────────────────────────
 	if ( ewpa_is_ability_enabled( 'ewpa/update-cpt-item' ) ) {
-		wp_register_ability(
+		ewpa_register_ability_with_log(
 			'ewpa/update-cpt-item',
 			array(
 				'label'               => __( 'Update CPT Item', 'enable-abilities-for-mcp' ),
@@ -3334,7 +3345,7 @@ function ewpa_register_custom_abilities(): void {
 
 	// ── D6: Delete CPT Item ─────────────────────────────────────────────
 	if ( ewpa_is_ability_enabled( 'ewpa/delete-cpt-item' ) ) {
-		wp_register_ability(
+		ewpa_register_ability_with_log(
 			'ewpa/delete-cpt-item',
 			array(
 				'label'               => __( 'Delete CPT Item', 'enable-abilities-for-mcp' ),
@@ -3419,7 +3430,7 @@ function ewpa_register_custom_abilities(): void {
 
 	// ── D7: Get CPT Taxonomies ──────────────────────────────────────────
 	if ( ewpa_is_ability_enabled( 'ewpa/get-cpt-taxonomies' ) ) {
-		wp_register_ability(
+		ewpa_register_ability_with_log(
 			'ewpa/get-cpt-taxonomies',
 			array(
 				'label'               => __( 'Get CPT Taxonomies', 'enable-abilities-for-mcp' ),
@@ -3513,7 +3524,7 @@ function ewpa_register_custom_abilities(): void {
 
 	// ── D8: Assign CPT Terms ────────────────────────────────────────────
 	if ( ewpa_is_ability_enabled( 'ewpa/assign-cpt-terms' ) ) {
-		wp_register_ability(
+		ewpa_register_ability_with_log(
 			'ewpa/assign-cpt-terms',
 			array(
 				'label'               => __( 'Assign CPT Terms', 'enable-abilities-for-mcp' ),
@@ -3642,7 +3653,7 @@ function ewpa_register_custom_abilities(): void {
 	// -------------------------------------------------------------------------
 
 	if ( ewpa_is_ability_enabled( 'ewpa/wc-get-products' ) && class_exists( 'WooCommerce' ) ) {
-		wp_register_ability(
+		ewpa_register_ability_with_log(
 			'ewpa/wc-get-products',
 			array(
 				'name'                => __( 'List WooCommerce products', 'enable-abilities-for-mcp' ),
@@ -3746,7 +3757,7 @@ function ewpa_register_custom_abilities(): void {
 	}
 
 	if ( ewpa_is_ability_enabled( 'ewpa/wc-get-product' ) && class_exists( 'WooCommerce' ) ) {
-		wp_register_ability(
+		ewpa_register_ability_with_log(
 			'ewpa/wc-get-product',
 			array(
 				'name'                => __( 'Get WooCommerce product', 'enable-abilities-for-mcp' ),
@@ -3840,7 +3851,7 @@ function ewpa_register_custom_abilities(): void {
 	}
 
 	if ( ewpa_is_ability_enabled( 'ewpa/wc-update-product' ) && class_exists( 'WooCommerce' ) ) {
-		wp_register_ability(
+		ewpa_register_ability_with_log(
 			'ewpa/wc-update-product',
 			array(
 				'name'                => __( 'Update WooCommerce product', 'enable-abilities-for-mcp' ),
@@ -3937,7 +3948,7 @@ function ewpa_register_custom_abilities(): void {
 	}
 
 	if ( ewpa_is_ability_enabled( 'ewpa/wc-get-orders' ) && class_exists( 'WooCommerce' ) ) {
-		wp_register_ability(
+		ewpa_register_ability_with_log(
 			'ewpa/wc-get-orders',
 			array(
 				'name'                => __( 'List WooCommerce orders', 'enable-abilities-for-mcp' ),
@@ -4034,7 +4045,7 @@ function ewpa_register_custom_abilities(): void {
 	}
 
 	if ( ewpa_is_ability_enabled( 'ewpa/wc-get-order' ) && class_exists( 'WooCommerce' ) ) {
-		wp_register_ability(
+		ewpa_register_ability_with_log(
 			'ewpa/wc-get-order',
 			array(
 				'name'                => __( 'Get WooCommerce order', 'enable-abilities-for-mcp' ),
@@ -4122,7 +4133,7 @@ function ewpa_register_custom_abilities(): void {
 	}
 
 	if ( ewpa_is_ability_enabled( 'ewpa/wc-update-order-status' ) && class_exists( 'WooCommerce' ) ) {
-		wp_register_ability(
+		ewpa_register_ability_with_log(
 			'ewpa/wc-update-order-status',
 			array(
 				'name'                => __( 'Update WooCommerce order status', 'enable-abilities-for-mcp' ),
@@ -4185,7 +4196,7 @@ function ewpa_register_custom_abilities(): void {
 	}
 
 	if ( ewpa_is_ability_enabled( 'ewpa/wc-get-customers' ) && class_exists( 'WooCommerce' ) ) {
-		wp_register_ability(
+		ewpa_register_ability_with_log(
 			'ewpa/wc-get-customers',
 			array(
 				'name'                => __( 'List WooCommerce customers', 'enable-abilities-for-mcp' ),
@@ -4279,7 +4290,7 @@ function ewpa_register_custom_abilities(): void {
 	// -------------------------------------------------------------------------
 
 	if ( ewpa_is_ability_enabled( 'ewpa/tec-get-events' ) && class_exists( 'Tribe__Events__Main' ) ) {
-		wp_register_ability(
+		ewpa_register_ability_with_log(
 			'ewpa/tec-get-events',
 			array(
 				'name'                => __( 'List Events Calendar events', 'enable-abilities-for-mcp' ),
@@ -4385,7 +4396,7 @@ function ewpa_register_custom_abilities(): void {
 	}
 
 	if ( ewpa_is_ability_enabled( 'ewpa/tec-get-event' ) && class_exists( 'Tribe__Events__Main' ) ) {
-		wp_register_ability(
+		ewpa_register_ability_with_log(
 			'ewpa/tec-get-event',
 			array(
 				'name'                => __( 'Get Events Calendar event', 'enable-abilities-for-mcp' ),
@@ -4476,7 +4487,7 @@ function ewpa_register_custom_abilities(): void {
 	}
 
 	if ( ewpa_is_ability_enabled( 'ewpa/tec-create-event' ) && class_exists( 'Tribe__Events__Main' ) ) {
-		wp_register_ability(
+		ewpa_register_ability_with_log(
 			'ewpa/tec-create-event',
 			array(
 				'name'                => __( 'Create Events Calendar event', 'enable-abilities-for-mcp' ),
@@ -4590,7 +4601,7 @@ function ewpa_register_custom_abilities(): void {
 	}
 
 	if ( ewpa_is_ability_enabled( 'ewpa/tec-update-event' ) && class_exists( 'Tribe__Events__Main' ) ) {
-		wp_register_ability(
+		ewpa_register_ability_with_log(
 			'ewpa/tec-update-event',
 			array(
 				'name'                => __( 'Update Events Calendar event', 'enable-abilities-for-mcp' ),

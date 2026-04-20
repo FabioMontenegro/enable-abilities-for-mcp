@@ -1,0 +1,32 @@
+<?xml version="1.0"?>
+<ruleset name="Enable Abilities for MCP">
+    <description>PHPCS ruleset for Enable Abilities for MCP WordPress plugin.</description>
+
+    <file>.</file>
+    <exclude-pattern>vendor/*</exclude-pattern>
+    <exclude-pattern>node_modules/*</exclude-pattern>
+
+    <arg name="extensions" value="php"/>
+    <arg name="colors"/>
+    <arg value="sp"/>
+
+    <rule ref="WordPress">
+        <!-- Filename convention not enforced (plugin slug differs from class names). -->
+        <exclude name="WordPress.Files.FileName"/>
+    </rule>
+
+    <!--
+        Third-party capabilities from WooCommerce and The Events Calendar.
+        These are registered at runtime by their respective plugins.
+    -->
+    <rule ref="WordPress.WP.Capabilities">
+        <properties>
+            <property name="custom_capabilities" type="array">
+                <element value="edit_products"/>
+                <element value="edit_shop_orders"/>
+                <element value="edit_tribe_events"/>
+                <element value="publish_tribe_events"/>
+            </property>
+        </properties>
+    </rule>
+</ruleset>

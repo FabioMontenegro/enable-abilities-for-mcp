@@ -46,3 +46,7 @@ enable-abilities-for-mcp-alegra-*.md
 
 # Internal planning docs (never ship)
 future-plans.md
+
+# SVN publish credentials & workflow (never ship)
+svn-publish.md
+.svn-credentials

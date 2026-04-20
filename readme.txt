@@ -5,7 +5,7 @@ Tags: mcp, ai, rest-api, content-management, woocommerce
 Requires at least: 6.9
 Tested up to: 6.9
 Requires PHP: 8.0
-Stable tag: 1.9.3
+Stable tag: 2.0.1
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -126,6 +126,26 @@ This plugin registers abilities using the standard `wp_register_ability()` API. 
 
 == Changelog ==
 
+= 2.0.1 =
+* Fix: Activity log DB table now created correctly — `PRIMARY KEY` SQL formatted for dbDelta
+* Fix: `ewpa_log_activity()` is self-healing — auto-creates table on first failed insert, no manual intervention required
+* Fix: Input parameter unified to `status` (was `post_status`) across `ewpa/get-posts`, `ewpa/get-pages`, and `ewpa/get-cpt-items` for consistency with write abilities
+* Fix: Uninstall now cleans up `ewpa_bearer_enabled` and `ewpa_db_version` options (previously leaked on uninstall)
+* Code quality: WPCS auto-fixed 14 issues; short ternary operators and docblock corrections applied manually
+* Code quality: `phpcs.xml` ruleset updated — WooCommerce and The Events Calendar custom capabilities declared
+* Code quality: Zero errors across all core plugin files
+
+= 2.0.0 =
+* New: Activity log — tracks every MCP ability execution per user with timestamp; viewable and clearable from the admin
+* New: Three-tab admin interface: Connection, Activity Log, Abilities — cleaner organization
+* New: Bearer token is now optional with an on/off toggle; existing installs auto-detected and migrated without breaking changes
+* New: Application Passwords configuration section with step-by-step setup guide
+* New: In-browser Base64 credential generator — no terminal required to configure Claude Desktop
+* New: `includes/activity-log.php` — table management, logging helpers, and AJAX clear handler
+* New: File-only upgrade migration via `plugins_loaded` hook — no reactivation needed
+* Changed: All copy buttons use HTTP-safe clipboard fallback (works on non-HTTPS local environments)
+* Updated: Total abilities: 42 (includes new get-page, update-comment added in previous minor versions)
+
 = 1.9.3 =
 * New: Update Comment ability (ewpa/update-comment) — update content, author name, email, or WordPress user of an existing comment
 
@@ -213,6 +233,12 @@ This plugin registers abilities using the standard `wp_register_ability()` API. 
 * Admin settings page with per-ability toggles
 
 == Upgrade Notice ==
+
+= 2.0.1 =
+Fix: activity log now records correctly after file-only updates. Input parameter unified to `status` across get-posts, get-pages, and get-cpt-items. Uninstall cleanup improved.
+
+= 2.0.0 =
+Major update: activity log per user, new three-tab admin interface, Bearer token now optional with toggle, and in-browser credential generator for Application Passwords. No breaking changes — existing Bearer token installs auto-migrated.
 
 = 1.9.3 =
 New: Update Comment ability (ewpa/update-comment). Change content, author, email, or associated WordPress user of any existing comment.

@@ -2,7 +2,7 @@
 /**
  * Plugin Name:       Enable Abilities for MCP
  * Description:       Manage which WordPress Abilities are exposed to MCP servers. Enable or disable each ability individually from the dashboard.
- * Version:           1.9.3
+ * Version:           2.0.1
  * Requires at least: 6.9
  * Requires PHP:      8.0
  * Author:            Fabio Montenegro
@@ -18,7 +18,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'EWPA_VERSION', '1.9.3' );
+define( 'EWPA_VERSION', '2.0.1' );
 define( 'EWPA_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'EWPA_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 define( 'EWPA_OPTION_KEY', 'ewpa_enabled_abilities' );
@@ -39,12 +39,34 @@ add_action(
 );
 
 // Includes.
+require_once EWPA_PLUGIN_DIR . 'includes/activity-log.php';
+require_once EWPA_PLUGIN_DIR . 'includes/auth.php';
 require_once EWPA_PLUGIN_DIR . 'includes/admin.php';
 require_once EWPA_PLUGIN_DIR . 'includes/abilities.php';
-require_once EWPA_PLUGIN_DIR . 'includes/auth.php';
 
 // Activation: set all abilities enabled by default.
 register_activation_hook( __FILE__, 'ewpa_activate' );
+
+// Upgrade: runs once per version to handle file-only updates (no reactivation).
+add_action( 'plugins_loaded', 'ewpa_maybe_upgrade' );
+
+/**
+ * Runs database and option migrations when the plugin version changes.
+ * Handles upgrades where the user replaced files without reactivating.
+ */
+function ewpa_maybe_upgrade(): void {
+	if ( get_option( 'ewpa_db_version' ) === EWPA_VERSION ) {
+		return;
+	}
+
+	ewpa_create_activity_log_table();
+
+	if ( false === get_option( 'ewpa_bearer_enabled' ) && get_option( EWPA_API_KEY_OPTION ) ) {
+		update_option( 'ewpa_bearer_enabled', true );
+	}
+
+	update_option( 'ewpa_db_version', EWPA_VERSION );
+}
 
 /**
  * Plugin activation callback.
@@ -57,6 +79,13 @@ function ewpa_activate() {
 	if ( false === get_option( EWPA_OPTION_KEY ) ) {
 		update_option( EWPA_OPTION_KEY, ewpa_get_all_ability_keys() );
 	}
+
+	// Auto-enable Bearer token for existing installs that already have a key.
+	if ( false === get_option( 'ewpa_bearer_enabled' ) && get_option( EWPA_API_KEY_OPTION ) ) {
+		update_option( 'ewpa_bearer_enabled', true );
+	}
+
+	ewpa_create_activity_log_table();
 }
 
 // Hooks.

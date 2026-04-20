@@ -1,9 +1,9 @@
 <?php
 /**
- * API Key authentication for Enable Abilities for MCP.
+ * Bearer token authentication for Enable Abilities for MCP.
  *
- * Generates and validates API keys to authenticate external MCP clients
- * (e.g. Perplexity) via Bearer token on REST API MCP routes.
+ * Optional single-admin API key via Bearer token on MCP REST routes.
+ * Only active when the ewpa_bearer_enabled option is on.
  *
  * @package EnableAbilitiesForMCP
  */
@@ -21,21 +21,21 @@ if ( ! defined( 'ABSPATH' ) ) {
 function ewpa_generate_api_key( int $user_id ): string {
 	$plain_key = wp_generate_password( 48, false );
 
-	$data = array(
-		'hash'       => hash( 'sha256', $plain_key ),
-		'user_id'    => $user_id,
-		'created_at' => time(),
+	update_option(
+		EWPA_API_KEY_OPTION,
+		array(
+			'hash'       => hash( 'sha256', $plain_key ),
+			'user_id'    => $user_id,
+			'created_at' => time(),
+		),
+		false
 	);
-
-	update_option( EWPA_API_KEY_OPTION, $data, false );
 
 	return $plain_key;
 }
 
 /**
  * Revokes the current API key.
- *
- * @return bool
  */
 function ewpa_revoke_api_key(): bool {
 	return delete_option( EWPA_API_KEY_OPTION );
@@ -54,9 +54,7 @@ function ewpa_validate_api_key( string $plain_key ) {
 		return false;
 	}
 
-	$provided_hash = hash( 'sha256', $plain_key );
-
-	if ( ! hash_equals( $stored['hash'], $provided_hash ) ) {
+	if ( ! hash_equals( $stored['hash'], hash( 'sha256', $plain_key ) ) ) {
 		return false;
 	}
 
@@ -69,12 +67,8 @@ function ewpa_validate_api_key( string $plain_key ) {
 }
 
 /**
- * Retrieves the Authorization header from the request.
- *
- * Checks multiple sources because some server configurations
- * do not pass the header through to PHP directly.
- *
- * @return string The Authorization header value, or empty string.
+ * Retrieves the Authorization header from the request, checking multiple
+ * sources for server-configuration compatibility.
  */
 function ewpa_get_authorization_header(): string {
 	if ( ! empty( $_SERVER['HTTP_AUTHORIZATION'] ) ) {
@@ -129,8 +123,7 @@ function ewpa_authenticate_api_key( $user_id ) {
 		? sanitize_text_field( wp_unslash( $_SERVER['REQUEST_URI'] ) )
 		: '';
 
-	$rest_prefix = rest_get_url_prefix();
-	if ( false === strpos( $request_uri, '/' . $rest_prefix . '/mcp/' ) ) {
+	if ( false === strpos( $request_uri, '/' . rest_get_url_prefix() . '/mcp/' ) ) {
 		return $user_id;
 	}
 
@@ -144,11 +137,20 @@ function ewpa_authenticate_api_key( $user_id ) {
 		return $user_id;
 	}
 
-	$validated_user_id = ewpa_validate_api_key( $token );
-	if ( false === $validated_user_id ) {
+	$validated = ewpa_validate_api_key( $token );
+	if ( false === $validated ) {
 		return $user_id;
 	}
 
-	return $validated_user_id;
+	return $validated;
 }
-add_filter( 'determine_current_user', 'ewpa_authenticate_api_key', 20 );
+
+// Backward compat: if option never saved but a key exists, treat it as enabled.
+$ewpa_bearer_on = get_option( 'ewpa_bearer_enabled' );
+if ( false === $ewpa_bearer_on ) {
+	$ewpa_bearer_on = (bool) get_option( EWPA_API_KEY_OPTION );
+}
+
+if ( $ewpa_bearer_on ) {
+	add_filter( 'determine_current_user', 'ewpa_authenticate_api_key', 20 );
+}
