@@ -401,14 +401,9 @@ function ewpa_register_custom_abilities(): void {
 					$cats = wp_get_post_categories( $post->ID, array( 'fields' => 'names' ) );
 					$tags = wp_get_post_tags( $post->ID, array( 'fields' => 'names' ) );
 
-					$meta_title = get_post_meta( $post->ID, '_yoast_wpseo_title', true );
-					if ( ! $meta_title ) {
-						$meta_title = get_post_meta( $post->ID, 'rank_math_title', true );
-					}
-					$meta_desc = get_post_meta( $post->ID, '_yoast_wpseo_metadesc', true );
-					if ( ! $meta_desc ) {
-						$meta_desc = get_post_meta( $post->ID, 'rank_math_description', true );
-					}
+					$seo_keys   = ewpa_get_seo_meta_keys();
+					$meta_title = get_post_meta( $post->ID, $seo_keys['title'], true );
+					$meta_desc  = get_post_meta( $post->ID, $seo_keys['description'], true );
 
 					return array(
 						'ID'               => $post->ID,
@@ -488,14 +483,9 @@ function ewpa_register_custom_abilities(): void {
 
 					$thumbnail_url = get_the_post_thumbnail_url( $page->ID, 'full' );
 
-					$meta_title = get_post_meta( $page->ID, '_yoast_wpseo_title', true );
-					if ( ! $meta_title ) {
-						$meta_title = get_post_meta( $page->ID, 'rank_math_title', true );
-					}
-					$meta_desc = get_post_meta( $page->ID, '_yoast_wpseo_metadesc', true );
-					if ( ! $meta_desc ) {
-						$meta_desc = get_post_meta( $page->ID, 'rank_math_description', true );
-					}
+					$seo_keys   = ewpa_get_seo_meta_keys();
+					$meta_title = get_post_meta( $page->ID, $seo_keys['title'], true );
+					$meta_desc  = get_post_meta( $page->ID, $seo_keys['description'], true );
 
 					return array(
 						'ID'               => $page->ID,
@@ -1110,13 +1100,12 @@ function ewpa_register_custom_abilities(): void {
 							set_post_thumbnail( $post_id, $img_id );
 						}
 					}
+					$seo_keys = ewpa_get_seo_meta_keys();
 					if ( ! empty( $input['meta_title'] ) ) {
-						update_post_meta( $post_id, '_yoast_wpseo_title', sanitize_text_field( $input['meta_title'] ) );
-						update_post_meta( $post_id, 'rank_math_title', sanitize_text_field( $input['meta_title'] ) );
+						update_post_meta( $post_id, $seo_keys['title'], sanitize_text_field( $input['meta_title'] ) );
 					}
 					if ( ! empty( $input['meta_description'] ) ) {
-						update_post_meta( $post_id, '_yoast_wpseo_metadesc', sanitize_text_field( $input['meta_description'] ) );
-						update_post_meta( $post_id, 'rank_math_description', sanitize_text_field( $input['meta_description'] ) );
+						update_post_meta( $post_id, $seo_keys['description'], sanitize_text_field( $input['meta_description'] ) );
 					}
 
 					return array(
@@ -1252,13 +1241,12 @@ function ewpa_register_custom_abilities(): void {
 							set_post_thumbnail( $post_id, $img_id );
 						}
 					}
+					$seo_keys = ewpa_get_seo_meta_keys();
 					if ( ! empty( $input['meta_title'] ) ) {
-						update_post_meta( $post_id, '_yoast_wpseo_title', sanitize_text_field( $input['meta_title'] ) );
-						update_post_meta( $post_id, 'rank_math_title', sanitize_text_field( $input['meta_title'] ) );
+						update_post_meta( $post_id, $seo_keys['title'], sanitize_text_field( $input['meta_title'] ) );
 					}
 					if ( ! empty( $input['meta_description'] ) ) {
-						update_post_meta( $post_id, '_yoast_wpseo_metadesc', sanitize_text_field( $input['meta_description'] ) );
-						update_post_meta( $post_id, 'rank_math_description', sanitize_text_field( $input['meta_description'] ) );
+						update_post_meta( $post_id, $seo_keys['description'], sanitize_text_field( $input['meta_description'] ) );
 					}
 
 					return array(
@@ -2463,6 +2451,664 @@ function ewpa_register_custom_abilities(): void {
 
 	/*
 	 * ======================================================================
+	 * SECTION SP: SEO — SEOPRESS ABILITIES
+	 * ======================================================================
+	 */
+
+	// ── SP1: Get SEOPress Metadata ──────────────────────────────────────
+	if ( ewpa_is_ability_enabled( 'ewpa/get-seopress' ) ) {
+		ewpa_register_ability_with_log(
+			'ewpa/get-seopress',
+			array(
+				'label'               => __( 'Get SEOPress Metadata', 'enable-abilities-for-mcp' ),
+				'description'         => __( 'Retrieves all SEOPress metadata for a post or page: title, description, focus keyword, robots directives, canonical URL, Open Graph, and Twitter Card.', 'enable-abilities-for-mcp' ),
+				'category'            => 'content-management',
+				'input_schema'        => array(
+					'type'       => 'object',
+					'required'   => array( 'post_id' ),
+					'properties' => array(
+						'post_id' => array(
+							'type'        => 'integer',
+							'description' => 'Post or page ID to query',
+						),
+					),
+				),
+				'output_schema'       => array(
+					'type'       => 'object',
+					'properties' => array(
+						'post_id'             => array( 'type' => 'integer' ),
+						'post_title'          => array( 'type' => 'string' ),
+						'seo_title'           => array( 'type' => 'string' ),
+						'seo_description'     => array( 'type' => 'string' ),
+						'focus_keyword'       => array( 'type' => 'string' ),
+						'canonical_url'       => array( 'type' => 'string' ),
+						'noindex'             => array( 'type' => 'boolean' ),
+						'nofollow'            => array( 'type' => 'boolean' ),
+						'noarchive'           => array( 'type' => 'boolean' ),
+						'noimageindex'        => array( 'type' => 'boolean' ),
+						'nosnippet'           => array( 'type' => 'boolean' ),
+						'og_title'            => array( 'type' => 'string' ),
+						'og_description'      => array( 'type' => 'string' ),
+						'og_image'            => array( 'type' => 'string' ),
+						'twitter_title'       => array( 'type' => 'string' ),
+						'twitter_description' => array( 'type' => 'string' ),
+						'twitter_image'       => array( 'type' => 'string' ),
+					),
+				),
+				'permission_callback' => function () {
+					return current_user_can( 'edit_posts' );
+				},
+				'execute_callback'    => function ( $input ) {
+					$post_id = absint( $input['post_id'] );
+					$post    = get_post( $post_id );
+					if ( ! $post ) {
+						return new WP_Error( 'not_found', 'Post or page not found.' );
+					}
+					if ( ! defined( 'SEOPRESS_VERSION' ) ) {
+						return new WP_Error( 'seopress_inactive', 'SEOPress plugin is not active.' );
+					}
+
+					return array(
+						'post_id'             => $post_id,
+						'post_title'          => $post->post_title,
+						'seo_title'           => ewpa_get_meta_string( $post_id, '_seopress_titles_title' ),
+						'seo_description'     => ewpa_get_meta_string( $post_id, '_seopress_titles_desc' ),
+						'focus_keyword'       => ewpa_get_meta_string( $post_id, '_seopress_analysis_target_kw' ),
+						'canonical_url'       => ewpa_get_meta_string( $post_id, '_seopress_robots_canonical' ),
+						'noindex'             => 'yes' === get_post_meta( $post_id, '_seopress_robots_index', true ),
+						'nofollow'            => 'yes' === get_post_meta( $post_id, '_seopress_robots_follow', true ),
+						'noarchive'           => 'yes' === get_post_meta( $post_id, '_seopress_robots_archive', true ),
+						'noimageindex'        => 'yes' === get_post_meta( $post_id, '_seopress_robots_imageindex', true ),
+						'nosnippet'           => 'yes' === get_post_meta( $post_id, '_seopress_robots_snippet', true ),
+						'og_title'            => ewpa_get_meta_string( $post_id, '_seopress_social_fb_title' ),
+						'og_description'      => ewpa_get_meta_string( $post_id, '_seopress_social_fb_desc' ),
+						'og_image'            => ewpa_get_meta_string( $post_id, '_seopress_social_fb_img' ),
+						'twitter_title'       => ewpa_get_meta_string( $post_id, '_seopress_social_twitter_title' ),
+						'twitter_description' => ewpa_get_meta_string( $post_id, '_seopress_social_twitter_desc' ),
+						'twitter_image'       => ewpa_get_meta_string( $post_id, '_seopress_social_twitter_img' ),
+					);
+				},
+				'meta'                => array(
+					'show_in_rest' => true,
+					'mcp'          => array(
+						'public' => true,
+					),
+				),
+			)
+		);
+	}
+
+	// ── SP2: Update SEOPress Metadata ───────────────────────────────────
+	if ( ewpa_is_ability_enabled( 'ewpa/update-seopress' ) ) {
+		ewpa_register_ability_with_log(
+			'ewpa/update-seopress',
+			array(
+				'label'               => __( 'Update SEOPress Metadata', 'enable-abilities-for-mcp' ),
+				'description'         => __( 'Updates SEOPress metadata on a post or page (_seopress_titles_title, _seopress_titles_desc, etc). Use this to set or change the SEO title, meta description, focus keyword, canonical URL, robots directives, and Open Graph / Twitter Card fields. Only the provided fields are modified.', 'enable-abilities-for-mcp' ),
+				'category'            => 'content-management',
+				'input_schema'        => array(
+					'type'       => 'object',
+					'required'   => array( 'post_id' ),
+					'properties' => array(
+						'post_id'             => array(
+							'type'        => 'integer',
+							'description' => 'Post or page ID to update (required)',
+						),
+						'seo_title'           => array(
+							'type'        => 'string',
+							'description' => 'SEO title. Stored in _seopress_titles_title (optional)',
+						),
+						'seo_description'     => array(
+							'type'        => 'string',
+							'description' => 'SEO meta description. Stored in _seopress_titles_desc (optional)',
+						),
+						'focus_keyword'       => array(
+							'type'        => 'string',
+							'description' => 'Focus keyword. Stored in _seopress_analysis_target_kw (optional)',
+						),
+						'canonical_url'       => array(
+							'type'        => 'string',
+							'description' => 'Custom canonical URL. Stored in _seopress_robots_canonical (optional)',
+						),
+						'noindex'             => array(
+							'type'        => 'boolean',
+							'description' => 'Set noindex robots directive (true/false) (optional)',
+						),
+						'nofollow'            => array(
+							'type'        => 'boolean',
+							'description' => 'Set nofollow robots directive (true/false) (optional)',
+						),
+						'noarchive'           => array(
+							'type'        => 'boolean',
+							'description' => 'Set noarchive robots directive (true/false) (optional)',
+						),
+						'noimageindex'        => array(
+							'type'        => 'boolean',
+							'description' => 'Set noimageindex robots directive (true/false) (optional)',
+						),
+						'nosnippet'           => array(
+							'type'        => 'boolean',
+							'description' => 'Set nosnippet robots directive (true/false) (optional)',
+						),
+						'og_title'            => array(
+							'type'        => 'string',
+							'description' => 'Open Graph / Facebook title (optional)',
+						),
+						'og_description'      => array(
+							'type'        => 'string',
+							'description' => 'Open Graph / Facebook description (optional)',
+						),
+						'og_image'            => array(
+							'type'        => 'string',
+							'description' => 'Open Graph / Facebook image URL (optional)',
+						),
+						'twitter_title'       => array(
+							'type'        => 'string',
+							'description' => 'Twitter Card title (optional)',
+						),
+						'twitter_description' => array(
+							'type'        => 'string',
+							'description' => 'Twitter Card description (optional)',
+						),
+						'twitter_image'       => array(
+							'type'        => 'string',
+							'description' => 'Twitter Card image URL (optional)',
+						),
+					),
+				),
+				'output_schema'       => array(
+					'type'       => 'object',
+					'properties' => array(
+						'post_id'        => array( 'type' => 'integer' ),
+						'updated_fields' => array(
+							'type'  => 'array',
+							'items' => array( 'type' => 'string' ),
+						),
+						'message'        => array( 'type' => 'string' ),
+					),
+				),
+				'permission_callback' => function () {
+					return current_user_can( 'edit_posts' );
+				},
+				'execute_callback'    => function ( $input ) {
+					$post_id = absint( $input['post_id'] );
+					$post    = get_post( $post_id );
+					if ( ! $post ) {
+						return new WP_Error( 'not_found', 'Post or page not found.' );
+					}
+					if ( ! defined( 'SEOPRESS_VERSION' ) ) {
+						return new WP_Error( 'seopress_inactive', 'SEOPress plugin is not active.' );
+					}
+					if ( ! current_user_can( 'edit_post', $post_id ) ) {
+						return new WP_Error( 'forbidden', 'You do not have permission to edit this post.' );
+					}
+
+					$updated = array();
+
+					// ── General SEO ─────────────────────────────────────
+					if ( isset( $input['seo_title'] ) ) {
+						update_post_meta( $post_id, '_seopress_titles_title', sanitize_text_field( $input['seo_title'] ) );
+						$updated[] = 'seo_title';
+					}
+
+					if ( isset( $input['seo_description'] ) ) {
+						update_post_meta( $post_id, '_seopress_titles_desc', sanitize_text_field( $input['seo_description'] ) );
+						$updated[] = 'seo_description';
+					}
+
+					if ( isset( $input['focus_keyword'] ) ) {
+						update_post_meta( $post_id, '_seopress_analysis_target_kw', sanitize_text_field( $input['focus_keyword'] ) );
+						$updated[] = 'focus_keyword';
+					}
+
+					if ( isset( $input['canonical_url'] ) ) {
+						update_post_meta( $post_id, '_seopress_robots_canonical', esc_url_raw( $input['canonical_url'] ) );
+						$updated[] = 'canonical_url';
+					}
+
+					// ── Robots ────────────────────────────────────────────
+					if ( isset( $input['noindex'] ) ) {
+						update_post_meta( $post_id, '_seopress_robots_index', $input['noindex'] ? 'yes' : '' );
+						$updated[] = 'noindex';
+					}
+
+					if ( isset( $input['nofollow'] ) ) {
+						update_post_meta( $post_id, '_seopress_robots_follow', $input['nofollow'] ? 'yes' : '' );
+						$updated[] = 'nofollow';
+					}
+
+					if ( isset( $input['noarchive'] ) ) {
+						update_post_meta( $post_id, '_seopress_robots_archive', $input['noarchive'] ? 'yes' : '' );
+						$updated[] = 'noarchive';
+					}
+
+					if ( isset( $input['noimageindex'] ) ) {
+						update_post_meta( $post_id, '_seopress_robots_imageindex', $input['noimageindex'] ? 'yes' : '' );
+						$updated[] = 'noimageindex';
+					}
+
+					if ( isset( $input['nosnippet'] ) ) {
+						update_post_meta( $post_id, '_seopress_robots_snippet', $input['nosnippet'] ? 'yes' : '' );
+						$updated[] = 'nosnippet';
+					}
+
+					// ── Open Graph / Facebook ────────────────────────────
+					if ( isset( $input['og_title'] ) ) {
+						update_post_meta( $post_id, '_seopress_social_fb_title', sanitize_text_field( $input['og_title'] ) );
+						$updated[] = 'og_title';
+					}
+
+					if ( isset( $input['og_description'] ) ) {
+						update_post_meta( $post_id, '_seopress_social_fb_desc', sanitize_text_field( $input['og_description'] ) );
+						$updated[] = 'og_description';
+					}
+
+					if ( isset( $input['og_image'] ) ) {
+						update_post_meta( $post_id, '_seopress_social_fb_img', esc_url_raw( $input['og_image'] ) );
+						$updated[] = 'og_image';
+					}
+
+					// ── Twitter Card ─────────────────────────────────────
+					if ( isset( $input['twitter_title'] ) ) {
+						update_post_meta( $post_id, '_seopress_social_twitter_title', sanitize_text_field( $input['twitter_title'] ) );
+						$updated[] = 'twitter_title';
+					}
+
+					if ( isset( $input['twitter_description'] ) ) {
+						update_post_meta( $post_id, '_seopress_social_twitter_desc', sanitize_text_field( $input['twitter_description'] ) );
+						$updated[] = 'twitter_description';
+					}
+
+					if ( isset( $input['twitter_image'] ) ) {
+						update_post_meta( $post_id, '_seopress_social_twitter_img', esc_url_raw( $input['twitter_image'] ) );
+						$updated[] = 'twitter_image';
+					}
+
+					if ( empty( $updated ) ) {
+						return new WP_Error( 'no_fields', 'No fields were provided for update.' );
+					}
+
+					$count = count( $updated );
+					return array(
+						'post_id'        => $post_id,
+						'updated_fields' => $updated,
+						'message'        => "{$count} SEOPress field(s) updated successfully.",
+					);
+				},
+				'meta'                => array(
+					'show_in_rest' => true,
+					'mcp'          => array(
+						'public' => true,
+					),
+				),
+			)
+		);
+	}
+
+	/*
+	 * ======================================================================
+	 * SECTION Y: SEO — YOAST SEO ABILITIES
+	 * ======================================================================
+	 */
+
+	// ── Y1: Get Yoast SEO Metadata ──────────────────────────────────────
+	if ( ewpa_is_ability_enabled( 'ewpa/yoast-get-seo' ) ) {
+		ewpa_register_ability_with_log(
+			'ewpa/yoast-get-seo',
+			array(
+				'label'               => __( 'Get Yoast SEO Metadata', 'enable-abilities-for-mcp' ),
+				'description'         => __( 'Retrieves all Yoast SEO metadata for a post or page: title, description, focus keyphrase, canonical URL, robots (noindex/nofollow/advanced), Open Graph, and Twitter Card.', 'enable-abilities-for-mcp' ),
+				'category'            => 'content-management',
+				'input_schema'        => array(
+					'type'       => 'object',
+					'required'   => array( 'post_id' ),
+					'properties' => array(
+						'post_id' => array(
+							'type'        => 'integer',
+							'description' => 'Post or page ID to query',
+						),
+					),
+				),
+				'output_schema'       => array(
+					'type'       => 'object',
+					'properties' => array(
+						'post_id'             => array( 'type' => 'integer' ),
+						'post_title'          => array( 'type' => 'string' ),
+						'seo_title'           => array( 'type' => 'string' ),
+						'seo_description'     => array( 'type' => 'string' ),
+						'focus_keyphrase'     => array( 'type' => 'string' ),
+						'canonical_url'       => array( 'type' => 'string' ),
+						'noindex'             => array( 'type' => 'boolean' ),
+						'nofollow'            => array( 'type' => 'boolean' ),
+						'advanced_robots'     => array( 'type' => 'string' ),
+						'og_title'            => array( 'type' => 'string' ),
+						'og_description'      => array( 'type' => 'string' ),
+						'og_image'            => array( 'type' => 'string' ),
+						'twitter_title'       => array( 'type' => 'string' ),
+						'twitter_description' => array( 'type' => 'string' ),
+						'twitter_image'       => array( 'type' => 'string' ),
+					),
+				),
+				'permission_callback' => function () {
+					return current_user_can( 'edit_posts' );
+				},
+				'execute_callback'    => function ( $input ) {
+					$post_id = absint( $input['post_id'] );
+					$post    = get_post( $post_id );
+					if ( ! $post ) {
+						return new WP_Error( 'not_found', 'Post or page not found.' );
+					}
+					if ( ! defined( 'WPSEO_VERSION' ) ) {
+						return new WP_Error( 'yoast_inactive', 'Yoast SEO plugin is not active.' );
+					}
+
+					return array(
+						'post_id'             => $post_id,
+						'post_title'          => $post->post_title,
+						'seo_title'           => ewpa_get_meta_string( $post_id, '_yoast_wpseo_title' ),
+						'seo_description'     => ewpa_get_meta_string( $post_id, '_yoast_wpseo_metadesc' ),
+						'focus_keyphrase'     => ewpa_get_meta_string( $post_id, '_yoast_wpseo_focuskw' ),
+						'canonical_url'       => ewpa_get_meta_string( $post_id, '_yoast_wpseo_canonical' ),
+						'noindex'             => '1' === get_post_meta( $post_id, '_yoast_wpseo_meta-robots-noindex', true ),
+						'nofollow'            => '1' === get_post_meta( $post_id, '_yoast_wpseo_meta-robots-nofollow', true ),
+						'advanced_robots'     => ewpa_get_meta_string( $post_id, '_yoast_wpseo_meta-robots-adv' ),
+						'og_title'            => ewpa_get_meta_string( $post_id, '_yoast_wpseo_opengraph-title' ),
+						'og_description'      => ewpa_get_meta_string( $post_id, '_yoast_wpseo_opengraph-description' ),
+						'og_image'            => ewpa_get_meta_string( $post_id, '_yoast_wpseo_opengraph-image' ),
+						'twitter_title'       => ewpa_get_meta_string( $post_id, '_yoast_wpseo_twitter-title' ),
+						'twitter_description' => ewpa_get_meta_string( $post_id, '_yoast_wpseo_twitter-description' ),
+						'twitter_image'       => ewpa_get_meta_string( $post_id, '_yoast_wpseo_twitter-image' ),
+					);
+				},
+				'meta'                => array(
+					'show_in_rest' => true,
+					'mcp'          => array(
+						'public' => true,
+					),
+				),
+			)
+		);
+	}
+
+	// ── Y2: Update Yoast SEO Metadata ───────────────────────────────────
+	if ( ewpa_is_ability_enabled( 'ewpa/yoast-update-seo' ) ) {
+		ewpa_register_ability_with_log(
+			'ewpa/yoast-update-seo',
+			array(
+				'label'               => __( 'Update Yoast SEO Metadata', 'enable-abilities-for-mcp' ),
+				'description'         => __( 'Updates Yoast SEO metadata on a post or page (_yoast_wpseo_title, _yoast_wpseo_metadesc, etc). Use this to set or change the SEO title, meta description, focus keyphrase, canonical URL, robots, and Open Graph / Twitter Card fields. Only the provided fields are modified.', 'enable-abilities-for-mcp' ),
+				'category'            => 'content-management',
+				'input_schema'        => array(
+					'type'       => 'object',
+					'required'   => array( 'post_id' ),
+					'properties' => array(
+						'post_id'             => array(
+							'type'        => 'integer',
+							'description' => 'Post or page ID to update (required)',
+						),
+						'seo_title'           => array(
+							'type'        => 'string',
+							'description' => 'SEO title. Stored in _yoast_wpseo_title (optional)',
+						),
+						'seo_description'     => array(
+							'type'        => 'string',
+							'description' => 'SEO meta description. Stored in _yoast_wpseo_metadesc (optional)',
+						),
+						'focus_keyphrase'     => array(
+							'type'        => 'string',
+							'description' => 'Focus keyphrase. Stored in _yoast_wpseo_focuskw (optional)',
+						),
+						'canonical_url'       => array(
+							'type'        => 'string',
+							'description' => 'Custom canonical URL. Stored in _yoast_wpseo_canonical (optional)',
+						),
+						'noindex'             => array(
+							'type'        => 'boolean',
+							'description' => 'Set noindex robots directive (true/false) (optional)',
+						),
+						'nofollow'            => array(
+							'type'        => 'boolean',
+							'description' => 'Set nofollow robots directive (true/false) (optional)',
+						),
+						'advanced_robots'     => array(
+							'type'        => 'string',
+							'description' => 'Advanced robots directives as comma-separated string, e.g. "noodp,noimageindex" (optional)',
+						),
+						'og_title'            => array(
+							'type'        => 'string',
+							'description' => 'Open Graph / Facebook title (optional)',
+						),
+						'og_description'      => array(
+							'type'        => 'string',
+							'description' => 'Open Graph / Facebook description (optional)',
+						),
+						'og_image'            => array(
+							'type'        => 'string',
+							'description' => 'Open Graph / Facebook image URL (optional)',
+						),
+						'twitter_title'       => array(
+							'type'        => 'string',
+							'description' => 'Twitter Card title (optional)',
+						),
+						'twitter_description' => array(
+							'type'        => 'string',
+							'description' => 'Twitter Card description (optional)',
+						),
+						'twitter_image'       => array(
+							'type'        => 'string',
+							'description' => 'Twitter Card image URL (optional)',
+						),
+					),
+				),
+				'output_schema'       => array(
+					'type'       => 'object',
+					'properties' => array(
+						'post_id'        => array( 'type' => 'integer' ),
+						'updated_fields' => array(
+							'type'  => 'array',
+							'items' => array( 'type' => 'string' ),
+						),
+						'message'        => array( 'type' => 'string' ),
+					),
+				),
+				'permission_callback' => function () {
+					return current_user_can( 'edit_posts' );
+				},
+				'execute_callback'    => function ( $input ) {
+					$post_id = absint( $input['post_id'] );
+					$post    = get_post( $post_id );
+					if ( ! $post ) {
+						return new WP_Error( 'not_found', 'Post or page not found.' );
+					}
+					if ( ! defined( 'WPSEO_VERSION' ) ) {
+						return new WP_Error( 'yoast_inactive', 'Yoast SEO plugin is not active.' );
+					}
+					if ( ! current_user_can( 'edit_post', $post_id ) ) {
+						return new WP_Error( 'forbidden', 'You do not have permission to edit this post.' );
+					}
+
+					$updated = array();
+
+					// ── General SEO ─────────────────────────────────────
+					if ( isset( $input['seo_title'] ) ) {
+						update_post_meta( $post_id, '_yoast_wpseo_title', sanitize_text_field( $input['seo_title'] ) );
+						$updated[] = 'seo_title';
+					}
+
+					if ( isset( $input['seo_description'] ) ) {
+						update_post_meta( $post_id, '_yoast_wpseo_metadesc', sanitize_text_field( $input['seo_description'] ) );
+						$updated[] = 'seo_description';
+					}
+
+					if ( isset( $input['focus_keyphrase'] ) ) {
+						update_post_meta( $post_id, '_yoast_wpseo_focuskw', sanitize_text_field( $input['focus_keyphrase'] ) );
+						$updated[] = 'focus_keyphrase';
+					}
+
+					if ( isset( $input['canonical_url'] ) ) {
+						update_post_meta( $post_id, '_yoast_wpseo_canonical', esc_url_raw( $input['canonical_url'] ) );
+						$updated[] = 'canonical_url';
+					}
+
+					// ── Robots ────────────────────────────────────────────
+					if ( isset( $input['noindex'] ) ) {
+						update_post_meta( $post_id, '_yoast_wpseo_meta-robots-noindex', $input['noindex'] ? '1' : '0' );
+						$updated[] = 'noindex';
+					}
+
+					if ( isset( $input['nofollow'] ) ) {
+						update_post_meta( $post_id, '_yoast_wpseo_meta-robots-nofollow', $input['nofollow'] ? '1' : '0' );
+						$updated[] = 'nofollow';
+					}
+
+					if ( isset( $input['advanced_robots'] ) ) {
+						update_post_meta( $post_id, '_yoast_wpseo_meta-robots-adv', sanitize_text_field( $input['advanced_robots'] ) );
+						$updated[] = 'advanced_robots';
+					}
+
+					// ── Open Graph / Facebook ────────────────────────────
+					if ( isset( $input['og_title'] ) ) {
+						update_post_meta( $post_id, '_yoast_wpseo_opengraph-title', sanitize_text_field( $input['og_title'] ) );
+						$updated[] = 'og_title';
+					}
+
+					if ( isset( $input['og_description'] ) ) {
+						update_post_meta( $post_id, '_yoast_wpseo_opengraph-description', sanitize_text_field( $input['og_description'] ) );
+						$updated[] = 'og_description';
+					}
+
+					if ( isset( $input['og_image'] ) ) {
+						update_post_meta( $post_id, '_yoast_wpseo_opengraph-image', esc_url_raw( $input['og_image'] ) );
+						$updated[] = 'og_image';
+					}
+
+					// ── Twitter Card ─────────────────────────────────────
+					if ( isset( $input['twitter_title'] ) ) {
+						update_post_meta( $post_id, '_yoast_wpseo_twitter-title', sanitize_text_field( $input['twitter_title'] ) );
+						$updated[] = 'twitter_title';
+					}
+
+					if ( isset( $input['twitter_description'] ) ) {
+						update_post_meta( $post_id, '_yoast_wpseo_twitter-description', sanitize_text_field( $input['twitter_description'] ) );
+						$updated[] = 'twitter_description';
+					}
+
+					if ( isset( $input['twitter_image'] ) ) {
+						update_post_meta( $post_id, '_yoast_wpseo_twitter-image', esc_url_raw( $input['twitter_image'] ) );
+						$updated[] = 'twitter_image';
+					}
+
+					if ( empty( $updated ) ) {
+						return new WP_Error( 'no_fields', 'No fields were provided for update.' );
+					}
+
+					$count = count( $updated );
+					return array(
+						'post_id'        => $post_id,
+						'updated_fields' => $updated,
+						'message'        => "{$count} Yoast SEO field(s) updated successfully.",
+					);
+				},
+				'meta'                => array(
+					'show_in_rest' => true,
+					'mcp'          => array(
+						'public' => true,
+					),
+				),
+			)
+		);
+	}
+
+	// ── Y3: Get Yoast Sitemap Index ─────────────────────────────────────
+	if ( ewpa_is_ability_enabled( 'ewpa/yoast-get-sitemap-index' ) ) {
+		ewpa_register_ability_with_log(
+			'ewpa/yoast-get-sitemap-index',
+			array(
+				'label'               => __( 'Get Yoast Sitemap Index', 'enable-abilities-for-mcp' ),
+				'description'         => __( 'Fetches and parses the Yoast SEO sitemap index for this site, returning the list of all sitemap URLs and their last modification date.', 'enable-abilities-for-mcp' ),
+				'category'            => 'content-management',
+				'input_schema'        => array(
+					'type'       => 'object',
+					'properties' => array(),
+				),
+				'output_schema'       => array(
+					'type'       => 'object',
+					'properties' => array(
+						'sitemap_index_url' => array( 'type' => 'string' ),
+						'sitemaps'          => array(
+							'type'  => 'array',
+							'items' => array(
+								'type'       => 'object',
+								'properties' => array(
+									'loc'     => array( 'type' => 'string' ),
+									'lastmod' => array( 'type' => 'string' ),
+								),
+							),
+						),
+						'count'             => array( 'type' => 'integer' ),
+					),
+				),
+				'permission_callback' => function () {
+					return current_user_can( 'edit_posts' );
+				},
+				'execute_callback'    => function () {
+					if ( ! defined( 'WPSEO_VERSION' ) ) {
+						return new WP_Error( 'yoast_inactive', 'Yoast SEO plugin is not active.' );
+					}
+
+					$sitemap_url = home_url( '/sitemap_index.xml' );
+					$response    = wp_remote_get(
+						$sitemap_url,
+						array(
+							'timeout'    => 15,
+							'user-agent' => 'WordPress/' . get_bloginfo( 'version' ) . '; ' . home_url(),
+						)
+					);
+
+					if ( is_wp_error( $response ) ) {
+						return new WP_Error( 'fetch_failed', 'Could not fetch sitemap index: ' . $response->get_error_message() );
+					}
+
+					$status = wp_remote_retrieve_response_code( $response );
+					if ( 200 !== (int) $status ) {
+						return new WP_Error( 'fetch_failed', "Sitemap index returned HTTP {$status}." );
+					}
+
+					$body = wp_remote_retrieve_body( $response );
+					libxml_use_internal_errors( true );
+					$xml = simplexml_load_string( $body );
+					libxml_clear_errors();
+
+					if ( false === $xml ) {
+						return new WP_Error( 'parse_failed', 'Could not parse sitemap index XML.' );
+					}
+
+					$sitemaps = array();
+					foreach ( $xml->sitemap as $sitemap ) {
+						$sitemaps[] = array(
+							'loc'     => (string) $sitemap->loc,
+							'lastmod' => (string) $sitemap->lastmod,
+						);
+					}
+
+					return array(
+						'sitemap_index_url' => $sitemap_url,
+						'sitemaps'          => $sitemaps,
+						'count'             => count( $sitemaps ),
+					);
+				},
+				'meta'                => array(
+					'show_in_rest' => true,
+					'mcp'          => array(
+						'public' => true,
+					),
+				),
+			)
+		);
+	}
+
+	/*
+	 * ======================================================================
 	 * SECTION C: UTILITY ABILITIES
 	 * ======================================================================
 	 */
@@ -2623,6 +3269,91 @@ function ewpa_register_custom_abilities(): void {
 						'users_total'       => (int) count_users()['total_users'],
 						'media_total'       => (int) $media_counts->inherit,
 						'custom_post_types' => $custom_post_types,
+					);
+				},
+				'meta'                => array(
+					'show_in_rest' => true,
+					'mcp'          => array(
+						'public' => true,
+					),
+				),
+			)
+		);
+	}
+
+	// ── C3: Update Post Meta ───────────────────────────────────────────
+	if ( ewpa_is_ability_enabled( 'ewpa/update-post-meta' ) ) {
+		ewpa_register_ability_with_log(
+			'ewpa/update-post-meta',
+			array(
+				'label'               => __( 'Update Post Meta', 'enable-abilities-for-mcp' ),
+				'description'         => __( 'Writes any post meta field by exact key. Use this when you know the exact meta key required by a specific SEO plugin or custom field (e.g. _genesis_title for The SEO Framework, _seopress_titles_title for SEOPress). Requires edit_post capability on the target post.', 'enable-abilities-for-mcp' ),
+				'category'            => 'content-management',
+				'input_schema'        => array(
+					'type'       => 'object',
+					'properties' => array(
+						'post_id'    => array(
+							'type'        => 'integer',
+							'description' => 'ID of the post or page to update.',
+						),
+						'meta_key'   => array(
+							'type'        => 'string',
+							'description' => 'Exact meta key to write (e.g. _genesis_title, _seopress_titles_title, _aioseo_title).',
+						),
+						'meta_value' => array(
+							'type'        => 'string',
+							'description' => 'Value to store. Always stored as a string.',
+						),
+					),
+					'required'   => array( 'post_id', 'meta_key', 'meta_value' ),
+				),
+				'output_schema'       => array(
+					'type'       => 'object',
+					'properties' => array(
+						'post_id'    => array( 'type' => 'integer' ),
+						'meta_key'   => array( 'type' => 'string' ),
+						'meta_value' => array( 'type' => 'string' ),
+						'message'    => array( 'type' => 'string' ),
+					),
+				),
+				'permission_callback' => function ( $input ) {
+					$post_id = absint( $input['post_id'] ?? 0 );
+					return $post_id && current_user_can( 'edit_post', $post_id );
+				},
+				'execute_callback'    => function ( $input ) {
+					$post_id    = absint( $input['post_id'] );
+					$meta_key   = sanitize_text_field( $input['meta_key'] );
+					$meta_value = sanitize_text_field( $input['meta_value'] );
+
+					if ( ! get_post( $post_id ) ) {
+						return new WP_Error( 'not_found', 'Post not found.' );
+					}
+
+					$blocked = apply_filters(
+						'ewpa_blocked_meta_keys',
+						array(
+							'_edit_lock',
+							'_edit_last',
+							'_wp_old_slug',
+							'_wp_old_date',
+							'_pingme',
+							'_encloseme',
+							'_wp_trash_meta_status',
+							'_wp_trash_meta_time',
+						)
+					);
+
+					if ( in_array( $meta_key, $blocked, true ) ) {
+						return new WP_Error( 'blocked_key', 'This meta key is protected and cannot be written via this ability.' );
+					}
+
+					update_post_meta( $post_id, $meta_key, $meta_value );
+
+					return array(
+						'post_id'    => $post_id,
+						'meta_key'   => $meta_key,
+						'meta_value' => $meta_value,
+						'message'    => 'Meta field updated successfully.',
 					);
 				},
 				'meta'                => array(

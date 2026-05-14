@@ -5,7 +5,7 @@ Tags: mcp, ai, rest-api, content-management, woocommerce
 Requires at least: 6.9
 Tested up to: 6.9
 Requires PHP: 8.0
-Stable tag: 2.0.2
+Stable tag: 2.0.3
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -19,7 +19,7 @@ WordPress 6.9 introduced the Abilities API, allowing external tools to discover 
 
 = Features =
 
-* **42 abilities** organized in 8 categories: Core, Read, Write, SEO, Utility, Custom Post Types, WooCommerce, and The Events Calendar
+* **48 abilities** organized in 10 categories: Core, Read, Write, SEO (Rank Math), SEO (SEOPress), SEO (Yoast), Utility, Custom Post Types, WooCommerce, and The Events Calendar
 * **WooCommerce integration** — dedicated abilities to manage products, orders, and customers using the native WooCommerce API (HPOS-compatible, formally declared)
 * **The Events Calendar integration** — list, get, create, and update events with venue, organizer, and date filters
 * **Admin dashboard** with toggle switches for each ability
@@ -49,6 +49,17 @@ WordPress 6.9 introduced the Abilities API, allowing external tools to discover 
 
 * Get full Rank Math metadata for any post/page (title, description, keywords, robots, Open Graph, SEO score)
 * Update Rank Math metadata: SEO title, description, focus keyword, canonical URL, robots, Open Graph, primary category, pillar content
+
+**SEO — SEOPress:**
+
+* Get full SEOPress metadata for any post/page (title, description, focus keyword, robots, canonical, Open Graph, Twitter Card)
+* Update SEOPress metadata: SEO title, description, focus keyword, canonical URL, robots directives, Open Graph, Twitter Card
+
+**SEO — Yoast SEO:**
+
+* Get full Yoast SEO metadata for any post/page (title, description, focus keyphrase, canonical, robots, Open Graph, Twitter Card)
+* Update Yoast SEO metadata: SEO title, description, focus keyphrase, canonical URL, robots (noindex, nofollow, advanced), Open Graph, Twitter Card
+* Get Yoast sitemap index — fetch and parse the sitemap index, returning all registered sitemap URLs with last modification date
 
 **Custom Post Types:**
 
@@ -80,6 +91,7 @@ WordPress 6.9 introduced the Abilities API, allowing external tools to discover 
 
 * Search and replace text in post content
 * Site statistics overview (includes custom post type counts)
+* Update any post meta field by exact key (with protected internal key blocklist)
 
 = Requirements =
 
@@ -125,6 +137,16 @@ This plugin registers abilities using the standard `wp_register_ability()` API. 
 1. Admin settings page showing all abilities organized by category with toggle switches.
 
 == Changelog ==
+
+= 2.0.3 =
+* New: SEOPress section — `ewpa/get-seopress` reads SEO title, description, focus keyword, canonical URL, robots (noindex/nofollow/noarchive/noimageindex/nosnippet), Open Graph, and Twitter Card for any post or page
+* New: SEOPress section — `ewpa/update-seopress` updates any combination of those fields; only provided fields are modified
+* New: Yoast SEO section — `ewpa/yoast-get-seo` reads SEO title, description, focus keyphrase, canonical URL, robots (noindex/nofollow/advanced), Open Graph, and Twitter Card
+* New: Yoast SEO section — `ewpa/yoast-update-seo` updates any combination of those fields; only provided fields are modified
+* New: Yoast SEO section — `ewpa/yoast-get-sitemap-index` fetches and parses the Yoast sitemap index, returning all registered sitemap URLs with last modification dates
+* New: `ewpa/update-post-meta` utility ability — writes any post meta field by exact key; useful for SEO plugins or custom fields not covered by dedicated sections; protected against internal WP keys via blocklist (filterable with `ewpa_blocked_meta_keys`)
+* Improved: SEO meta in `get-post`, `get-page`, `create-post`, `update-post`, `create-page`, and `update-page` now auto-detects the active SEO plugin (Rank Math, Yoast SEO, The SEO Framework, SEOPress, AIOSEO) instead of writing to both Yoast and Rank Math keys simultaneously
+* Updated: Total abilities: 48 in 10 categories
 
 = 2.0.2 =
 * Fix: Re-release to ensure all users receive the corrected admin CSS and JavaScript — sites that auto-updated to 2.0.1 before the tab and JS fixes were in place will now receive the correct assets
@@ -240,6 +262,9 @@ This plugin registers abilities using the standard `wp_register_ability()` API. 
 * Admin settings page with per-ability toggles
 
 == Upgrade Notice ==
+
+= 2.0.3 =
+New: SEOPress section (get + update), Yoast SEO section (get + update + sitemap index), Update Post Meta utility ability, and smart SEO plugin auto-detection in get/create/update post abilities. 48 abilities total.
 
 = 2.0.2 =
 Re-release of 2.0.1 fixes. If your admin tabs still appear as plain buttons after updating to 2.0.1, update to 2.0.2 and purge your Cloudflare or CDN cache.

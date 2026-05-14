@@ -2,7 +2,7 @@
 /**
  * Plugin Name:       Enable Abilities for MCP
  * Description:       Manage which WordPress Abilities are exposed to MCP servers. Enable or disable each ability individually from the dashboard.
- * Version:           2.0.2
+ * Version:           2.0.3
  * Requires at least: 6.9
  * Requires PHP:      8.0
  * Author:            Fabio Montenegro
@@ -358,6 +358,42 @@ function ewpa_get_abilities_registry() {
 				),
 			),
 		),
+		'seopress'    => array(
+			'section_label'  => __( 'SEO — SEOPress', 'enable-abilities-for-mcp' ),
+			'section_desc'   => __( 'Query and update SEOPress metadata on posts and pages.', 'enable-abilities-for-mcp' ),
+			'section_icon'   => 'dashicons-search',
+			'section_notice' => 'ewpa_section_notice_seopress',
+			'abilities'      => array(
+				'ewpa/get-seopress'    => array(
+					'label' => __( 'Get SEOPress Metadata', 'enable-abilities-for-mcp' ),
+					'desc'  => __( 'Get SEOPress metadata for a post or page: title, description, focus keyword, robots, canonical, Open Graph, and Twitter Card.', 'enable-abilities-for-mcp' ),
+				),
+				'ewpa/update-seopress' => array(
+					'label' => __( 'Update SEOPress Metadata', 'enable-abilities-for-mcp' ),
+					'desc'  => __( 'Update SEOPress SEO title, description, focus keyword, canonical URL, robots directives, and Open Graph / Twitter Card fields.', 'enable-abilities-for-mcp' ),
+				),
+			),
+		),
+		'yoast'       => array(
+			'section_label'  => __( 'SEO — Yoast SEO', 'enable-abilities-for-mcp' ),
+			'section_desc'   => __( 'Query and update Yoast SEO metadata on posts and pages.', 'enable-abilities-for-mcp' ),
+			'section_icon'   => 'dashicons-search',
+			'section_notice' => 'ewpa_section_notice_yoast',
+			'abilities'      => array(
+				'ewpa/yoast-get-seo'           => array(
+					'label' => __( 'Get Yoast SEO Metadata', 'enable-abilities-for-mcp' ),
+					'desc'  => __( 'Get Yoast SEO metadata for a post or page: title, description, focus keyphrase, canonical, robots, Open Graph, and Twitter Card.', 'enable-abilities-for-mcp' ),
+				),
+				'ewpa/yoast-update-seo'        => array(
+					'label' => __( 'Update Yoast SEO Metadata', 'enable-abilities-for-mcp' ),
+					'desc'  => __( 'Update Yoast SEO title, description, focus keyphrase, canonical URL, robots, and Open Graph / Twitter Card fields.', 'enable-abilities-for-mcp' ),
+				),
+				'ewpa/yoast-get-sitemap-index' => array(
+					'label' => __( 'Get Yoast Sitemap Index', 'enable-abilities-for-mcp' ),
+					'desc'  => __( 'Fetch and parse the Yoast SEO sitemap index, returning the list of all sitemap URLs registered on the site.', 'enable-abilities-for-mcp' ),
+				),
+			),
+		),
 		'utility'     => array(
 			'section_label' => __( 'Utility', 'enable-abilities-for-mcp' ),
 			'section_desc'  => __( 'Auxiliary tools that complement the workflow.', 'enable-abilities-for-mcp' ),
@@ -367,9 +403,13 @@ function ewpa_get_abilities_registry() {
 					'label' => __( 'Search and Replace', 'enable-abilities-for-mcp' ),
 					'desc'  => __( 'Search for text in a post content and replace it with another.', 'enable-abilities-for-mcp' ),
 				),
-				'ewpa/site-stats'     => array(
+				'ewpa/site-stats'        => array(
 					'label' => __( 'Site Statistics', 'enable-abilities-for-mcp' ),
 					'desc'  => __( 'Site summary: total posts, pages, categories, tags, comments, and users.', 'enable-abilities-for-mcp' ),
+				),
+				'ewpa/update-post-meta'  => array(
+					'label' => __( 'Update Post Meta', 'enable-abilities-for-mcp' ),
+					'desc'  => __( 'Write any post meta field by exact key. Requires edit_post capability on the target post.', 'enable-abilities-for-mcp' ),
 				),
 			),
 		),
@@ -511,6 +551,57 @@ function ewpa_is_ability_enabled( $ability_key ) {
 
 /*
  * ==========================================================================
+ * SEO PLUGIN DETECTION
+ * ==========================================================================
+ */
+
+/**
+ * Returns the post meta keys for SEO title and description based on the active SEO plugin.
+ *
+ * Detects Rank Math, Yoast SEO, The SEO Framework, SEOPress, and AIOSEO.
+ * Apply the `ewpa_seo_meta_keys` filter to override for any other plugin.
+ *
+ * @return array { 'title' => string, 'description' => string }
+ */
+function ewpa_get_seo_meta_keys() {
+	if ( class_exists( 'RankMath' ) ) {
+		$keys = array(
+			'title'       => 'rank_math_title',
+			'description' => 'rank_math_description',
+		);
+	} elseif ( defined( 'WPSEO_VERSION' ) ) {
+		$keys = array(
+			'title'       => '_yoast_wpseo_title',
+			'description' => '_yoast_wpseo_metadesc',
+		);
+	} elseif ( class_exists( 'The_SEO_Framework\Load' ) ) {
+		$keys = array(
+			'title'       => '_genesis_title',
+			'description' => '_genesis_description',
+		);
+	} elseif ( defined( 'SEOPRESS_VERSION' ) ) {
+		$keys = array(
+			'title'       => '_seopress_titles_title',
+			'description' => '_seopress_titles_desc',
+		);
+	} elseif ( class_exists( 'AIOSEO\Plugin\AIOSEO' ) ) {
+		$keys = array(
+			'title'       => '_aioseo_title',
+			'description' => '_aioseo_description',
+		);
+	} else {
+		$keys = array(
+			'title'       => '_yoast_wpseo_title',
+			'description' => '_yoast_wpseo_metadesc',
+		);
+	}
+
+	return apply_filters( 'ewpa_seo_meta_keys', $keys );
+}
+
+
+/*
+ * ==========================================================================
  * SECTION NOTICE CALLBACKS
  * ==========================================================================
  */
@@ -571,6 +662,38 @@ function ewpa_section_notice_rankmath() {
 	return '<div class="ewpa-section-notice ewpa-section-notice-info">'
 		. '<span class="dashicons dashicons-info"></span> '
 		. esc_html__( 'Rank Math SEO plugin is not active. These abilities require Rank Math to function.', 'enable-abilities-for-mcp' )
+		. '</div>';
+}
+
+/**
+ * Section notice for SEOPress: shows info when SEOPress is not active.
+ *
+ * @return string
+ */
+function ewpa_section_notice_seopress() {
+	if ( defined( 'SEOPRESS_VERSION' ) ) {
+		return '';
+	}
+
+	return '<div class="ewpa-section-notice ewpa-section-notice-info">'
+		. '<span class="dashicons dashicons-info"></span> '
+		. esc_html__( 'SEOPress plugin is not active. These abilities require SEOPress to function.', 'enable-abilities-for-mcp' )
+		. '</div>';
+}
+
+/**
+ * Section notice for Yoast SEO: shows info when Yoast SEO is not active.
+ *
+ * @return string
+ */
+function ewpa_section_notice_yoast() {
+	if ( defined( 'WPSEO_VERSION' ) ) {
+		return '';
+	}
+
+	return '<div class="ewpa-section-notice ewpa-section-notice-info">'
+		. '<span class="dashicons dashicons-info"></span> '
+		. esc_html__( 'Yoast SEO plugin is not active. These abilities require Yoast SEO to function.', 'enable-abilities-for-mcp' )
 		. '</div>';
 }
 
