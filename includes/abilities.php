@@ -3364,12 +3364,86 @@ function ewpa_register_custom_abilities(): void {
 					}
 
 					update_post_meta( $post_id, $meta_key, $meta_value );
+					do_action( 'ewpa_after_update_post_meta', $post_id, $meta_key, $meta_value );
 
 					return array(
 						'post_id'    => $post_id,
 						'meta_key'   => $meta_key,
 						'meta_value' => $meta_value,
 						'message'    => 'Meta field updated successfully.',
+					);
+				},
+				'meta'                => array(
+					'show_in_rest' => true,
+					'mcp'          => array(
+						'public' => true,
+					),
+				),
+			)
+		);
+	}
+
+	// ── C4: Get Post Meta ──────────────────────────────────────────────
+	if ( ewpa_is_ability_enabled( 'ewpa/get-post-meta' ) ) {
+		ewpa_register_ability_with_log(
+			'ewpa/get-post-meta',
+			array(
+				'label'               => __( 'Get Post Meta', 'enable-abilities-for-mcp' ),
+				'description'         => __( 'Reads any single post meta field by exact key. Useful for SEO plugins and custom fields not covered by dedicated sections (e.g. _genesis_title for The SEO Framework, _aioseo_title for AIOSEO). Requires edit_post capability on the target post.', 'enable-abilities-for-mcp' ),
+				'category'            => 'content-management',
+				'input_schema'        => array(
+					'type'       => 'object',
+					'properties' => array(
+						'post_id'  => array(
+							'type'        => 'integer',
+							'description' => __( 'ID of the post or page to read.', 'enable-abilities-for-mcp' ),
+						),
+						'meta_key' => array(
+							'type'        => 'string',
+							'description' => __( 'Exact meta key to read (e.g. _genesis_title, _aioseo_title, _custom_field).', 'enable-abilities-for-mcp' ),
+						),
+					),
+					'required'   => array( 'post_id', 'meta_key' ),
+				),
+				'output_schema'       => array(
+					'type'       => 'object',
+					'properties' => array(
+						'post_id'    => array( 'type' => 'integer' ),
+						'meta_key'   => array( 'type' => 'string' ),
+						'meta_value' => array( 'type' => 'string' ),
+						'found'      => array(
+							'type'        => 'boolean',
+							'description' => 'True if the meta key exists for this post, false if it has never been set.',
+						),
+					),
+				),
+				'permission_callback' => function ( $input ) {
+					$post_id = absint( $input['post_id'] ?? 0 );
+					return $post_id && current_user_can( 'edit_post', $post_id );
+				},
+				'execute_callback'    => function ( $input ) {
+					$post_id  = absint( $input['post_id'] );
+					$meta_key = sanitize_text_field( $input['meta_key'] );
+
+					if ( ! get_post( $post_id ) ) {
+						return new WP_Error( 'not_found', 'Post not found.' );
+					}
+
+					$all_keys = get_post_meta( $post_id );
+					$found    = array_key_exists( $meta_key, $all_keys );
+					$value    = get_post_meta( $post_id, $meta_key, true );
+
+					if ( is_array( $value ) || is_object( $value ) ) {
+						$value = wp_json_encode( $value );
+					} else {
+						$value = (string) $value;
+					}
+
+					return array(
+						'post_id'    => $post_id,
+						'meta_key'   => $meta_key,
+						'meta_value' => $value,
+						'found'      => $found,
 					);
 				},
 				'meta'                => array(

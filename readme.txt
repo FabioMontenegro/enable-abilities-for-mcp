@@ -5,7 +5,7 @@ Tags: mcp, ai, rest-api, content-management, woocommerce
 Requires at least: 6.9
 Tested up to: 7.0
 Requires PHP: 8.0
-Stable tag: 2.0.5
+Stable tag: 2.0.6
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -137,6 +137,10 @@ This plugin registers abilities using the standard `wp_register_ability()` API. 
 1. Admin settings page showing all abilities organized by category with toggle switches.
 
 == Changelog ==
+
+= 2.0.6 =
+* New: `ewpa/get-post-meta` utility ability — reads any single post meta field by exact key; returns the value and a `found` flag indicating whether the key exists; companion to `ewpa/update-post-meta`
+* New: `ewpa_after_update_post_meta` action hook — fires after every `ewpa/update-post-meta` write with `($post_id, $meta_key, $meta_value)`; SEO plugins can use it to flush their internal meta cache (e.g. TSF, AIOSEO)
 
 = 2.0.5 =
 * Fix: WooCommerce and The Events Calendar ability registrations now use `'label'` instead of `'name'` — resolves PHP notices from `WP_Abilities_Registry::register` on every page load
@@ -272,6 +276,9 @@ This plugin registers abilities using the standard `wp_register_ability()` API. 
 * Admin settings page with per-ability toggles
 
 == Upgrade Notice ==
+
+= 2.0.6 =
+New: `ewpa/get-post-meta` reads any single meta field (companion to update-post-meta). New: `ewpa_after_update_post_meta` action hook lets SEO plugins flush their cache after a write.
 
 = 2.0.5 =
 Fix: WooCommerce and The Events Calendar abilities were generating PHP notices and not executing correctly due to API key mismatches (`name`/`callback` instead of `label`/`execute_callback`). Update immediately if WooCommerce or TEC is active.
