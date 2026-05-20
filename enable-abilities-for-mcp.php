@@ -2,7 +2,7 @@
 /**
  * Plugin Name:       Enable Abilities for MCP
  * Description:       Manage which WordPress Abilities are exposed to MCP servers. Enable or disable each ability individually from the dashboard.
- * Version:           2.0.6
+ * Version:           2.0.7
  * Requires at least: 6.9
  * Requires PHP:      8.0
  * Author:            Fabio Montenegro
@@ -18,7 +18,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'EWPA_VERSION', '2.0.6' );
+define( 'EWPA_VERSION', '2.0.7' );
 define( 'EWPA_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'EWPA_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 define( 'EWPA_OPTION_KEY', 'ewpa_enabled_abilities' );
@@ -95,6 +95,9 @@ add_action( 'wp_abilities_api_categories_init', 'ewpa_register_ability_categorie
 
 // Migration: rename Spanish keys to English on upgrade.
 add_action( 'plugins_loaded', 'ewpa_maybe_migrate_keys' );
+
+// Migration: add abilities introduced in v2.0.7 to existing installs.
+add_action( 'plugins_loaded', 'ewpa_maybe_migrate_keys_v207' );
 
 
 /*
@@ -182,6 +185,45 @@ function ewpa_maybe_migrate_keys() {
 
 	// Schedule a one-time admin notice.
 	set_transient( 'ewpa_migration_notice', true, 60 );
+}
+
+/**
+ * Adds abilities introduced in v2.0.7 to existing installs (enabled by default).
+ * Also back-fills ewpa/get-post-meta which was added in 2.0.6 without a migration.
+ *
+ * @return void
+ */
+function ewpa_maybe_migrate_keys_v207() {
+	if ( get_option( 'ewpa_keys_migrated_v207' ) ) {
+		return;
+	}
+
+	$enabled = get_option( EWPA_OPTION_KEY );
+	if ( ! is_array( $enabled ) ) {
+		update_option( 'ewpa_keys_migrated_v207', true );
+		return;
+	}
+
+	$new_abilities = array(
+		'ewpa/get-post-meta',
+		'ewpa/get-active-plugins',
+		'ewpa/set-post-language',
+		'ewpa/link-post-translation',
+	);
+
+	$changed = false;
+	foreach ( $new_abilities as $key ) {
+		if ( ! in_array( $key, $enabled, true ) ) {
+			$enabled[] = $key;
+			$changed   = true;
+		}
+	}
+
+	if ( $changed ) {
+		update_option( EWPA_OPTION_KEY, $enabled );
+	}
+
+	update_option( 'ewpa_keys_migrated_v207', true );
 }
 
 /**
@@ -411,9 +453,30 @@ function ewpa_get_abilities_registry() {
 					'label' => __( 'Update Post Meta', 'enable-abilities-for-mcp' ),
 					'desc'  => __( 'Write any post meta field by exact key. Requires edit_post capability on the target post.', 'enable-abilities-for-mcp' ),
 				),
-				'ewpa/get-post-meta'     => array(
+				'ewpa/get-post-meta'      => array(
 					'label' => __( 'Get Post Meta', 'enable-abilities-for-mcp' ),
 					'desc'  => __( 'Read any single post meta field by exact key. Returns the value and whether the key exists.', 'enable-abilities-for-mcp' ),
+				),
+				'ewpa/get-active-plugins' => array(
+					'label' => __( 'Get Active Plugins', 'enable-abilities-for-mcp' ),
+					'desc'  => __( 'Returns all active plugins with name, version, and detected capabilities (SEO, multilanguage, WooCommerce, etc.).', 'enable-abilities-for-mcp' ),
+				),
+			),
+		),
+		'multilanguage' => array(
+			'section_label'  => __( 'Multilanguage', 'enable-abilities-for-mcp' ),
+			'section_desc'   => __( 'Assign languages and link translation groups between posts via Polylang or WPML.', 'enable-abilities-for-mcp' ),
+			'section_icon'   => 'dashicons-translation',
+			'section_badge'  => 'warning',
+			'section_notice' => 'ewpa_section_notice_multilanguage',
+			'abilities'      => array(
+				'ewpa/set-post-language'    => array(
+					'label' => __( 'Set Post Language', 'enable-abilities-for-mcp' ),
+					'desc'  => __( 'Assign a language code to an existing post via Polylang or WPML.', 'enable-abilities-for-mcp' ),
+				),
+				'ewpa/link-post-translation' => array(
+					'label' => __( 'Link Post Translation', 'enable-abilities-for-mcp' ),
+					'desc'  => __( 'Link two posts as translations of each other in the same translation group.', 'enable-abilities-for-mcp' ),
 				),
 			),
 		),
@@ -603,6 +666,21 @@ function ewpa_get_seo_meta_keys() {
 	return apply_filters( 'ewpa_seo_meta_keys', $keys );
 }
 
+/**
+ * Detects which multilanguage plugin is active.
+ *
+ * @return string 'polylang' | 'wpml' | '' (empty string = none detected)
+ */
+function ewpa_get_translation_plugin(): string {
+	if ( function_exists( 'pll_set_post_language' ) ) {
+		return 'polylang';
+	}
+	if ( defined( 'ICL_SITEPRESS_VERSION' ) ) {
+		return 'wpml';
+	}
+	return '';
+}
+
 
 /*
  * ==========================================================================
@@ -730,5 +808,21 @@ function ewpa_section_notice_tec() {
 	return '<div class="ewpa-section-notice ewpa-section-notice-info">'
 		. '<span class="dashicons dashicons-info"></span> '
 		. esc_html__( 'The Events Calendar plugin is not active. These abilities require The Events Calendar to function.', 'enable-abilities-for-mcp' )
+		. '</div>';
+}
+
+/**
+ * Section notice for Multilanguage: shows info when neither Polylang nor WPML is active.
+ *
+ * @return string
+ */
+function ewpa_section_notice_multilanguage() {
+	if ( ewpa_get_translation_plugin() ) {
+		return '';
+	}
+
+	return '<div class="ewpa-section-notice ewpa-section-notice-info">'
+		. '<span class="dashicons dashicons-info"></span> '
+		. esc_html__( 'No multilanguage plugin detected. These abilities require Polylang or WPML to function.', 'enable-abilities-for-mcp' )
 		. '</div>';
 }

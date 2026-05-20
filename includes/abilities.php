@@ -199,6 +199,14 @@ function ewpa_register_ability_categories(): void {
 			'description' => __( 'Abilities to list, get, create, and update events from The Events Calendar.', 'enable-abilities-for-mcp' ),
 		)
 	);
+
+	wp_register_ability_category(
+		'multilanguage',
+		array(
+			'label'       => __( 'Multilanguage', 'enable-abilities-for-mcp' ),
+			'description' => __( 'Abilities to manage post languages and translation groups via Polylang or WPML.', 'enable-abilities-for-mcp' ),
+		)
+	);
 }
 
 /*
@@ -1052,6 +1060,14 @@ function ewpa_register_custom_abilities(): void {
 							'type'        => 'string',
 							'description' => 'SEO meta description for Yoast/RankMath (optional)',
 						),
+						'language'          => array(
+							'type'        => 'string',
+							'description' => 'Language code for the post, e.g. "en", "es" (optional, requires Polylang or WPML)',
+						),
+						'translation_of'    => array(
+							'type'        => 'integer',
+							'description' => 'Post ID of the original post this is a translation of (optional, requires Polylang or WPML)',
+						),
 					),
 				),
 				'output_schema'       => array(
@@ -1122,6 +1138,35 @@ function ewpa_register_custom_abilities(): void {
 					}
 					if ( ! empty( $input['meta_description'] ) ) {
 						update_post_meta( $post_id, $seo_keys['description'], sanitize_text_field( $input['meta_description'] ) );
+					}
+
+					$translation_plugin = ewpa_get_translation_plugin();
+					if ( $translation_plugin && ! empty( $input['language'] ) ) {
+						$lang = sanitize_text_field( $input['language'] );
+						if ( 'polylang' === $translation_plugin && function_exists( 'pll_set_post_language' ) ) {
+							pll_set_post_language( $post_id, $lang );
+							if ( ! empty( $input['translation_of'] ) ) {
+								$original_id = absint( $input['translation_of'] );
+								$translations = function_exists( 'pll_get_post_translations' )
+									? pll_get_post_translations( $original_id )
+									: array();
+								$translations[ $lang ] = $post_id;
+								pll_save_post_translations( $translations );
+							}
+						} elseif ( 'wpml' === $translation_plugin ) {
+							do_action(
+								'wpml_set_element_language_details',
+								array(
+									'element_id'           => $post_id,
+									'element_type'         => 'post_post',
+									'trid'                 => ! empty( $input['translation_of'] )
+										? apply_filters( 'wpml_element_trid', null, absint( $input['translation_of'] ), 'post_post' )
+										: false,
+									'language_code'        => $lang,
+									'source_language_code' => ! empty( $input['translation_of'] ) ? null : null,
+								)
+							);
+						}
 					}
 
 					return array(
@@ -3456,6 +3501,118 @@ function ewpa_register_custom_abilities(): void {
 		);
 	}
 
+	// ── C5: Get Active Plugins ───────────────────────────────────────────
+	if ( ewpa_is_ability_enabled( 'ewpa/get-active-plugins' ) ) {
+		ewpa_register_ability_with_log(
+			'ewpa/get-active-plugins',
+			array(
+				'label'               => __( 'Get Active Plugins', 'enable-abilities-for-mcp' ),
+				'description'         => __( 'Returns a list of all currently active plugins on the site, including name, version, and detected capabilities (multilanguage, SEO, WooCommerce, etc.).', 'enable-abilities-for-mcp' ),
+				'category'            => 'site-information',
+				'input_schema'        => array(
+					'type'       => 'object',
+					'properties' => array(),
+				),
+				'output_schema'       => array(
+					'type'  => 'array',
+					'items' => array(
+						'type'       => 'object',
+						'properties' => array(
+							'slug'         => array( 'type' => 'string' ),
+							'name'         => array( 'type' => 'string' ),
+							'version'      => array( 'type' => 'string' ),
+							'capabilities' => array(
+								'type'  => 'array',
+								'items' => array( 'type' => 'string' ),
+							),
+						),
+					),
+				),
+				'permission_callback' => function () {
+					return current_user_can( 'activate_plugins' );
+				},
+				'execute_callback'    => function () {
+					if ( ! function_exists( 'get_plugin_data' ) ) {
+						require_once ABSPATH . 'wp-admin/includes/plugin.php';
+					}
+
+					$capability_map = array(
+						'polylang'    => array(
+							'check' => fn() => function_exists( 'pll_set_post_language' ),
+							'label' => 'multilanguage',
+						),
+						'wpml'        => array(
+							'check' => fn() => defined( 'ICL_SITEPRESS_VERSION' ),
+							'label' => 'multilanguage',
+						),
+						'rankmath'    => array(
+							'check' => fn() => class_exists( 'RankMath' ),
+							'label' => 'seo',
+						),
+						'yoast'       => array(
+							'check' => fn() => defined( 'WPSEO_VERSION' ),
+							'label' => 'seo',
+						),
+						'tsf'         => array(
+							'check' => fn() => class_exists( 'The_SEO_Framework\Load' ),
+							'label' => 'seo',
+						),
+						'seopress'    => array(
+							'check' => fn() => defined( 'SEOPRESS_VERSION' ),
+							'label' => 'seo',
+						),
+						'aioseo'      => array(
+							'check' => fn() => class_exists( 'AIOSEO\Plugin\AIOSEO' ),
+							'label' => 'seo',
+						),
+						'woocommerce' => array(
+							'check' => fn() => class_exists( 'WooCommerce' ),
+							'label' => 'woocommerce',
+						),
+						'tec'         => array(
+							'check' => fn() => class_exists( 'Tribe__Events__Main' ),
+							'label' => 'events-calendar',
+						),
+					);
+
+					$active_plugins = (array) get_option( 'active_plugins', array() );
+					$result         = array();
+
+					foreach ( $active_plugins as $plugin_file ) {
+						$plugin_path = WP_PLUGIN_DIR . '/' . $plugin_file;
+						if ( ! file_exists( $plugin_path ) ) {
+							continue;
+						}
+						$data  = get_plugin_data( $plugin_path, false, false );
+						$slug  = explode( '/', $plugin_file )[0];
+						$caps  = array();
+
+						foreach ( $capability_map as $key => $def ) {
+							if ( str_contains( $slug, $key ) && ( $def['check'] )() ) {
+								$caps[] = $def['label'];
+							}
+						}
+
+						$result[] = array(
+							'slug'         => $slug,
+							'name'         => $data['Name'] ?? $slug,
+							'version'      => $data['Version'] ?? '',
+							'capabilities' => $caps,
+						);
+					}
+
+					return $result;
+				},
+				'meta'                => array(
+					'show_in_rest' => true,
+					'mcp'          => array(
+						'public' => true,
+					),
+				),
+			)
+		);
+	}
+
 	/*
 	 * ======================================================================
 	 * SECTION D: CUSTOM POST TYPE ABILITIES
@@ -5551,6 +5708,193 @@ function ewpa_register_custom_abilities(): void {
 						'status'     => $updated_post->post_status,
 						'permalink'  => get_permalink( $event_id ),
 						'message'    => __( 'Event updated successfully.', 'enable-abilities-for-mcp' ),
+					);
+				},
+				'meta'                => array(
+					'show_in_rest' => true,
+					'mcp'          => array(
+						'public' => true,
+					),
+				),
+			)
+		);
+	}
+
+	/*
+	 * ======================================================================
+	 * SECTION G: MULTILANGUAGE ABILITIES
+	 * Requires Polylang or WPML. All abilities check ewpa_get_translation_plugin().
+	 * ======================================================================
+	 */
+
+	// ── G1: Set Post Language ────────────────────────────────────────────
+	if ( ewpa_is_ability_enabled( 'ewpa/set-post-language' ) ) {
+		ewpa_register_ability_with_log(
+			'ewpa/set-post-language',
+			array(
+				'label'               => __( 'Set Post Language', 'enable-abilities-for-mcp' ),
+				'description'         => __( 'Assigns a language to an existing post via Polylang or WPML. Does nothing if no multilanguage plugin is active.', 'enable-abilities-for-mcp' ),
+				'category'            => 'multilanguage',
+				'input_schema'        => array(
+					'type'       => 'object',
+					'required'   => array( 'post_id', 'language' ),
+					'properties' => array(
+						'post_id'  => array(
+							'type'        => 'integer',
+							'description' => 'ID of the post to set the language for',
+						),
+						'language' => array(
+							'type'        => 'string',
+							'description' => 'Language code, e.g. "en", "es", "fr"',
+						),
+					),
+				),
+				'output_schema'       => array(
+					'type'       => 'object',
+					'properties' => array(
+						'post_id'  => array( 'type' => 'integer' ),
+						'language' => array( 'type' => 'string' ),
+						'plugin'   => array( 'type' => 'string' ),
+						'message'  => array( 'type' => 'string' ),
+					),
+				),
+				'permission_callback' => function ( $input ) {
+					$post_id = absint( $input['post_id'] ?? 0 );
+					return $post_id && current_user_can( 'edit_post', $post_id );
+				},
+				'execute_callback'    => function ( $input ) {
+					$post_id = absint( $input['post_id'] );
+					$lang    = sanitize_text_field( $input['language'] );
+					$plugin  = ewpa_get_translation_plugin();
+
+					if ( ! get_post( $post_id ) ) {
+						return new WP_Error( 'not_found', 'Post not found.' );
+					}
+
+					if ( ! $plugin ) {
+						return new WP_Error( 'no_plugin', 'No multilanguage plugin detected (Polylang or WPML required).' );
+					}
+
+					if ( 'polylang' === $plugin ) {
+						pll_set_post_language( $post_id, $lang );
+					} elseif ( 'wpml' === $plugin ) {
+						do_action(
+							'wpml_set_element_language_details',
+							array(
+								'element_id'           => $post_id,
+								'element_type'         => 'post_post',
+								'trid'                 => false,
+								'language_code'        => $lang,
+								'source_language_code' => null,
+							)
+						);
+					}
+
+					return array(
+						'post_id'  => $post_id,
+						'language' => $lang,
+						'plugin'   => $plugin,
+						'message'  => sprintf( 'Language "%s" set successfully via %s.', $lang, $plugin ),
+					);
+				},
+				'meta'                => array(
+					'show_in_rest' => true,
+					'mcp'          => array(
+						'public' => true,
+					),
+				),
+			)
+		);
+	}
+
+	// ── G2: Link Post Translation ────────────────────────────────────────
+	if ( ewpa_is_ability_enabled( 'ewpa/link-post-translation' ) ) {
+		ewpa_register_ability_with_log(
+			'ewpa/link-post-translation',
+			array(
+				'label'               => __( 'Link Post Translation', 'enable-abilities-for-mcp' ),
+				'description'         => __( 'Links two posts as translations of each other via Polylang or WPML. Both posts must already have a language assigned.', 'enable-abilities-for-mcp' ),
+				'category'            => 'multilanguage',
+				'input_schema'        => array(
+					'type'       => 'object',
+					'required'   => array( 'original_post_id', 'translated_post_id', 'translated_language' ),
+					'properties' => array(
+						'original_post_id'    => array(
+							'type'        => 'integer',
+							'description' => 'Post ID of the original (source) post',
+						),
+						'translated_post_id'  => array(
+							'type'        => 'integer',
+							'description' => 'Post ID of the translated post',
+						),
+						'translated_language' => array(
+							'type'        => 'string',
+							'description' => 'Language code of the translated post, e.g. "es"',
+						),
+					),
+				),
+				'output_schema'       => array(
+					'type'       => 'object',
+					'properties' => array(
+						'original_post_id'   => array( 'type' => 'integer' ),
+						'translated_post_id' => array( 'type' => 'integer' ),
+						'plugin'             => array( 'type' => 'string' ),
+						'message'            => array( 'type' => 'string' ),
+					),
+				),
+				'permission_callback' => function ( $input ) {
+					$orig = absint( $input['original_post_id'] ?? 0 );
+					$tran = absint( $input['translated_post_id'] ?? 0 );
+					return $orig && $tran
+						&& current_user_can( 'edit_post', $orig )
+						&& current_user_can( 'edit_post', $tran );
+				},
+				'execute_callback'    => function ( $input ) {
+					$original_id     = absint( $input['original_post_id'] );
+					$translated_id   = absint( $input['translated_post_id'] );
+					$translated_lang = sanitize_text_field( $input['translated_language'] );
+					$plugin          = ewpa_get_translation_plugin();
+
+					if ( ! get_post( $original_id ) ) {
+						return new WP_Error( 'not_found', 'Original post not found.' );
+					}
+					if ( ! get_post( $translated_id ) ) {
+						return new WP_Error( 'not_found', 'Translated post not found.' );
+					}
+					if ( ! $plugin ) {
+						return new WP_Error( 'no_plugin', 'No multilanguage plugin detected (Polylang or WPML required).' );
+					}
+
+					if ( 'polylang' === $plugin ) {
+						$translations = function_exists( 'pll_get_post_translations' )
+							? pll_get_post_translations( $original_id )
+							: array();
+						$translations[ $translated_lang ] = $translated_id;
+						pll_save_post_translations( $translations );
+					} elseif ( 'wpml' === $plugin ) {
+						$trid = apply_filters( 'wpml_element_trid', null, $original_id, 'post_post' );
+						do_action(
+							'wpml_set_element_language_details',
+							array(
+								'element_id'           => $translated_id,
+								'element_type'         => 'post_post',
+								'trid'                 => $trid,
+								'language_code'        => $translated_lang,
+								'source_language_code' => null,
+							)
+						);
+					}
+
+					return array(
+						'original_post_id'   => $original_id,
+						'translated_post_id' => $translated_id,
+						'plugin'             => $plugin,
+						'message'            => sprintf(
+							'Posts %d and %d linked as translations via %s.',
+							$original_id,
+							$translated_id,
+							$plugin
+						),
 					);
 				},
 				'meta'                => array(
