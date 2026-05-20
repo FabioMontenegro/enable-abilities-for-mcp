@@ -3,9 +3,9 @@ Contributors: fabiomontenegro1987
 Donate link: https://paypal.me/fabiomontenegroz
 Tags: mcp, ai, rest-api, content-management, woocommerce
 Requires at least: 6.9
-Tested up to: 6.9
+Tested up to: 7.0
 Requires PHP: 8.0
-Stable tag: 2.0.3
+Stable tag: 2.0.4
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -138,6 +138,10 @@ This plugin registers abilities using the standard `wp_register_ability()` API. 
 
 == Changelog ==
 
+= 2.0.4 =
+* Compatibility: Tested and confirmed compatible with WordPress 7.0
+* Fix: `EWPA_VERSION` constant corrected to match plugin header version (was stuck at 2.0.2)
+
 = 2.0.3 =
 * New: SEOPress section — `ewpa/get-seopress` reads SEO title, description, focus keyword, canonical URL, robots (noindex/nofollow/noarchive/noimageindex/nosnippet), Open Graph, and Twitter Card for any post or page
 * New: SEOPress section — `ewpa/update-seopress` updates any combination of those fields; only provided fields are modified
@@ -262,6 +266,9 @@ This plugin registers abilities using the standard `wp_register_ability()` API. 
 * Admin settings page with per-ability toggles
 
 == Upgrade Notice ==
+
+= 2.0.4 =
+Tested and confirmed compatible with WordPress 7.0. Fixes an internal version constant mismatch introduced in 2.0.3.
 
 = 2.0.3 =
 New: SEOPress section (get + update), Yoast SEO section (get + update + sitemap index), Update Post Meta utility ability, and smart SEO plugin auto-detection in get/create/update post abilities. 48 abilities total.
