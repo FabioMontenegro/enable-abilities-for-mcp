@@ -183,6 +183,22 @@ function ewpa_register_ability_categories(): void {
 			'description' => __( 'Abilities to discover and manage custom post types registered by plugins or themes.', 'enable-abilities-for-mcp' ),
 		)
 	);
+
+	wp_register_ability_category(
+		'woocommerce',
+		array(
+			'label'       => __( 'WooCommerce', 'enable-abilities-for-mcp' ),
+			'description' => __( 'Abilities to manage WooCommerce products, orders, and customers.', 'enable-abilities-for-mcp' ),
+		)
+	);
+
+	wp_register_ability_category(
+		'tec',
+		array(
+			'label'       => __( 'The Events Calendar', 'enable-abilities-for-mcp' ),
+			'description' => __( 'Abilities to list, get, create, and update events from The Events Calendar.', 'enable-abilities-for-mcp' ),
+		)
+	);
 }
 
 /*
@@ -4387,7 +4403,8 @@ function ewpa_register_custom_abilities(): void {
 		ewpa_register_ability_with_log(
 			'ewpa/wc-get-products',
 			array(
-				'name'                => __( 'List WooCommerce products', 'enable-abilities-for-mcp' ),
+				'label'               => __( 'List WooCommerce products', 'enable-abilities-for-mcp' ),
+				'category'            => 'woocommerce',
 				'description'         => __( 'Returns a paginated list of WooCommerce products with price, stock, and status.', 'enable-abilities-for-mcp' ),
 				'input_schema'        => array(
 					'type'       => 'object',
@@ -4425,7 +4442,7 @@ function ewpa_register_custom_abilities(): void {
 				'permission_callback' => function ( $args ) {
 					return current_user_can( 'edit_products' );
 				},
-				'callback'            => function ( $args ) {
+				'execute_callback'    => function ( $args ) {
 					$status   = isset( $args['status'] ) ? sanitize_text_field( $args['status'] ) : 'publish';
 					$per_page = isset( $args['per_page'] ) ? max( 1, min( 100, intval( $args['per_page'] ) ) ) : 10;
 					$page     = isset( $args['page'] ) ? max( 1, intval( $args['page'] ) ) : 1;
@@ -4491,7 +4508,8 @@ function ewpa_register_custom_abilities(): void {
 		ewpa_register_ability_with_log(
 			'ewpa/wc-get-product',
 			array(
-				'name'                => __( 'Get WooCommerce product', 'enable-abilities-for-mcp' ),
+				'label'               => __( 'Get WooCommerce product', 'enable-abilities-for-mcp' ),
+				'category'            => 'woocommerce',
 				'description'         => __( 'Returns full details of a single WooCommerce product by ID.', 'enable-abilities-for-mcp' ),
 				'input_schema'        => array(
 					'type'       => 'object',
@@ -4506,7 +4524,7 @@ function ewpa_register_custom_abilities(): void {
 				'permission_callback' => function ( $args ) {
 					return current_user_can( 'edit_products' );
 				},
-				'callback'            => function ( $args ) {
+				'execute_callback'    => function ( $args ) {
 					$product_id = intval( $args['product_id'] );
 					$product    = wc_get_product( $product_id );
 
@@ -4585,7 +4603,8 @@ function ewpa_register_custom_abilities(): void {
 		ewpa_register_ability_with_log(
 			'ewpa/wc-update-product',
 			array(
-				'name'                => __( 'Update WooCommerce product', 'enable-abilities-for-mcp' ),
+				'label'               => __( 'Update WooCommerce product', 'enable-abilities-for-mcp' ),
+				'category'            => 'woocommerce',
 				'description'         => __( 'Updates price, stock, status, or description of a WooCommerce product using WooCommerce hooks.', 'enable-abilities-for-mcp' ),
 				'input_schema'        => array(
 					'type'       => 'object',
@@ -4624,7 +4643,7 @@ function ewpa_register_custom_abilities(): void {
 				'permission_callback' => function ( $args ) {
 					return current_user_can( 'edit_products' );
 				},
-				'callback'            => function ( $args ) {
+				'execute_callback'    => function ( $args ) {
 					$product_id = intval( $args['product_id'] );
 					$product    = wc_get_product( $product_id );
 
@@ -4682,7 +4701,8 @@ function ewpa_register_custom_abilities(): void {
 		ewpa_register_ability_with_log(
 			'ewpa/wc-get-orders',
 			array(
-				'name'                => __( 'List WooCommerce orders', 'enable-abilities-for-mcp' ),
+				'label'               => __( 'List WooCommerce orders', 'enable-abilities-for-mcp' ),
+				'category'            => 'woocommerce',
 				'description'         => __( 'Returns a paginated list of WooCommerce orders. HPOS-compatible.', 'enable-abilities-for-mcp' ),
 				'input_schema'        => array(
 					'type'       => 'object',
@@ -4716,7 +4736,7 @@ function ewpa_register_custom_abilities(): void {
 				'permission_callback' => function ( $args ) {
 					return current_user_can( 'edit_shop_orders' );
 				},
-				'callback'            => function ( $args ) {
+				'execute_callback'    => function ( $args ) {
 					$status   = isset( $args['status'] ) ? sanitize_text_field( $args['status'] ) : 'any';
 					$per_page = isset( $args['per_page'] ) ? max( 1, min( 100, intval( $args['per_page'] ) ) ) : 10;
 					$page     = isset( $args['page'] ) ? max( 1, intval( $args['page'] ) ) : 1;
@@ -4779,7 +4799,8 @@ function ewpa_register_custom_abilities(): void {
 		ewpa_register_ability_with_log(
 			'ewpa/wc-get-order',
 			array(
-				'name'                => __( 'Get WooCommerce order', 'enable-abilities-for-mcp' ),
+				'label'               => __( 'Get WooCommerce order', 'enable-abilities-for-mcp' ),
+				'category'            => 'woocommerce',
 				'description'         => __( 'Returns full details of a single WooCommerce order including line items and billing address. HPOS-compatible.', 'enable-abilities-for-mcp' ),
 				'input_schema'        => array(
 					'type'       => 'object',
@@ -4794,7 +4815,7 @@ function ewpa_register_custom_abilities(): void {
 				'permission_callback' => function ( $args ) {
 					return current_user_can( 'edit_shop_orders' );
 				},
-				'callback'            => function ( $args ) {
+				'execute_callback'    => function ( $args ) {
 					$order_id = intval( $args['order_id'] );
 					$order    = wc_get_order( $order_id );
 
@@ -4867,7 +4888,8 @@ function ewpa_register_custom_abilities(): void {
 		ewpa_register_ability_with_log(
 			'ewpa/wc-update-order-status',
 			array(
-				'name'                => __( 'Update WooCommerce order status', 'enable-abilities-for-mcp' ),
+				'label'               => __( 'Update WooCommerce order status', 'enable-abilities-for-mcp' ),
+				'category'            => 'woocommerce',
 				'description'         => __( 'Changes the status of a WooCommerce order and optionally adds a note. HPOS-compatible.', 'enable-abilities-for-mcp' ),
 				'input_schema'        => array(
 					'type'       => 'object',
@@ -4890,7 +4912,7 @@ function ewpa_register_custom_abilities(): void {
 				'permission_callback' => function ( $args ) {
 					return current_user_can( 'edit_shop_orders' );
 				},
-				'callback'            => function ( $args ) {
+				'execute_callback'    => function ( $args ) {
 					$order_id = intval( $args['order_id'] );
 					$order    = wc_get_order( $order_id );
 
@@ -4930,7 +4952,8 @@ function ewpa_register_custom_abilities(): void {
 		ewpa_register_ability_with_log(
 			'ewpa/wc-get-customers',
 			array(
-				'name'                => __( 'List WooCommerce customers', 'enable-abilities-for-mcp' ),
+				'label'               => __( 'List WooCommerce customers', 'enable-abilities-for-mcp' ),
+				'category'            => 'woocommerce',
 				'description'         => __( 'Returns a list of WooCommerce customers with order stats.', 'enable-abilities-for-mcp' ),
 				'input_schema'        => array(
 					'type'       => 'object',
@@ -4960,7 +4983,7 @@ function ewpa_register_custom_abilities(): void {
 				'permission_callback' => function ( $args ) {
 					return current_user_can( 'list_users' );
 				},
-				'callback'            => function ( $args ) {
+				'execute_callback'    => function ( $args ) {
 					$per_page = isset( $args['per_page'] ) ? max( 1, min( 100, intval( $args['per_page'] ) ) ) : 10;
 					$page     = isset( $args['page'] ) ? max( 1, intval( $args['page'] ) ) : 1;
 					$search   = isset( $args['search'] ) ? sanitize_text_field( $args['search'] ) : '';
@@ -5024,7 +5047,8 @@ function ewpa_register_custom_abilities(): void {
 		ewpa_register_ability_with_log(
 			'ewpa/tec-get-events',
 			array(
-				'name'                => __( 'List Events Calendar events', 'enable-abilities-for-mcp' ),
+				'label'               => __( 'List Events Calendar events', 'enable-abilities-for-mcp' ),
+				'category'            => 'tec',
 				'description'         => __( 'Returns a list of upcoming or filtered events from The Events Calendar.', 'enable-abilities-for-mcp' ),
 				'input_schema'        => array(
 					'type'       => 'object',
@@ -5054,7 +5078,7 @@ function ewpa_register_custom_abilities(): void {
 				'permission_callback' => function ( $args ) {
 					return current_user_can( 'edit_tribe_events' );
 				},
-				'callback'            => function ( $args ) {
+				'execute_callback'    => function ( $args ) {
 					$per_page     = isset( $args['per_page'] ) ? max( 1, min( 100, intval( $args['per_page'] ) ) ) : 10;
 					$page         = isset( $args['page'] ) ? max( 1, intval( $args['page'] ) ) : 1;
 					$start_after  = isset( $args['start_after'] ) ? sanitize_text_field( $args['start_after'] ) : gmdate( 'Y-m-d' );
@@ -5130,7 +5154,8 @@ function ewpa_register_custom_abilities(): void {
 		ewpa_register_ability_with_log(
 			'ewpa/tec-get-event',
 			array(
-				'name'                => __( 'Get Events Calendar event', 'enable-abilities-for-mcp' ),
+				'label'               => __( 'Get Events Calendar event', 'enable-abilities-for-mcp' ),
+				'category'            => 'tec',
 				'description'         => __( 'Returns full details of a single event including venue address and organizer.', 'enable-abilities-for-mcp' ),
 				'input_schema'        => array(
 					'type'       => 'object',
@@ -5145,7 +5170,7 @@ function ewpa_register_custom_abilities(): void {
 				'permission_callback' => function ( $args ) {
 					return current_user_can( 'edit_tribe_events' );
 				},
-				'callback'            => function ( $args ) {
+				'execute_callback'    => function ( $args ) {
 					$event_id = intval( $args['event_id'] );
 					$post     = get_post( $event_id );
 
@@ -5221,7 +5246,8 @@ function ewpa_register_custom_abilities(): void {
 		ewpa_register_ability_with_log(
 			'ewpa/tec-create-event',
 			array(
-				'name'                => __( 'Create Events Calendar event', 'enable-abilities-for-mcp' ),
+				'label'               => __( 'Create Events Calendar event', 'enable-abilities-for-mcp' ),
+				'category'            => 'tec',
 				'description'         => __( 'Creates a new event in The Events Calendar with title, dates, and optional venue.', 'enable-abilities-for-mcp' ),
 				'input_schema'        => array(
 					'type'       => 'object',
@@ -5272,7 +5298,7 @@ function ewpa_register_custom_abilities(): void {
 				'permission_callback' => function ( $args ) {
 					return current_user_can( 'publish_tribe_events' );
 				},
-				'callback'            => function ( $args ) {
+				'execute_callback'    => function ( $args ) {
 					$title       = sanitize_text_field( $args['title'] );
 					$description = isset( $args['description'] ) ? wp_kses_post( $args['description'] ) : '';
 					$start_date  = sanitize_text_field( $args['start_date'] );
@@ -5335,7 +5361,8 @@ function ewpa_register_custom_abilities(): void {
 		ewpa_register_ability_with_log(
 			'ewpa/tec-update-event',
 			array(
-				'name'                => __( 'Update Events Calendar event', 'enable-abilities-for-mcp' ),
+				'label'               => __( 'Update Events Calendar event', 'enable-abilities-for-mcp' ),
+				'category'            => 'tec',
 				'description'         => __( 'Updates an existing event\'s dates, title, description, venue, or status.', 'enable-abilities-for-mcp' ),
 				'input_schema'        => array(
 					'type'       => 'object',
@@ -5390,7 +5417,7 @@ function ewpa_register_custom_abilities(): void {
 				'permission_callback' => function ( $args ) {
 					return current_user_can( 'edit_tribe_events' );
 				},
-				'callback'            => function ( $args ) {
+				'execute_callback'    => function ( $args ) {
 					$event_id = intval( $args['event_id'] );
 					$post     = get_post( $event_id );
 

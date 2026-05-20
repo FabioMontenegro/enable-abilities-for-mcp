@@ -5,7 +5,7 @@ Tags: mcp, ai, rest-api, content-management, woocommerce
 Requires at least: 6.9
 Tested up to: 7.0
 Requires PHP: 8.0
-Stable tag: 2.0.4
+Stable tag: 2.0.5
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -138,6 +138,12 @@ This plugin registers abilities using the standard `wp_register_ability()` API. 
 
 == Changelog ==
 
+= 2.0.5 =
+* Fix: WooCommerce and The Events Calendar ability registrations now use `'label'` instead of `'name'` — resolves PHP notices from `WP_Abilities_Registry::register` on every page load
+* Fix: WooCommerce and TEC abilities now use `'execute_callback'` instead of `'callback'` — abilities were registered but never executed
+* Fix: `'woocommerce'` and `'tec'` categories now registered in `ewpa_register_ability_categories()` — abilities now appear correctly in the Abilities Explorer
+* Credit: props @magicwand for the detailed report with root cause analysis and local fix
+
 = 2.0.4 =
 * Compatibility: Tested and confirmed compatible with WordPress 7.0
 * Fix: `EWPA_VERSION` constant corrected to match plugin header version (was stuck at 2.0.2)
@@ -266,6 +272,9 @@ This plugin registers abilities using the standard `wp_register_ability()` API. 
 * Admin settings page with per-ability toggles
 
 == Upgrade Notice ==
+
+= 2.0.5 =
+Fix: WooCommerce and The Events Calendar abilities were generating PHP notices and not executing correctly due to API key mismatches (`name`/`callback` instead of `label`/`execute_callback`). Update immediately if WooCommerce or TEC is active.
 
 = 2.0.4 =
 Tested and confirmed compatible with WordPress 7.0. Fixes an internal version constant mismatch introduced in 2.0.3.
