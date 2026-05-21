@@ -2,7 +2,7 @@
 /**
  * Plugin Name:       Enable Abilities for MCP
  * Description:       Manage which WordPress Abilities are exposed to MCP servers. Enable or disable each ability individually from the dashboard.
- * Version:           2.0.7
+ * Version:           2.0.8
  * Requires at least: 6.9
  * Requires PHP:      8.0
  * Author:            Fabio Montenegro
@@ -18,7 +18,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'EWPA_VERSION', '2.0.7' );
+define( 'EWPA_VERSION', '2.0.8' );
 define( 'EWPA_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'EWPA_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 define( 'EWPA_OPTION_KEY', 'ewpa_enabled_abilities' );
@@ -98,6 +98,9 @@ add_action( 'plugins_loaded', 'ewpa_maybe_migrate_keys' );
 
 // Migration: add abilities introduced in v2.0.7 to existing installs.
 add_action( 'plugins_loaded', 'ewpa_maybe_migrate_keys_v207' );
+
+// Migration: add ewpa/get-post-translations introduced in v2.0.8 to existing installs.
+add_action( 'plugins_loaded', 'ewpa_maybe_migrate_keys_v208' );
 
 
 /*
@@ -225,6 +228,30 @@ function ewpa_maybe_migrate_keys_v207() {
 	}
 
 	update_option( 'ewpa_keys_migrated_v207', true );
+}
+
+/**
+ * Adds ewpa/get-post-translations to existing installs that already ran the v207 migration.
+ *
+ * @return void
+ */
+function ewpa_maybe_migrate_keys_v208() {
+	if ( get_option( 'ewpa_keys_migrated_v208' ) ) {
+		return;
+	}
+
+	$enabled = get_option( EWPA_OPTION_KEY );
+	if ( ! is_array( $enabled ) ) {
+		update_option( 'ewpa_keys_migrated_v208', true );
+		return;
+	}
+
+	if ( ! in_array( 'ewpa/get-post-translations', $enabled, true ) ) {
+		$enabled[] = 'ewpa/get-post-translations';
+		update_option( EWPA_OPTION_KEY, $enabled );
+	}
+
+	update_option( 'ewpa_keys_migrated_v208', true );
 }
 
 /**

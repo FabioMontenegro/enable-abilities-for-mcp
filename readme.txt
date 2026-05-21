@@ -5,7 +5,7 @@ Tags: mcp, ai, rest-api, content-management, woocommerce
 Requires at least: 6.9
 Tested up to: 7.0
 Requires PHP: 8.0
-Stable tag: 2.0.7
+Stable tag: 2.0.8
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -137,6 +137,11 @@ This plugin registers abilities using the standard `wp_register_ability()` API. 
 1. Admin settings page showing all abilities organized by category with toggle switches.
 
 == Changelog ==
+
+= 2.0.8 =
+* New: `ewpa/get-post-translations` (multilanguage section) — returns the full translation map for a post: language code, post ID, title, permalink, and status for each available translation via Polylang or WPML
+* Fix: migration `ewpa_keys_migrated_v208` ensures `ewpa/get-post-translations` is auto-enabled on sites that had already run the v2.0.7 migration before this ability was added
+* Fix: input schema for abilities with no parameters no longer includes a `properties` key — prevents PHP `Cannot use object of type stdClass as array` error when input contains unexpected properties
 
 = 2.0.7 =
 * New: `ewpa/get-active-plugins` utility ability — returns all active plugins with name, version, and detected capabilities (SEO, multilanguage, WooCommerce, Events Calendar)
