@@ -19,7 +19,7 @@ WordPress 6.9 introduced the Abilities API, allowing external tools to discover 
 
 = Features =
 
-* **48 abilities** organized in 10 categories: Core, Read, Write, SEO (Rank Math), SEO (SEOPress), SEO (Yoast), Utility, Custom Post Types, WooCommerce, and The Events Calendar
+* **53 abilities** organized in 11 categories: Core, Read, Write, SEO (Rank Math), SEO (SEOPress), SEO (Yoast), Utility, Multilanguage, Custom Post Types, WooCommerce, and The Events Calendar
 * **WooCommerce integration** — dedicated abilities to manage products, orders, and customers using the native WooCommerce API (HPOS-compatible, formally declared)
 * **The Events Calendar integration** — list, get, create, and update events with venue, organizer, and date filters
 * **Admin dashboard** with toggle switches for each ability
@@ -143,8 +143,10 @@ This plugin registers abilities using the standard `wp_register_ability()` API. 
 * New: Multilanguage section — `ewpa/set-post-language` assigns a language code to an existing post via Polylang or WPML
 * New: Multilanguage section — `ewpa/link-post-translation` links two posts as translations of each other in the same translation group via Polylang or WPML
 * New: `language` and `translation_of` parameters added to `ewpa/create-post` — set the language and link a translation group in a single call when Polylang or WPML is active
+* New: Multilanguage section — `ewpa/get-post-translations` returns the full translation map for a post: language code, post ID, title, permalink, and status for each available translation via Polylang or WPML
 * New: `ewpa_get_translation_plugin()` helper — detects the active multilanguage plugin (`polylang`, `wpml`, or empty string); extensible by third-party plugins
-* Updated: Total abilities: 52 in 11 categories
+* Fix: `input_schema.properties` now serializes as `{}` (JSON object) instead of `[]` (JSON array) for abilities with no input parameters; affected `ewpa/get-active-plugins`, `ewpa/site-stats`, `ewpa/list-post-types`, and `ewpa/search-replace`
+* Updated: Total abilities: 53 in 11 categories
 
 = 2.0.6 =
 * New: `ewpa/get-post-meta` utility ability — reads any single post meta field by exact key; returns the value and a `found` flag indicating whether the key exists; companion to `ewpa/update-post-meta`

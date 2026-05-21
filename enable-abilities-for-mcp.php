@@ -209,6 +209,7 @@ function ewpa_maybe_migrate_keys_v207() {
 		'ewpa/get-active-plugins',
 		'ewpa/set-post-language',
 		'ewpa/link-post-translation',
+		'ewpa/get-post-translations',
 	);
 
 	$changed = false;
@@ -474,9 +475,13 @@ function ewpa_get_abilities_registry() {
 					'label' => __( 'Set Post Language', 'enable-abilities-for-mcp' ),
 					'desc'  => __( 'Assign a language code to an existing post via Polylang or WPML.', 'enable-abilities-for-mcp' ),
 				),
-				'ewpa/link-post-translation' => array(
+				'ewpa/link-post-translation'  => array(
 					'label' => __( 'Link Post Translation', 'enable-abilities-for-mcp' ),
 					'desc'  => __( 'Link two posts as translations of each other in the same translation group.', 'enable-abilities-for-mcp' ),
+				),
+				'ewpa/get-post-translations'  => array(
+					'label' => __( 'Get Post Translations', 'enable-abilities-for-mcp' ),
+					'desc'  => __( 'Return the full translation map for a post: language, post ID, title, permalink, and status for each available translation.', 'enable-abilities-for-mcp' ),
 				),
 			),
 		),

@@ -3090,7 +3090,7 @@ function ewpa_register_custom_abilities(): void {
 				'category'            => 'content-management',
 				'input_schema'        => array(
 					'type'       => 'object',
-					'properties' => array(),
+					'properties' => (object) [],
 				),
 				'output_schema'       => array(
 					'type'       => 'object',
@@ -3273,7 +3273,7 @@ function ewpa_register_custom_abilities(): void {
 				'category'            => 'site-information',
 				'input_schema'        => array(
 					'type'       => 'object',
-					'properties' => array(),
+					'properties' => (object) [],
 				),
 				'output_schema'       => array(
 					'type'       => 'object',
@@ -3511,7 +3511,7 @@ function ewpa_register_custom_abilities(): void {
 				'category'            => 'site-information',
 				'input_schema'        => array(
 					'type'       => 'object',
-					'properties' => array(),
+					'properties' => (object) [],
 				),
 				'output_schema'       => array(
 					'type'  => 'array',
@@ -3629,7 +3629,7 @@ function ewpa_register_custom_abilities(): void {
 				'category'            => 'cpt-management',
 				'input_schema'        => array(
 					'type'       => 'object',
-					'properties' => array(),
+					'properties' => (object) [],
 				),
 				'output_schema'       => array(
 					'type'  => 'array',
@@ -5895,6 +5895,105 @@ function ewpa_register_custom_abilities(): void {
 							$translated_id,
 							$plugin
 						),
+					);
+				},
+				'meta'                => array(
+					'show_in_rest' => true,
+					'mcp'          => array(
+						'public' => true,
+					),
+				),
+			)
+		);
+	}
+
+	// ── G3: Get Post Translations ────────────────────────────────────────
+	if ( ewpa_is_ability_enabled( 'ewpa/get-post-translations' ) ) {
+		ewpa_register_ability_with_log(
+			'ewpa/get-post-translations',
+			array(
+				'label'               => __( 'Get Post Translations', 'enable-abilities-for-mcp' ),
+				'description'         => __( 'Returns the full translation map for a post: language codes, post IDs, titles, and permalink for each available translation. Requires Polylang or WPML.', 'enable-abilities-for-mcp' ),
+				'category'            => 'multilanguage',
+				'input_schema'        => array(
+					'type'       => 'object',
+					'required'   => array( 'post_id' ),
+					'properties' => array(
+						'post_id' => array(
+							'type'        => 'integer',
+							'description' => 'ID of the post to get translations for',
+						),
+					),
+				),
+				'output_schema'       => array(
+					'type'       => 'object',
+					'properties' => array(
+						'post_id'      => array( 'type' => 'integer' ),
+						'plugin'       => array( 'type' => 'string' ),
+						'translations' => array(
+							'type'  => 'array',
+							'items' => array(
+								'type'       => 'object',
+								'properties' => array(
+									'language'  => array( 'type' => 'string' ),
+									'post_id'   => array( 'type' => 'integer' ),
+									'title'     => array( 'type' => 'string' ),
+									'permalink' => array( 'type' => 'string' ),
+									'status'    => array( 'type' => 'string' ),
+								),
+							),
+						),
+					),
+				),
+				'permission_callback' => function ( $input ) {
+					$post_id = absint( $input['post_id'] ?? 0 );
+					return $post_id && current_user_can( 'read_post', $post_id );
+				},
+				'execute_callback'    => function ( $input ) {
+					$post_id = absint( $input['post_id'] );
+					$plugin  = ewpa_get_translation_plugin();
+
+					if ( ! get_post( $post_id ) ) {
+						return new WP_Error( 'not_found', 'Post not found.' );
+					}
+
+					if ( ! $plugin ) {
+						return new WP_Error( 'no_plugin', 'No multilanguage plugin detected (Polylang or WPML required).' );
+					}
+
+					$translations_map = array();
+
+					if ( 'polylang' === $plugin && function_exists( 'pll_get_post_translations' ) ) {
+						$translations_map = pll_get_post_translations( $post_id );
+					} elseif ( 'wpml' === $plugin ) {
+						$trid     = apply_filters( 'wpml_element_trid', null, $post_id, 'post_post' );
+						$raw_map  = apply_filters( 'wpml_get_element_translations', null, $trid, 'post_post' );
+						if ( is_array( $raw_map ) ) {
+							foreach ( $raw_map as $lang => $translation ) {
+								$translations_map[ $lang ] = $translation->element_id ?? 0;
+							}
+						}
+					}
+
+					$result = array();
+					foreach ( $translations_map as $lang => $translated_id ) {
+						$translated_post = get_post( $translated_id );
+						if ( ! $translated_post ) {
+							continue;
+						}
+						$result[] = array(
+							'language'  => $lang,
+							'post_id'   => (int) $translated_id,
+							'title'     => $translated_post->post_title,
+							'permalink' => get_permalink( $translated_id ),
+							'status'    => $translated_post->post_status,
+						);
+					}
+
+					return array(
+						'post_id'      => $post_id,
+						'plugin'       => $plugin,
+						'translations' => $result,
 					);
 				},
 				'meta'                => array(
