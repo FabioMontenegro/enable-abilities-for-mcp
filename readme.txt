@@ -5,7 +5,7 @@ Tags: mcp, ai, rest-api, content-management, woocommerce
 Requires at least: 6.9
 Tested up to: 7.0
 Requires PHP: 8.0
-Stable tag: 2.0.8
+Stable tag: 2.0.7
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -138,19 +138,14 @@ This plugin registers abilities using the standard `wp_register_ability()` API. 
 
 == Changelog ==
 
-= 2.0.8 =
-* New: `ewpa/get-post-translations` (multilanguage section) — returns the full translation map for a post: language code, post ID, title, permalink, and status for each available translation via Polylang or WPML
-* Fix: migration `ewpa_keys_migrated_v208` ensures `ewpa/get-post-translations` is auto-enabled on sites that had already run the v2.0.7 migration before this ability was added
-* Fix: input schema for abilities with no parameters no longer includes a `properties` key — prevents PHP `Cannot use object of type stdClass as array` error when input contains unexpected properties
-
 = 2.0.7 =
 * New: `ewpa/get-active-plugins` utility ability — returns all active plugins with name, version, and detected capabilities (SEO, multilanguage, WooCommerce, Events Calendar)
 * New: Multilanguage section — `ewpa/set-post-language` assigns a language code to an existing post via Polylang or WPML
 * New: Multilanguage section — `ewpa/link-post-translation` links two posts as translations of each other in the same translation group via Polylang or WPML
-* New: `language` and `translation_of` parameters added to `ewpa/create-post` — set the language and link a translation group in a single call when Polylang or WPML is active
 * New: Multilanguage section — `ewpa/get-post-translations` returns the full translation map for a post: language code, post ID, title, permalink, and status for each available translation via Polylang or WPML
-* New: `ewpa_get_translation_plugin()` helper — detects the active multilanguage plugin (`polylang`, `wpml`, or empty string); extensible by third-party plugins
-* Fix: `input_schema.properties` now serializes as `{}` (JSON object) instead of `[]` (JSON array) for abilities with no input parameters; affected `ewpa/get-active-plugins`, `ewpa/site-stats`, `ewpa/list-post-types`, and `ewpa/search-replace`
+* New: `language` and `translation_of` parameters added to `ewpa/create-post` — set the language and link a translation group in a single call when Polylang or WPML is active
+* New: `ewpa_get_translation_plugin()` helper — detects the active multilanguage plugin (`polylang`, `wpml`, or empty string)
+* Fix: input schema for abilities with no parameters omits the `properties` key — prevents PHP `Cannot use object of type stdClass as array` error in WordPress schema validation
 * Updated: Total abilities: 53 in 11 categories
 
 = 2.0.6 =
