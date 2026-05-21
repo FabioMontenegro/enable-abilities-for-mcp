@@ -3089,8 +3089,7 @@ function ewpa_register_custom_abilities(): void {
 				'description'         => __( 'Fetches and parses the Yoast SEO sitemap index for this site, returning the list of all sitemap URLs and their last modification date.', 'enable-abilities-for-mcp' ),
 				'category'            => 'content-management',
 				'input_schema'        => array(
-					'type'       => 'object',
-					'properties' => (object) [],
+					'type' => 'object',
 				),
 				'output_schema'       => array(
 					'type'       => 'object',
@@ -3272,8 +3271,7 @@ function ewpa_register_custom_abilities(): void {
 				'description'         => __( 'Returns a summary with the total posts, pages, categories, tags, comments, and users of the site.', 'enable-abilities-for-mcp' ),
 				'category'            => 'site-information',
 				'input_schema'        => array(
-					'type'       => 'object',
-					'properties' => (object) [],
+					'type' => 'object',
 				),
 				'output_schema'       => array(
 					'type'       => 'object',
@@ -3510,8 +3508,7 @@ function ewpa_register_custom_abilities(): void {
 				'description'         => __( 'Returns a list of all currently active plugins on the site, including name, version, and detected capabilities (multilanguage, SEO, WooCommerce, etc.).', 'enable-abilities-for-mcp' ),
 				'category'            => 'site-information',
 				'input_schema'        => array(
-					'type'       => 'object',
-					'properties' => (object) [],
+					'type' => 'object',
 				),
 				'output_schema'       => array(
 					'type'  => 'array',
@@ -3628,8 +3625,7 @@ function ewpa_register_custom_abilities(): void {
 				'description'         => __( 'Lists all custom post types registered on the site, with their configuration, supported features, and associated taxonomies.', 'enable-abilities-for-mcp' ),
 				'category'            => 'cpt-management',
 				'input_schema'        => array(
-					'type'       => 'object',
-					'properties' => (object) [],
+					'type' => 'object',
 				),
 				'output_schema'       => array(
 					'type'  => 'array',
