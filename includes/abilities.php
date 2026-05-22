@@ -2562,8 +2562,9 @@ function ewpa_register_custom_abilities(): void {
 							),
 						),
 						'schema_data' => array(
-							'type'        => 'object',
-							'description' => __( 'The schema object to store. Must be a valid JSON object matching the chosen schema_type. String values are sanitized; URL fields (url, image, @context, sameAs, etc.) are run through esc_url_raw().', 'enable-abilities-for-mcp' ),
+							'type'                 => 'object',
+							'additionalProperties' => true,
+							'description'          => __( 'The schema object to store. Must be a valid JSON object matching the chosen schema_type. String values are sanitized; URL fields (url, image, @context, sameAs, etc.) are run through esc_url_raw().', 'enable-abilities-for-mcp' ),
 						),
 					),
 				),
