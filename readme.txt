@@ -5,7 +5,7 @@ Tags: mcp, ai, rest-api, content-management, woocommerce
 Requires at least: 6.9
 Tested up to: 7.0
 Requires PHP: 8.0
-Stable tag: 2.0.7
+Stable tag: 2.0.8
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -137,6 +137,11 @@ This plugin registers abilities using the standard `wp_register_ability()` API. 
 1. Admin settings page showing all abilities organized by category with toggle switches.
 
 == Changelog ==
+
+= 2.0.8 =
+* New: `ewpa/update-rankmath-schema` ability — writes a structured-data schema block (FAQPage, Article, Product, VideoObject, etc.) to a Rank Math schema meta key as a PHP-serialized array, so Rank Math renders it as JSON-LD in `<head>`; supports 20 schema types
+* Fix: `ewpa/update-post-meta` now blocks `rank_math_schema_*` keys and returns a clear error directing users to `ewpa/update-rankmath-schema` instead — prevents PHP fatal errors caused by storing raw JSON strings in a field that Rank Math expects to hold PHP-serialized arrays
+* Updated: Total abilities: 54 in 11 categories
 
 = 2.0.7 =
 * New: `ewpa/get-active-plugins` utility ability — returns all active plugins with name, version, and detected capabilities (SEO, multilanguage, WooCommerce, Events Calendar)
@@ -286,6 +291,9 @@ This plugin registers abilities using the standard `wp_register_ability()` API. 
 * Admin settings page with per-ability toggles
 
 == Upgrade Notice ==
+
+= 2.0.8 =
+New: `ewpa/update-rankmath-schema` writes Rank Math structured-data schema blocks (FAQPage, Article, Product, etc.) safely as PHP-serialized arrays. Fix: `ewpa/update-post-meta` now blocks `rank_math_schema_*` keys to prevent PHP fatal errors.
 
 = 2.0.6 =
 New: `ewpa/get-post-meta` reads any single meta field (companion to update-post-meta). New: `ewpa_after_update_post_meta` action hook lets SEO plugins flush their cache after a write.

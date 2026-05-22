@@ -79,6 +79,31 @@ function ewpa_validate_cpt( $post_type ) {
 }
 
 /**
+ * Recursively sanitizes a schema.org data array for safe storage in post meta.
+ * Strings are sanitized; URL fields use esc_url_raw; arrays are processed recursively.
+ *
+ * @param array $data Raw schema data from AI input.
+ * @return array Sanitized array ready for update_post_meta().
+ */
+function ewpa_sanitize_schema_array( array $data ): array {
+	$url_keys = array( '@context', 'url', 'image', 'logo', 'sameAs', 'contentUrl', 'thumbnailUrl', 'embedUrl' );
+	$out      = array();
+	foreach ( $data as $key => $value ) {
+		$k = sanitize_text_field( (string) $key );
+		if ( is_array( $value ) ) {
+			$out[ $k ] = ewpa_sanitize_schema_array( $value );
+		} elseif ( is_string( $value ) ) {
+			$out[ $k ] = in_array( $k, $url_keys, true )
+				? esc_url_raw( $value )
+				: sanitize_textarea_field( $value );
+		} elseif ( is_int( $value ) || is_float( $value ) || is_bool( $value ) ) {
+			$out[ $k ] = $value;
+		}
+	}
+	return $out;
+}
+
+/**
  * Returns list of WordPress core internal meta keys that should not be written to.
  *
  * @return array
@@ -2510,6 +2535,72 @@ function ewpa_register_custom_abilities(): void {
 		);
 	}
 
+	// ── S3: Update Rank Math Schema ──────────────────────────────────────
+	if ( ewpa_is_ability_enabled( 'ewpa/update-rankmath-schema' ) ) {
+		ewpa_register_ability_with_log(
+			'ewpa/update-rankmath-schema',
+			array(
+				'label'               => __( 'Update Rank Math Schema', 'enable-abilities-for-mcp' ),
+				'description'         => __( 'Writes a structured-data schema block (e.g. FAQPage, Article, Product) to a Rank Math schema meta key. The schema_data object is sanitized and stored as a PHP-serialized array, exactly as Rank Math expects, so it renders as JSON-LD in <head>. Use this to add or replace a schema block on any post or page.', 'enable-abilities-for-mcp' ),
+				'category'            => 'content-management',
+				'input_schema'        => array(
+					'type'       => 'object',
+					'required'   => array( 'post_id', 'schema_type', 'schema_data' ),
+					'properties' => array(
+						'post_id'     => array(
+							'type'        => 'integer',
+							'description' => __( 'ID of the post or page to update.', 'enable-abilities-for-mcp' ),
+						),
+						'schema_type' => array(
+							'type'        => 'string',
+							'description' => __( 'Schema type suffix used as the Rank Math meta key name (rank_math_schema_{type}). Examples: FAQPage, Article, Product, VideoObject.', 'enable-abilities-for-mcp' ),
+							'enum'        => array(
+								'FAQPage', 'SoftwareApplication', 'Review', 'HowTo', 'ItemList',
+								'Article', 'BlogPosting', 'VideoObject', 'Product', 'Event',
+								'LocalBusiness', 'Recipe', 'Course', 'JobPosting', 'MusicGroup',
+								'Book', 'Movie', 'TVSeries', 'Person', 'Organization',
+							),
+						),
+						'schema_data' => array(
+							'type'        => 'object',
+							'description' => __( 'The schema object to store. Must be a valid JSON object matching the chosen schema_type. String values are sanitized; URL fields (url, image, @context, sameAs, etc.) are run through esc_url_raw().', 'enable-abilities-for-mcp' ),
+						),
+					),
+				),
+				'execute_callback'    => function( $input ) {
+					$post_id     = absint( $input['post_id'] );
+					$schema_type = sanitize_text_field( $input['schema_type'] );
+					$schema_data = $input['schema_data'];
+
+					if ( ! $post_id || ! get_post( $post_id ) ) {
+						return new WP_Error( 'not_found', 'Post not found.' );
+					}
+
+					if ( ! is_array( $schema_data ) ) {
+						return new WP_Error( 'invalid_data', 'schema_data must be an object.' );
+					}
+
+					$safe_data = ewpa_sanitize_schema_array( $schema_data );
+					$meta_key  = 'rank_math_schema_' . $schema_type;
+
+					update_post_meta( $post_id, $meta_key, $safe_data );
+
+					return array(
+						'post_id'    => $post_id,
+						'meta_key'   => $meta_key,
+						'message'    => "Schema '{$schema_type}' saved to {$meta_key} successfully.",
+					);
+				},
+				'meta'                => array(
+					'show_in_rest' => true,
+					'mcp'          => array(
+						'public' => true,
+					),
+				),
+			)
+		);
+	}
+
 	/*
 	 * ======================================================================
 	 * SECTION SP: SEO — SEOPRESS ABILITIES
@@ -3404,6 +3495,13 @@ function ewpa_register_custom_abilities(): void {
 
 					if ( in_array( $meta_key, $blocked, true ) ) {
 						return new WP_Error( 'blocked_key', 'This meta key is protected and cannot be written via this ability.' );
+					}
+
+					if ( str_starts_with( $meta_key, 'rank_math_schema' ) ) {
+						return new WP_Error(
+							'blocked_key',
+							'rank_math_schema_* keys require PHP-serialized arrays. Use ewpa/update-rankmath-schema to write Rank Math schemas safely.'
+						);
 					}
 
 					update_post_meta( $post_id, $meta_key, $meta_value );

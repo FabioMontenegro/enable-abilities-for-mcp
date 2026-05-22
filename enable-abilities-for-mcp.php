@@ -2,7 +2,7 @@
 /**
  * Plugin Name:       Enable Abilities for MCP
  * Description:       Manage which WordPress Abilities are exposed to MCP servers. Enable or disable each ability individually from the dashboard.
- * Version:           2.0.7
+ * Version:           2.0.8
  * Requires at least: 6.9
  * Requires PHP:      8.0
  * Author:            Fabio Montenegro
@@ -18,7 +18,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'EWPA_VERSION', '2.0.7' );
+define( 'EWPA_VERSION', '2.0.8' );
 define( 'EWPA_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'EWPA_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 define( 'EWPA_OPTION_KEY', 'ewpa_enabled_abilities' );
@@ -101,6 +101,9 @@ add_action( 'plugins_loaded', 'ewpa_maybe_migrate_keys_v207' );
 
 // Migration: add ewpa/get-post-translations introduced in v2.0.8 to existing installs.
 add_action( 'plugins_loaded', 'ewpa_maybe_migrate_keys_v208' );
+
+// Migration: add ewpa/update-rankmath-schema introduced in v2.0.8b to existing installs.
+add_action( 'plugins_loaded', 'ewpa_maybe_migrate_keys_v208b' );
 
 
 /*
@@ -252,6 +255,30 @@ function ewpa_maybe_migrate_keys_v208() {
 	}
 
 	update_option( 'ewpa_keys_migrated_v208', true );
+}
+
+/**
+ * Adds ewpa/update-rankmath-schema to existing installs (introduced in v2.0.8b).
+ *
+ * @return void
+ */
+function ewpa_maybe_migrate_keys_v208b() {
+	if ( get_option( 'ewpa_keys_migrated_v208b' ) ) {
+		return;
+	}
+
+	$enabled = get_option( EWPA_OPTION_KEY );
+	if ( ! is_array( $enabled ) ) {
+		update_option( 'ewpa_keys_migrated_v208b', true );
+		return;
+	}
+
+	if ( ! in_array( 'ewpa/update-rankmath-schema', $enabled, true ) ) {
+		$enabled[] = 'ewpa/update-rankmath-schema';
+		update_option( EWPA_OPTION_KEY, $enabled );
+	}
+
+	update_option( 'ewpa_keys_migrated_v208b', true );
 }
 
 /**
@@ -422,9 +449,13 @@ function ewpa_get_abilities_registry() {
 					'label' => __( 'Get Rank Math Metadata', 'enable-abilities-for-mcp' ),
 					'desc'  => __( 'Get Rank Math SEO metadata for a post or page: title, description, keywords, robots, Open Graph, and more.', 'enable-abilities-for-mcp' ),
 				),
-				'ewpa/update-rankmath' => array(
+				'ewpa/update-rankmath'        => array(
 					'label' => __( 'Update Rank Math SEO / Focus Keyword', 'enable-abilities-for-mcp' ),
 					'desc'  => __( 'Update focus keyword, SEO title, description, canonical URL, robots, and Open Graph via Rank Math.', 'enable-abilities-for-mcp' ),
+				),
+				'ewpa/update-rankmath-schema' => array(
+					'label' => __( 'Update Rank Math Schema', 'enable-abilities-for-mcp' ),
+					'desc'  => __( 'Write a structured-data schema block (FAQPage, Article, Product, etc.) to a Rank Math schema meta key as a PHP-serialized array, so it renders as JSON-LD in <head>.', 'enable-abilities-for-mcp' ),
 				),
 			),
 		),
