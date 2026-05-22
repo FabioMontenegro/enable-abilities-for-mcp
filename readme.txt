@@ -5,7 +5,7 @@ Tags: mcp, ai, rest-api, content-management, woocommerce
 Requires at least: 6.9
 Tested up to: 7.0
 Requires PHP: 8.0
-Stable tag: 2.0.8
+Stable tag: 2.0.9
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -137,6 +137,9 @@ This plugin registers abilities using the standard `wp_register_ability()` API. 
 1. Admin settings page showing all abilities organized by category with toggle switches.
 
 == Changelog ==
+
+= 2.0.9 =
+* Fix: `ewpa/update-rankmath-schema` now correctly discoverable by MCP adapters — added `additionalProperties: true` to the `schema_data` input parameter so WordPress accepts the object schema during ability registration
 
 = 2.0.8 =
 * New: `ewpa/update-rankmath-schema` ability — writes a structured-data schema block (FAQPage, Article, Product, VideoObject, etc.) to a Rank Math schema meta key as a PHP-serialized array, so Rank Math renders it as JSON-LD in `<head>`; supports 20 schema types
@@ -291,6 +294,9 @@ This plugin registers abilities using the standard `wp_register_ability()` API. 
 * Admin settings page with per-ability toggles
 
 == Upgrade Notice ==
+
+= 2.0.9 =
+Fix: `ewpa/update-rankmath-schema` was not discoverable by MCP adapters due to an invalid object schema. Update immediately if you use this ability.
 
 = 2.0.8 =
 New: `ewpa/update-rankmath-schema` writes Rank Math structured-data schema blocks (FAQPage, Article, Product, etc.) safely as PHP-serialized arrays. Fix: `ewpa/update-post-meta` now blocks `rank_math_schema_*` keys to prevent PHP fatal errors.
