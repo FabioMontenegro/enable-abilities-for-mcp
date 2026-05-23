@@ -2562,28 +2562,34 @@ function ewpa_register_custom_abilities(): void {
 							),
 						),
 						'schema_data' => array(
-							'type'        => 'string',
-							'description' => __( 'The schema data as a JSON-encoded string. Example for FAQPage: {"@type":"FAQPage","mainEntity":[{"@type":"Question","name":"What is X?","acceptedAnswer":{"@type":"Answer","text":"X is..."}}]}. String values are sanitized server-side; URL fields are run through esc_url_raw().', 'enable-abilities-for-mcp' ),
+							'type'                 => 'object',
+							'additionalProperties' => true,
+							'description'          => __( 'The schema object to store. Must be a valid JSON object matching the chosen schema_type. String values are sanitized; URL fields (url, image, @context, sameAs, etc.) are run through esc_url_raw().', 'enable-abilities-for-mcp' ),
 						),
 					),
 				),
+				'permission_callback' => function( $input ) {
+					$post_id = absint( $input['post_id'] ?? 0 );
+					return $post_id && current_user_can( 'edit_post', $post_id );
+				},
 				'execute_callback'    => function( $input ) {
 					$post_id     = absint( $input['post_id'] );
 					$schema_type = sanitize_text_field( $input['schema_type'] );
-					$schema_data = json_decode( $input['schema_data'], true );
+					$schema_data = $input['schema_data'];
 
 					if ( ! $post_id || ! get_post( $post_id ) ) {
 						return new WP_Error( 'not_found', 'Post not found.' );
 					}
 
 					if ( ! is_array( $schema_data ) ) {
-						return new WP_Error( 'invalid_json', 'schema_data must be a valid JSON object string. Example: {"@type":"FAQPage","mainEntity":[]}' );
+						return new WP_Error( 'invalid_data', 'schema_data must be an object.' );
 					}
 
 					$safe_data = ewpa_sanitize_schema_array( $schema_data );
 					$meta_key  = 'rank_math_schema_' . $schema_type;
 
 					update_post_meta( $post_id, $meta_key, $safe_data );
+					do_action( 'ewpa_after_update_post_meta', $post_id, $meta_key, $safe_data );
 
 					return array(
 						'post_id'    => $post_id,
