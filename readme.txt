@@ -5,7 +5,7 @@ Tags: mcp, ai, rest-api, content-management, woocommerce
 Requires at least: 6.9
 Tested up to: 7.0
 Requires PHP: 8.0
-Stable tag: 2.0.9
+Stable tag: 2.0.10
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -137,6 +137,9 @@ This plugin registers abilities using the standard `wp_register_ability()` API. 
 1. Admin settings page showing all abilities organized by category with toggle switches.
 
 == Changelog ==
+
+= 2.0.10 =
+* Fix: `ewpa/update-rankmath-schema` — added missing `permission_callback` required by `WP_Ability`; absence caused a PHP notice on every page load and prevented the ability from registering correctly
 
 = 2.0.9 =
 * Fix: `ewpa/update-rankmath-schema` now correctly discoverable by MCP adapters — added `additionalProperties: true` to the `schema_data` input parameter so WordPress accepts the object schema during ability registration
