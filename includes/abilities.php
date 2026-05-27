@@ -3479,7 +3479,7 @@ function ewpa_register_custom_abilities(): void {
 				'execute_callback'    => function ( $input ) {
 					$post_id    = absint( $input['post_id'] );
 					$meta_key   = sanitize_text_field( $input['meta_key'] );
-					$meta_value = sanitize_text_field( $input['meta_value'] );
+					$meta_value = $input['meta_value'];
 
 					if ( ! get_post( $post_id ) ) {
 						return new WP_Error( 'not_found', 'Post not found.' );
@@ -3510,7 +3510,7 @@ function ewpa_register_custom_abilities(): void {
 						);
 					}
 
-					update_post_meta( $post_id, $meta_key, $meta_value );
+					update_post_meta( $post_id, $meta_key, wp_slash( $meta_value ) );
 					do_action( 'ewpa_after_update_post_meta', $post_id, $meta_key, $meta_value );
 
 					return array(
@@ -4236,7 +4236,7 @@ function ewpa_register_custom_abilities(): void {
 						foreach ( $input['meta'] as $key => $value ) {
 							$key = sanitize_text_field( $key );
 							if ( ! in_array( $key, $blocked_keys, true ) ) {
-								update_post_meta( $post_id, $key, $value );
+								update_post_meta( $post_id, $key, wp_slash( $value ) );
 							}
 						}
 					}
@@ -4395,7 +4395,7 @@ function ewpa_register_custom_abilities(): void {
 						foreach ( $input['meta'] as $key => $value ) {
 							$key = sanitize_text_field( $key );
 							if ( ! in_array( $key, $blocked_keys, true ) ) {
-								update_post_meta( $post_id, $key, $value );
+								update_post_meta( $post_id, $key, wp_slash( $value ) );
 							}
 						}
 					}

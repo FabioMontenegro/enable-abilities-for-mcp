@@ -5,7 +5,7 @@ Tags: mcp, ai, rest-api, content-management, woocommerce
 Requires at least: 6.9
 Tested up to: 7.0
 Requires PHP: 8.0
-Stable tag: 2.0.10
+Stable tag: 2.0.11
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -137,6 +137,10 @@ This plugin registers abilities using the standard `wp_register_ability()` API. 
 1. Admin settings page showing all abilities organized by category with toggle switches.
 
 == Changelog ==
+
+= 2.0.11 =
+* Fix: `ewpa/update-post-meta` no longer applies `sanitize_text_field()` to `meta_value` — allows storing HTML, CSS, and JavaScript content without corruption
+* Fix: `ewpa/update-post-meta`, `ewpa/update-cpt-item`, and `ewpa/create-cpt-item` now call `wp_slash()` before `update_post_meta()` — preserves backslashes in values received via the REST API, which `update_post_meta()` internally strips via `wp_unslash()`
 
 = 2.0.10 =
 * Fix: `ewpa/update-rankmath-schema` — added missing `permission_callback` required by `WP_Ability`; absence caused a PHP notice on every page load and prevented the ability from registering correctly
