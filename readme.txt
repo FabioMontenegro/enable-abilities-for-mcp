@@ -139,6 +139,7 @@ This plugin registers abilities using the standard `wp_register_ability()` API. 
 == Changelog ==
 
 = 2.0.11 =
+* New: `ewpa/create-code-snippet` ability — creates a PHP snippet via the Code Snippets plugin (2.x or 3.x). Snippet is always saved as inactive; activation requires a manual step from wp-admin. Validates PHP syntax via `token_get_all( TOKEN_PARSE )`, blocks dangerous functions (`eval`, `exec`, `shell_exec`, `system`, `passthru`, `popen`, `proc_open`, `base64_decode`, `file_put_contents`, `unlink`, `chmod`), and fires `ewpa_after_create_code_snippet` for audit. Requires `manage_options`.
 * Fix: `ewpa/update-post-meta` no longer applies `sanitize_text_field()` to `meta_value` — allows storing HTML, CSS, and JavaScript content without corruption
 * Fix: `ewpa/update-post-meta`, `ewpa/update-cpt-item`, and `ewpa/create-cpt-item` now call `wp_slash()` before `update_post_meta()` — preserves backslashes in values received via the REST API, which `update_post_meta()` internally strips via `wp_unslash()`
 

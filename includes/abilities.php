@@ -3177,6 +3177,162 @@ function ewpa_register_custom_abilities(): void {
 		);
 	}
 
+	/*
+	 * ======================================================================
+	 * SECTION CS: CODE SNIPPETS ABILITIES
+	 * ======================================================================
+	 */
+
+	// ── CS1: Create Code Snippet ────────────────────────────────────────
+	if ( ewpa_is_ability_enabled( 'ewpa/create-code-snippet' ) ) {
+		ewpa_register_ability_with_log(
+			'ewpa/create-code-snippet',
+			array(
+				'label'               => __( 'Create Code Snippet', 'enable-abilities-for-mcp' ),
+				'description'         => __( 'Creates a PHP code snippet via the Code Snippets plugin. The snippet is always saved as inactive — it must be activated manually from wp-admin › Snippets. Validates PHP syntax, blocks dangerous functions, and fires an audit action hook after saving.', 'enable-abilities-for-mcp' ),
+				'category'            => 'content-management',
+				'input_schema'        => array(
+					'type'       => 'object',
+					'required'   => array( 'title', 'code' ),
+					'properties' => array(
+						'title'       => array(
+							'type'        => 'string',
+							'description' => 'Display name for the snippet.',
+						),
+						'code'        => array(
+							'type'        => 'string',
+							'description' => 'PHP code to save. Do not include the opening <?php tag.',
+						),
+						'description' => array(
+							'type'        => 'string',
+							'description' => 'Optional description of what the snippet does.',
+						),
+						'scope'       => array(
+							'type'        => 'string',
+							'enum'        => array( 'global', 'admin', 'frontend' ),
+							'description' => 'Where the snippet runs: global (frontend + admin), admin, or frontend. Defaults to global.',
+							'default'     => 'global',
+						),
+						'tags'        => array(
+							'type'        => 'array',
+							'items'       => array( 'type' => 'string' ),
+							'description' => 'Optional list of tags for organisation.',
+						),
+					),
+				),
+				'output_schema'       => array(
+					'type'       => 'object',
+					'properties' => array(
+						'snippet_id' => array( 'type' => 'integer' ),
+						'title'      => array( 'type' => 'string' ),
+						'scope'      => array( 'type' => 'string' ),
+						'active'     => array(
+							'type'        => 'boolean',
+							'description' => 'Always false. Activate manually from wp-admin.',
+						),
+						'edit_url'   => array( 'type' => 'string' ),
+						'message'    => array( 'type' => 'string' ),
+					),
+				),
+				'permission_callback' => function () {
+					return current_user_can( 'manage_options' );
+				},
+				'execute_callback'    => function ( $input ) {
+					// Requires Code Snippets 2.x or 3.x.
+					// 3.x places save_snippet() in the Code_Snippets namespace; 2.x in global.
+					$save_fn = function_exists( '\Code_Snippets\save_snippet' )
+						? '\Code_Snippets\save_snippet'
+						: ( function_exists( 'save_snippet' ) ? 'save_snippet' : null );
+
+					if ( null === $save_fn ) {
+						return new WP_Error( 'plugin_inactive', 'Code Snippets plugin is not active or save_snippet() is unavailable.' );
+					}
+
+					$title       = sanitize_text_field( $input['title'] );
+					$code        = $input['code']; // Raw PHP — must not be sanitized.
+					$description = isset( $input['description'] ) ? sanitize_textarea_field( $input['description'] ) : '';
+					$scope       = isset( $input['scope'] ) ? sanitize_key( $input['scope'] ) : 'global';
+					$tags        = isset( $input['tags'] ) && is_array( $input['tags'] )
+						? array_map( 'sanitize_text_field', $input['tags'] )
+						: array();
+
+					if ( ! in_array( $scope, array( 'global', 'admin', 'frontend' ), true ) ) {
+						$scope = 'global';
+					}
+
+					// 1. PHP syntax check — TOKEN_PARSE throws ParseError on invalid syntax.
+					try {
+						token_get_all( '<?php ' . $code, TOKEN_PARSE );
+					} catch ( \ParseError $e ) {
+						return new WP_Error( 'syntax_error', 'PHP syntax error: ' . $e->getMessage() );
+					}
+
+					// 2. Blocklist: reject dangerous function calls.
+					$blocked = array(
+						'eval', 'exec', 'system', 'passthru', 'shell_exec',
+						'popen', 'proc_open', 'base64_decode', 'file_put_contents',
+						'unlink', 'chmod',
+					);
+					foreach ( $blocked as $fn ) {
+						if ( preg_match( '/\b' . preg_quote( $fn, '/' ) . '\s*\(/i', $code ) ) {
+							return new WP_Error(
+								'blocked_function',
+								/* translators: %s: function name */
+								sprintf( __( "The function '%s' is not allowed in code snippets for security reasons.", 'enable-abilities-for-mcp' ), $fn )
+							);
+						}
+					}
+
+					// 3. Instantiate Snippet — supports both Code Snippets 2.x and 3.x.
+					if ( class_exists( '\Code_Snippets\Snippet' ) ) {
+						$snippet = new \Code_Snippets\Snippet();
+					} elseif ( class_exists( 'Snippet' ) ) {
+						$snippet = new Snippet(); // phpcs:ignore WordPress.WP.GlobalVariablesOverride
+					} else {
+						return new WP_Error( 'plugin_error', 'Cannot instantiate Snippet class. Ensure Code Snippets 2.x or 3.x is active.' );
+					}
+
+					$snippet->name   = $title;
+					$snippet->code   = $code;
+					$snippet->desc   = $description;
+					$snippet->scope  = $scope;
+					$snippet->tags   = $tags;
+					$snippet->active = false; // Always inactive — must be activated manually.
+
+					$saved = $save_fn( $snippet );
+					if ( ! $saved || empty( $saved->id ) ) {
+						return new WP_Error( 'save_failed', 'Code Snippets plugin could not save the snippet.' );
+					}
+
+					$edit_url = admin_url( 'admin.php?page=edit-snippet&id=' . (int) $saved->id );
+
+					do_action( 'ewpa_after_create_code_snippet', (int) $saved->id, $title, $code );
+
+					return array(
+						'snippet_id' => (int) $saved->id,
+						'title'      => $title,
+						'scope'      => $scope,
+						'active'     => false,
+						'edit_url'   => $edit_url,
+						'message'    => sprintf(
+							/* translators: 1: snippet title, 2: snippet ID, 3: edit URL */
+							__( "Snippet '%1\$s' (ID %2\$d) created as INACTIVE. Activate manually from: %3\$s", 'enable-abilities-for-mcp' ),
+							$title,
+							(int) $saved->id,
+							$edit_url
+						),
+					);
+				},
+				'meta'                => array(
+					'show_in_rest' => true,
+					'mcp'          => array(
+						'public' => true,
+					),
+				),
+			)
+		);
+	}
+
 	// ── Y3: Get Yoast Sitemap Index ─────────────────────────────────────
 	if ( ewpa_is_ability_enabled( 'ewpa/yoast-get-sitemap-index' ) ) {
 		ewpa_register_ability_with_log(

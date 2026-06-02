@@ -12,8 +12,9 @@ Desktop.ini
 *.swo
 *~
 
-# Claude Code
+# Claude Code / SDD artifacts
 .claude/
+.sdd/
 
 # Node (if using build tools)
 node_modules/

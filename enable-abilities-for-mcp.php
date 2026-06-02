@@ -522,7 +522,20 @@ function ewpa_get_abilities_registry() {
 				),
 			),
 		),
-		'multilanguage' => array(
+		'code-snippets' => array(
+				'section_label'  => __( 'Code Snippets', 'enable-abilities-for-mcp' ),
+				'section_desc'   => __( 'Create PHP code snippets via the Code Snippets plugin. Requires manage_options. Snippets are always created as inactive — they must be activated manually from wp-admin › Snippets.', 'enable-abilities-for-mcp' ),
+				'section_icon'   => 'dashicons-editor-code',
+				'section_badge'  => 'danger',
+				'section_notice' => 'ewpa_section_notice_code_snippets',
+				'abilities'      => array(
+					'ewpa/create-code-snippet' => array(
+						'label' => __( 'Create Code Snippet', 'enable-abilities-for-mcp' ),
+						'desc'  => __( 'Creates a PHP snippet (always inactive). Validates syntax, blocks dangerous functions (eval, exec, shell_exec, etc.), and fires an audit action hook.', 'enable-abilities-for-mcp' ),
+					),
+				),
+			),
+			'multilanguage' => array(
 			'section_label'  => __( 'Multilanguage', 'enable-abilities-for-mcp' ),
 			'section_desc'   => __( 'Assign languages and link translation groups between posts via Polylang or WPML.', 'enable-abilities-for-mcp' ),
 			'section_icon'   => 'dashicons-translation',
@@ -879,6 +892,33 @@ function ewpa_section_notice_tec() {
  *
  * @return string
  */
+/**
+ * Section notice for Code Snippets: warns when plugin is inactive, always shows security notice.
+ *
+ * @return string
+ */
+function ewpa_section_notice_code_snippets() {
+	$plugin_active = function_exists( 'save_snippet' )
+		|| class_exists( '\Code_Snippets\Snippet' )
+		|| class_exists( 'Snippet' );
+
+	$out = '';
+
+	if ( ! $plugin_active ) {
+		$out .= '<div class="ewpa-section-notice ewpa-section-notice-info">'
+			. '<span class="dashicons dashicons-info"></span> '
+			. esc_html__( 'Code Snippets plugin is not active. This ability requires Code Snippets 2.x or 3.x to function.', 'enable-abilities-for-mcp' )
+			. '</div>';
+	}
+
+	$out .= '<div class="ewpa-section-notice ewpa-section-notice-warning">'
+		. '<span class="dashicons dashicons-warning"></span> '
+		. esc_html__( 'Security: snippets are always saved as inactive and must be activated manually from wp-admin › Snippets. Enable only in trusted environments. Requires manage_options.', 'enable-abilities-for-mcp' )
+		. '</div>';
+
+	return $out;
+}
+
 function ewpa_section_notice_multilanguage() {
 	if ( ewpa_get_translation_plugin() ) {
 		return '';
