@@ -5,7 +5,7 @@ Tags: mcp, ai, rest-api, content-management, woocommerce
 Requires at least: 6.9
 Tested up to: 7.0
 Requires PHP: 8.0
-Stable tag: 2.0.11
+Stable tag: 2.0.12
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -137,6 +137,9 @@ This plugin registers abilities using the standard `wp_register_ability()` API. 
 1. Admin settings page showing all abilities organized by category with toggle switches.
 
 == Changelog ==
+
+= 2.0.12 =
+* New: `ewpa/create-code-snippet` ability — creates a PHP snippet via the Code Snippets plugin (2.x or 3.x). Snippet is always saved as inactive; activation requires a manual step from wp-admin. Validates PHP syntax via `token_get_all( TOKEN_PARSE )`, blocks dangerous functions (`eval`, `exec`, `shell_exec`, `system`, `passthru`, `popen`, `proc_open`, `base64_decode`, `file_put_contents`, `unlink`, `chmod`), and fires `ewpa_after_create_code_snippet` for audit. Requires `manage_options`.
 
 = 2.0.11 =
 * New: `ewpa/create-code-snippet` ability — creates a PHP snippet via the Code Snippets plugin (2.x or 3.x). Snippet is always saved as inactive; activation requires a manual step from wp-admin. Validates PHP syntax via `token_get_all( TOKEN_PARSE )`, blocks dangerous functions (`eval`, `exec`, `shell_exec`, `system`, `passthru`, `popen`, `proc_open`, `base64_decode`, `file_put_contents`, `unlink`, `chmod`), and fires `ewpa_after_create_code_snippet` for audit. Requires `manage_options`.
