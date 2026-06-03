@@ -7,8 +7,14 @@
 .sdd
 node_modules
 vendor
+composer.json
 composer.lock
+package.json
 package-lock.json
+phpcs.xml
+phpcs.xml.dist
+README.md
+sync-to-svn.ps1
 *.zip
 *.tar.gz
 dist
