@@ -5,7 +5,7 @@ Tags: mcp, ai, rest-api, content-management, woocommerce
 Requires at least: 6.9
 Tested up to: 7.0
 Requires PHP: 8.0
-Stable tag: 2.0.12
+Stable tag: 2.0.13
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -137,6 +137,9 @@ This plugin registers abilities using the standard `wp_register_ability()` API. 
 1. Admin settings page showing all abilities organized by category with toggle switches.
 
 == Changelog ==
+
+= 2.0.13 =
+* Fix: `ewpa/update-post`, `ewpa/create-post`, `ewpa/create-page`, `ewpa/create-cpt-item`, `ewpa/update-cpt-item`, `ewpa/search-replace`, and `ewpa/tec-update-event` now use `wp_slash()` instead of `wp_kses_post()` on post content before passing to `wp_insert_post()` / `wp_update_post()`. This prevents double-unslashing that corrupted JSON Unicode escapes (e.g. `<` → `u003c`) in Gutenberg block attributes such as Yoast FAQ questions. KSES is now applied by WordPress via the `content_save_pre` filter, which correctly respects `unfiltered_html` capability — allowing admins to save `<script type="application/ld+json">` inside `wp:html` blocks without stripping.
 
 = 2.0.12 =
 * New: `ewpa/create-code-snippet` ability — creates a PHP snippet via the Code Snippets plugin (2.x or 3.x). Snippet is always saved as inactive; activation requires a manual step from wp-admin. Validates PHP syntax via `token_get_all( TOKEN_PARSE )`, blocks dangerous functions (`eval`, `exec`, `shell_exec`, `system`, `passthru`, `popen`, `proc_open`, `base64_decode`, `file_put_contents`, `unlink`, `chmod`), and fires `ewpa_after_create_code_snippet` for audit. Requires `manage_options`.

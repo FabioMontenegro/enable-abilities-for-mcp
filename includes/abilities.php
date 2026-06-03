@@ -1114,7 +1114,7 @@ function ewpa_register_custom_abilities(): void {
 
 					$post_data = array(
 						'post_title'   => sanitize_text_field( $input['title'] ),
-						'post_content' => wp_kses_post( $input['content'] ),
+						'post_content' => wp_slash( $input['content'] ),
 						'post_status'  => $status,
 						'post_type'    => 'post',
 					);
@@ -1295,7 +1295,7 @@ function ewpa_register_custom_abilities(): void {
 						$post_data['post_title'] = sanitize_text_field( $input['title'] );
 					}
 					if ( isset( $input['content'] ) ) {
-						$post_data['post_content'] = wp_kses_post( $input['content'] );
+						$post_data['post_content'] = wp_slash( $input['content'] );
 					}
 					if ( isset( $input['excerpt'] ) ) {
 						$post_data['post_excerpt'] = sanitize_textarea_field( $input['excerpt'] );
@@ -1638,7 +1638,7 @@ function ewpa_register_custom_abilities(): void {
 
 					$post_data = array(
 						'post_title'   => sanitize_text_field( $input['title'] ),
-						'post_content' => wp_kses_post( $input['content'] ),
+						'post_content' => wp_slash( $input['content'] ),
 						'post_status'  => $status,
 						'post_type'    => 'page',
 						'post_parent'  => absint( $input['parent_id'] ?? 0 ),
@@ -3474,7 +3474,7 @@ function ewpa_register_custom_abilities(): void {
 					}
 
 					$search  = sanitize_text_field( $input['search'] );
-					$replace = wp_kses_post( $input['replace'] );
+					$replace = $input['replace'];
 
 					if ( empty( $search ) ) {
 						return new WP_Error( 'invalid_input', 'The search text cannot be empty.' );
@@ -3492,7 +3492,7 @@ function ewpa_register_custom_abilities(): void {
 						wp_update_post(
 							array(
 								'ID'           => $post_id,
-								'post_content' => $new_content,
+								'post_content' => wp_slash( $new_content ),
 							)
 						);
 					}
@@ -4347,7 +4347,7 @@ function ewpa_register_custom_abilities(): void {
 					);
 
 					if ( isset( $input['content'] ) ) {
-						$post_data['post_content'] = wp_kses_post( $input['content'] );
+						$post_data['post_content'] = wp_slash( $input['content'] );
 					}
 					if ( isset( $input['excerpt'] ) ) {
 						$post_data['post_excerpt'] = sanitize_textarea_field( $input['excerpt'] );
@@ -4504,7 +4504,7 @@ function ewpa_register_custom_abilities(): void {
 						$post_data['post_title'] = sanitize_text_field( $input['title'] );
 					}
 					if ( isset( $input['content'] ) ) {
-						$post_data['post_content'] = wp_kses_post( $input['content'] );
+						$post_data['post_content'] = wp_slash( $input['content'] );
 					}
 					if ( isset( $input['excerpt'] ) ) {
 						$post_data['post_excerpt'] = sanitize_textarea_field( $input['excerpt'] );
@@ -5917,7 +5917,7 @@ function ewpa_register_custom_abilities(): void {
 						$post_args['post_title'] = sanitize_text_field( $args['title'] );
 					}
 					if ( isset( $args['description'] ) ) {
-						$post_args['post_content'] = wp_kses_post( $args['description'] );
+						$post_args['post_content'] = wp_slash( $args['description'] );
 					}
 					if ( isset( $args['status'] ) ) {
 						$post_args['post_status'] = sanitize_text_field( $args['status'] );
