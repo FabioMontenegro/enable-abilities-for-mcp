@@ -232,6 +232,14 @@ function ewpa_register_ability_categories(): void {
 			'description' => __( 'Abilities to manage post languages and translation groups via Polylang or WPML.', 'enable-abilities-for-mcp' ),
 		)
 	);
+
+	wp_register_ability_category(
+		'jetengine-options-pages',
+		array(
+			'label'       => __( 'JetEngine Options Pages', 'enable-abilities-for-mcp' ),
+			'description' => __( 'Abilities to read and write JetEngine Options Pages fields. Requires JetEngine with the Options Pages module enabled.', 'enable-abilities-for-mcp' ),
+		)
+	);
 }
 
 /*
@@ -6254,6 +6262,278 @@ function ewpa_register_custom_abilities(): void {
 				},
 				'meta'                => array(
 					'show_in_rest' => true,
+					'mcp'          => array(
+						'public' => true,
+					),
+				),
+			)
+		);
+	}
+
+	/*
+	 * ======================================================================
+	 * SECTION H: JETENGINE OPTIONS PAGES
+	 * Requires JetEngine with the Options Pages module enabled.
+	 * All abilities check function_exists('jet_engine') and isset(jet_engine()->options_pages).
+	 * ======================================================================
+	 */
+
+	// ── H1: List Options Pages ───────────────────────────────────────────
+	if ( ewpa_is_ability_enabled( 'ewpa/je-list-options-pages' ) ) {
+		ewpa_register_ability_with_log(
+			'ewpa/je-list-options-pages',
+			array(
+				'label'               => __( 'List Options Pages', 'enable-abilities-for-mcp' ),
+				'description'         => __( 'Lists all registered JetEngine Options Pages with their field schema. Does not return field values. Requires JetEngine with the Options Pages module enabled.', 'enable-abilities-for-mcp' ),
+				'category'            => 'jetengine-options-pages',
+				'output_schema'       => array(
+					'type'  => 'array',
+					'items' => array(
+						'type'       => 'object',
+						'properties' => array(
+							'slug'         => array( 'type' => 'string' ),
+							'title'        => array( 'type' => 'string' ),
+							'capability'   => array( 'type' => 'string' ),
+							'storage_type' => array( 'type' => 'string' ),
+							'fields'       => array(
+								'type'  => 'array',
+								'items' => array(
+									'type'       => 'object',
+									'properties' => array(
+										'name'  => array( 'type' => 'string' ),
+										'title' => array( 'type' => 'string' ),
+										'type'  => array( 'type' => 'string' ),
+									),
+								),
+							),
+						),
+					),
+				),
+				'permission_callback' => function () {
+					return current_user_can( 'manage_options' );
+				},
+				'execute_callback'    => function () {
+					if ( ! function_exists( 'jet_engine' ) || ! isset( jet_engine()->options_pages ) ) {
+						return new WP_Error( 'jetengine_inactive', __( 'JetEngine is not active or Options Pages module is disabled.', 'enable-abilities-for-mcp' ) );
+					}
+
+					$pages  = jet_engine()->options_pages->registered_pages;
+					$result = array();
+
+					foreach ( $pages as $page_obj ) {
+						$fields = array();
+						foreach ( (array) $page_obj->meta_box as $field ) {
+							$fields[] = array(
+								'name'  => $field['name'],
+								'title' => $field['title'],
+								'type'  => $field['type'],
+							);
+						}
+						$result[] = array(
+							'slug'         => $page_obj->slug,
+							'title'        => $page_obj->page['labels']['name'] ?? $page_obj->slug,
+							'capability'   => $page_obj->page['capability'] ?? 'manage_options',
+							'storage_type' => $page_obj->storage_type ?? 'default',
+							'fields'       => $fields,
+						);
+					}
+
+					return $result;
+				},
+				'meta'                => array(
+					'show_in_rest' => true,
+					'annotations'  => array(
+						'readonly'    => true,
+						'destructive' => false,
+					),
+					'mcp'          => array(
+						'public' => true,
+					),
+				),
+			)
+		);
+	}
+
+	// ── H2: Get Options Page ─────────────────────────────────────────────
+	if ( ewpa_is_ability_enabled( 'ewpa/je-get-options-page' ) ) {
+		ewpa_register_ability_with_log(
+			'ewpa/je-get-options-page',
+			array(
+				'label'               => __( 'Get Options Page', 'enable-abilities-for-mcp' ),
+				'description'         => __( 'Returns all fields with their current stored values for a given JetEngine Options Page slug. Requires JetEngine with the Options Pages module enabled.', 'enable-abilities-for-mcp' ),
+				'category'            => 'jetengine-options-pages',
+				'input_schema'        => array(
+					'type'       => 'object',
+					'required'   => array( 'slug' ),
+					'properties' => array(
+						'slug' => array(
+							'type'        => 'string',
+							'description' => 'Slug of the JetEngine Options Page to retrieve.',
+						),
+					),
+				),
+				'output_schema'       => array(
+					'type'       => 'object',
+					'properties' => array(
+						'slug'   => array( 'type' => 'string' ),
+						'title'  => array( 'type' => 'string' ),
+						'fields' => array(
+							'type'  => 'array',
+							'items' => array(
+								'type'       => 'object',
+								'properties' => array(
+									'name'  => array( 'type' => 'string' ),
+									'title' => array( 'type' => 'string' ),
+									'type'  => array( 'type' => 'string' ),
+									'value' => array( 'type' => array( 'string', 'number', 'integer', 'boolean', 'null', 'array', 'object' ) ),
+								),
+							),
+						),
+					),
+				),
+				'permission_callback' => function () {
+					return current_user_can( 'manage_options' );
+				},
+				'execute_callback'    => function ( $input ) {
+					if ( ! function_exists( 'jet_engine' ) || ! isset( jet_engine()->options_pages ) ) {
+						return new WP_Error( 'jetengine_inactive', __( 'JetEngine is not active or Options Pages module is disabled.', 'enable-abilities-for-mcp' ) );
+					}
+
+					$slug     = sanitize_key( $input['slug'] );
+					$pages    = jet_engine()->options_pages->registered_pages;
+					$page_obj = $pages[ $slug ] ?? null;
+
+					if ( ! $page_obj ) {
+						return new WP_Error( 'page_not_found', __( 'Options page not found.', 'enable-abilities-for-mcp' ) );
+					}
+
+					$fields = array();
+					foreach ( (array) $page_obj->meta_box as $field ) {
+						$raw_value = $page_obj->get( $field['name'] );
+						$fields[]  = array(
+							'name'  => $field['name'],
+							'title' => $field['title'],
+							'type'  => $field['type'],
+							'value' => ( false === $raw_value ) ? null : $raw_value,
+						);
+					}
+
+					return array(
+						'slug'   => $slug,
+						'title'  => $page_obj->page['labels']['name'] ?? $slug,
+						'fields' => $fields,
+					);
+				},
+				'meta'                => array(
+					'show_in_rest' => true,
+					'annotations'  => array(
+						'readonly'    => true,
+						'destructive' => false,
+					),
+					'mcp'          => array(
+						'public' => true,
+					),
+				),
+			)
+		);
+	}
+
+	// ── H3: Update Options Page Field ────────────────────────────────────
+	if ( ewpa_is_ability_enabled( 'ewpa/je-update-options-page-field' ) ) {
+		ewpa_register_ability_with_log(
+			'ewpa/je-update-options-page-field',
+			array(
+				'label'               => __( 'Update Options Page Field', 'enable-abilities-for-mcp' ),
+				'description'         => __( 'Writes a new value to a single field of a JetEngine Options Page. Validates slug, field name, and field type before writing. Requires JetEngine with the Options Pages module enabled.', 'enable-abilities-for-mcp' ),
+				'category'            => 'jetengine-options-pages',
+				'input_schema'        => array(
+					'type'       => 'object',
+					'required'   => array( 'slug', 'field_name', 'value' ),
+					'properties' => array(
+						'slug'       => array(
+							'type'        => 'string',
+							'description' => 'Slug of the JetEngine Options Page.',
+						),
+						'field_name' => array(
+							'type'        => 'string',
+							'description' => 'Machine name of the field to update.',
+						),
+						'value'      => array(
+							'type'        => array( 'string', 'number', 'integer', 'boolean', 'null', 'array', 'object' ),
+							'description' => 'New value to persist.',
+						),
+					),
+				),
+				'output_schema'       => array(
+					'type'       => 'object',
+					'properties' => array(
+						'slug'       => array( 'type' => 'string' ),
+						'field_name' => array( 'type' => 'string' ),
+						'old_value'  => array( 'type' => array( 'string', 'number', 'integer', 'boolean', 'null', 'array', 'object' ) ),
+						'new_value'  => array( 'type' => array( 'string', 'number', 'integer', 'boolean', 'null', 'array', 'object' ) ),
+						'message'    => array( 'type' => 'string' ),
+					),
+				),
+				'permission_callback' => function () {
+					return current_user_can( 'manage_options' );
+				},
+				'execute_callback'    => function ( $input ) {
+					if ( ! function_exists( 'jet_engine' ) || ! isset( jet_engine()->options_pages ) ) {
+						return new WP_Error( 'jetengine_inactive', __( 'JetEngine is not active or Options Pages module is disabled.', 'enable-abilities-for-mcp' ) );
+					}
+
+					$slug       = sanitize_key( $input['slug'] );
+					$field_name = sanitize_key( $input['field_name'] );
+					$value      = $input['value']; // Intentionally unsanitized — JE sanitizes on save.
+					$blocklist  = array( 'repeater', 'html', 'tab', 'accordion', 'endpoint' );
+
+					$pages    = jet_engine()->options_pages->registered_pages;
+					$page_obj = $pages[ $slug ] ?? null;
+
+					if ( ! $page_obj ) {
+						return new WP_Error( 'page_not_found', __( 'Options page not found.', 'enable-abilities-for-mcp' ) );
+					}
+
+					// Locate the field definition in meta_box.
+					$field_def = null;
+					foreach ( (array) $page_obj->meta_box as $f ) {
+						if ( ( $f['name'] ?? '' ) === $field_name ) {
+							$field_def = $f;
+							break;
+						}
+					}
+
+					if ( ! $field_def ) {
+						return new WP_Error( 'field_not_found', __( 'Field not found in this options page.', 'enable-abilities-for-mcp' ) );
+					}
+
+					if ( in_array( $field_def['type'] ?? '', $blocklist, true ) ) {
+						return new WP_Error(
+							'field_type_not_supported',
+							/* translators: %s: field type name */
+							sprintf( __( "Field type '%s' cannot be updated via this ability.", 'enable-abilities-for-mcp' ), $field_def['type'] )
+						);
+					}
+
+					$raw_old   = $page_obj->get( $field_name );
+					$old_value = ( false === $raw_old ) ? null : $raw_old;
+
+					$page_obj->update_options( array( $field_name => $value ), false, false );
+
+					return array(
+						'slug'       => $slug,
+						'field_name' => $field_name,
+						'old_value'  => $old_value,
+						'new_value'  => $value,
+						'message'    => __( 'Field updated successfully.', 'enable-abilities-for-mcp' ),
+					);
+				},
+				'meta'                => array(
+					'show_in_rest' => true,
+					'annotations'  => array(
+						'readonly'    => false,
+						'destructive' => true,
+					),
 					'mcp'          => array(
 						'public' => true,
 					),

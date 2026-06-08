@@ -192,7 +192,7 @@ function ewpa_clear_activity_logs( int $user_id = 0 ): void {
 function ewpa_register_ability_with_log( string $ability_key, array $args ): void {
 	if ( ! empty( $args['execute_callback'] ) && is_callable( $args['execute_callback'] ) ) {
 		$original                 = $args['execute_callback'];
-		$args['execute_callback'] = static function ( $input ) use ( $ability_key, $original ) {
+		$args['execute_callback'] = static function ( $input = null ) use ( $ability_key, $original ) {
 			$result = $original( $input );
 			ewpa_log_activity( get_current_user_id(), $ability_key );
 			return $result;

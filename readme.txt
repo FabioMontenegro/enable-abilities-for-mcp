@@ -5,7 +5,7 @@ Tags: mcp, ai, rest-api, content-management, woocommerce
 Requires at least: 6.9
 Tested up to: 7.0
 Requires PHP: 8.0
-Stable tag: 2.0.13
+Stable tag: 2.0.14
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -19,7 +19,7 @@ WordPress 6.9 introduced the Abilities API, allowing external tools to discover 
 
 = Features =
 
-* **53 abilities** organized in 11 categories: Core, Read, Write, SEO (Rank Math), SEO (SEOPress), SEO (Yoast), Utility, Multilanguage, Custom Post Types, WooCommerce, and The Events Calendar
+* **58 abilities** organized in 13 categories: Core, Read, Write, SEO (Rank Math), SEO (SEOPress), SEO (Yoast), Utility, Multilanguage, Custom Post Types, WooCommerce, The Events Calendar, Code Snippets, and JetEngine Options Pages
 * **WooCommerce integration** — dedicated abilities to manage products, orders, and customers using the native WooCommerce API (HPOS-compatible, formally declared)
 * **The Events Calendar integration** — list, get, create, and update events with venue, organizer, and date filters
 * **Admin dashboard** with toggle switches for each ability
@@ -138,11 +138,17 @@ This plugin registers abilities using the standard `wp_register_ability()` API. 
 
 == Changelog ==
 
+= 2.0.14 =
+* New: JetEngine Options Pages section (3 abilities) — `ewpa/je-list-options-pages` lists all registered options pages with their field schema; `ewpa/je-get-options-page` returns field values for a given slug; `ewpa/je-update-options-page-field` writes a single field value with blocklist protection (repeater, html, tab, accordion, endpoint types are blocked). Both list and get abilities are enabled by default; update is off by default. Requires JetEngine with the Options Pages module enabled.
+* Fix: `ewpa_register_ability_with_log()` wrapper closure now uses `$input = null` (optional parameter) so abilities without an `input_schema` are not broken by PHP 8.4's `ArgumentCountError` when `WP_Ability::invoke_callback()` calls them with zero arguments.
+* Updated: Total abilities: 58 in 13 categories
+
 = 2.0.13 =
 * Fix: `ewpa/update-post`, `ewpa/create-post`, `ewpa/create-page`, `ewpa/create-cpt-item`, `ewpa/update-cpt-item`, `ewpa/search-replace`, and `ewpa/tec-update-event` now use `wp_slash()` instead of `wp_kses_post()` on post content before passing to `wp_insert_post()` / `wp_update_post()`. This prevents double-unslashing that corrupted JSON Unicode escapes (e.g. `<` → `u003c`) in Gutenberg block attributes such as Yoast FAQ questions. KSES is now applied by WordPress via the `content_save_pre` filter, which correctly respects `unfiltered_html` capability — allowing admins to save `<script type="application/ld+json">` inside `wp:html` blocks without stripping.
 
 = 2.0.12 =
 * New: `ewpa/create-code-snippet` ability — creates a PHP snippet via the Code Snippets plugin (2.x or 3.x). Snippet is always saved as inactive; activation requires a manual step from wp-admin. Validates PHP syntax via `token_get_all( TOKEN_PARSE )`, blocks dangerous functions (`eval`, `exec`, `shell_exec`, `system`, `passthru`, `popen`, `proc_open`, `base64_decode`, `file_put_contents`, `unlink`, `chmod`), and fires `ewpa_after_create_code_snippet` for audit. Requires `manage_options`.
+* Updated: Total abilities: 55 in 12 categories
 
 = 2.0.11 =
 * New: `ewpa/create-code-snippet` ability — creates a PHP snippet via the Code Snippets plugin (2.x or 3.x). Snippet is always saved as inactive; activation requires a manual step from wp-admin. Validates PHP syntax via `token_get_all( TOKEN_PARSE )`, blocks dangerous functions (`eval`, `exec`, `shell_exec`, `system`, `passthru`, `popen`, `proc_open`, `base64_decode`, `file_put_contents`, `unlink`, `chmod`), and fires `ewpa_after_create_code_snippet` for audit. Requires `manage_options`.

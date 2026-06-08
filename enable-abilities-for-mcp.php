@@ -2,7 +2,7 @@
 /**
  * Plugin Name:       Enable Abilities for MCP
  * Description:       Manage which WordPress Abilities are exposed to MCP servers. Enable or disable each ability individually from the dashboard.
- * Version:           2.0.13
+ * Version:           2.0.14
  * Requires at least: 6.9
  * Requires PHP:      8.0
  * Author:            Fabio Montenegro
@@ -18,7 +18,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'EWPA_VERSION', '2.0.11' );
+define( 'EWPA_VERSION', '2.0.14' );
 define( 'EWPA_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'EWPA_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 define( 'EWPA_OPTION_KEY', 'ewpa_enabled_abilities' );
@@ -104,6 +104,9 @@ add_action( 'plugins_loaded', 'ewpa_maybe_migrate_keys_v208' );
 
 // Migration: add ewpa/update-rankmath-schema introduced in v2.0.8b to existing installs.
 add_action( 'plugins_loaded', 'ewpa_maybe_migrate_keys_v208b' );
+
+// Migration: add JetEngine Options Pages abilities introduced in v2.0.14 to existing installs.
+add_action( 'plugins_loaded', 'ewpa_maybe_migrate_keys_v2014' );
 
 
 /*
@@ -279,6 +282,45 @@ function ewpa_maybe_migrate_keys_v208b() {
 	}
 
 	update_option( 'ewpa_keys_migrated_v208b', true );
+}
+
+/**
+ * Adds JetEngine Options Pages abilities introduced in v2.0.14 to existing installs.
+ *
+ * Auto-enables ewpa/je-list-options-pages and ewpa/je-get-options-page.
+ * ewpa/je-update-options-page-field is NOT added (default=false, opt-in only).
+ *
+ * @return void
+ */
+function ewpa_maybe_migrate_keys_v2014(): void {
+	if ( get_option( 'ewpa_keys_migrated_v2014' ) ) {
+		return;
+	}
+
+	$enabled = get_option( EWPA_OPTION_KEY );
+	if ( ! is_array( $enabled ) ) {
+		update_option( 'ewpa_keys_migrated_v2014', true );
+		return;
+	}
+
+	$new_abilities = array(
+		'ewpa/je-list-options-pages',
+		'ewpa/je-get-options-page',
+	);
+
+	$changed = false;
+	foreach ( $new_abilities as $key ) {
+		if ( ! in_array( $key, $enabled, true ) ) {
+			$enabled[] = $key;
+			$changed   = true;
+		}
+	}
+
+	if ( $changed ) {
+		update_option( EWPA_OPTION_KEY, $enabled );
+	}
+
+	update_option( 'ewpa_keys_migrated_v2014', true );
 }
 
 /**
@@ -658,6 +700,30 @@ function ewpa_get_abilities_registry() {
 				),
 			),
 		),
+		'jetengine-options-pages' => array(
+			'section_label'  => __( 'JetEngine — Options Pages', 'enable-abilities-for-mcp' ),
+			'section_desc'   => __( 'Read and write JetEngine Options Pages fields. Requires JetEngine with the Options Pages module enabled.', 'enable-abilities-for-mcp' ),
+			'section_icon'   => 'dashicons-admin-settings',
+			'section_badge'  => 'danger',
+			'section_notice' => 'ewpa_section_notice_jetengine_options_pages',
+			'abilities'      => array(
+				'ewpa/je-list-options-pages'        => array(
+					'label'   => __( 'List Options Pages', 'enable-abilities-for-mcp' ),
+					'desc'    => __( 'List all registered JetEngine Options Pages with their field schema (no values).', 'enable-abilities-for-mcp' ),
+					'default' => true,
+				),
+				'ewpa/je-get-options-page'          => array(
+					'label'   => __( 'Get Options Page', 'enable-abilities-for-mcp' ),
+					'desc'    => __( 'Return all fields with their current stored values for a given Options Page slug.', 'enable-abilities-for-mcp' ),
+					'default' => true,
+				),
+				'ewpa/je-update-options-page-field' => array(
+					'label'   => __( 'Update Options Page Field', 'enable-abilities-for-mcp' ),
+					'desc'    => __( 'Write a new value to a single field of a JetEngine Options Page. Destructive — opt-in required.', 'enable-abilities-for-mcp' ),
+					'default' => false,
+				),
+			),
+		),
 	);
 }
 
@@ -927,5 +993,25 @@ function ewpa_section_notice_multilanguage() {
 	return '<div class="ewpa-section-notice ewpa-section-notice-info">'
 		. '<span class="dashicons dashicons-info"></span> '
 		. esc_html__( 'No multilanguage plugin detected. These abilities require Polylang or WPML to function.', 'enable-abilities-for-mcp' )
+		. '</div>';
+}
+
+/**
+ * Section notice for JetEngine Options Pages: shows info when JetEngine or its Options Pages module is inactive.
+ *
+ * @return string
+ */
+function ewpa_section_notice_jetengine_options_pages(): string {
+	if ( function_exists( 'jet_engine' ) && isset( jet_engine()->options_pages ) ) {
+		return '';
+	}
+
+	$msg = function_exists( 'jet_engine' )
+		? __( 'JetEngine is active but the Options Pages module is not enabled. Enable it under JetEngine › Settings › Modules.', 'enable-abilities-for-mcp' )
+		: __( 'JetEngine plugin is not active. These abilities require JetEngine with the Options Pages module enabled.', 'enable-abilities-for-mcp' );
+
+	return '<div class="ewpa-section-notice ewpa-section-notice-info">'
+		. '<span class="dashicons dashicons-info"></span> '
+		. esc_html( $msg )
 		. '</div>';
 }

@@ -5,6 +5,7 @@
 .idea
 .claude
 .sdd
+.codegraph
 node_modules
 vendor
 composer.json
