@@ -5,7 +5,7 @@ Tags: mcp, ai, rest-api, content-management, woocommerce
 Requires at least: 6.9
 Tested up to: 7.0
 Requires PHP: 8.0
-Stable tag: 2.0.14
+Stable tag: 2.0.15
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -138,8 +138,11 @@ This plugin registers abilities using the standard `wp_register_ability()` API. 
 
 == Changelog ==
 
+= 2.0.15 =
+* Enhancement: `ewpa/je-update-options-page-field` now supports repeater fields — pass an array of row objects where each key matches a sub-field name. `ewpa/je-get-options-page` now returns `repeater_fields` (name, title, type) for repeater fields so the AI can inspect the expected row structure before writing.
+
 = 2.0.14 =
-* New: JetEngine Options Pages section (3 abilities) — `ewpa/je-list-options-pages` lists all registered options pages with their field schema; `ewpa/je-get-options-page` returns field values for a given slug; `ewpa/je-update-options-page-field` writes a single field value with blocklist protection (repeater, html, tab, accordion, endpoint types are blocked). Both list and get abilities are enabled by default; update is off by default. Requires JetEngine with the Options Pages module enabled.
+* New: JetEngine Options Pages section (3 abilities) — `ewpa/je-list-options-pages` lists all registered options pages with their field schema; `ewpa/je-get-options-page` returns field values for a given slug; `ewpa/je-update-options-page-field` writes a single field value with blocklist protection (html, tab, accordion, endpoint types are blocked). Both list and get abilities are enabled by default; update is off by default. Requires JetEngine with the Options Pages module enabled.
 * Fix: `ewpa_register_ability_with_log()` wrapper closure now uses `$input = null` (optional parameter) so abilities without an `input_schema` are not broken by PHP 8.4's `ArgumentCountError` when `WP_Ability::invoke_callback()` calls them with zero arguments.
 * Updated: Total abilities: 58 in 13 categories
 

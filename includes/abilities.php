@@ -6382,10 +6382,21 @@ function ewpa_register_custom_abilities(): void {
 							'items' => array(
 								'type'       => 'object',
 								'properties' => array(
-									'name'  => array( 'type' => 'string' ),
-									'title' => array( 'type' => 'string' ),
-									'type'  => array( 'type' => 'string' ),
-									'value' => array( 'type' => array( 'string', 'number', 'integer', 'boolean', 'null', 'array', 'object' ) ),
+									'name'            => array( 'type' => 'string' ),
+									'title'           => array( 'type' => 'string' ),
+									'type'            => array( 'type' => 'string' ),
+									'value'           => array( 'type' => array( 'string', 'number', 'integer', 'boolean', 'null', 'array', 'object' ) ),
+									'repeater_fields' => array(
+										'type'  => 'array',
+										'items' => array(
+											'type'       => 'object',
+											'properties' => array(
+												'name'  => array( 'type' => 'string' ),
+												'title' => array( 'type' => 'string' ),
+												'type'  => array( 'type' => 'string' ),
+											),
+										),
+									),
 								),
 							),
 						),
@@ -6409,13 +6420,28 @@ function ewpa_register_custom_abilities(): void {
 
 					$fields = array();
 					foreach ( (array) $page_obj->meta_box as $field ) {
-						$raw_value = $page_obj->get( $field['name'] );
-						$fields[]  = array(
+						$raw_value  = $page_obj->get( $field['name'] );
+						$field_data = array(
 							'name'  => $field['name'],
 							'title' => $field['title'],
 							'type'  => $field['type'],
 							'value' => ( false === $raw_value ) ? null : $raw_value,
 						);
+
+						if ( 'repeater' === ( $field['type'] ?? '' ) && ! empty( $field['repeater-fields'] ) ) {
+							$field_data['repeater_fields'] = array_map(
+								function ( $sf ) {
+									return array(
+										'name'  => $sf['name'] ?? '',
+										'title' => $sf['title'] ?? '',
+										'type'  => $sf['type'] ?? 'text',
+									);
+								},
+								(array) $field['repeater-fields']
+							);
+						}
+
+						$fields[] = $field_data;
 					}
 
 					return array(
@@ -6444,7 +6470,7 @@ function ewpa_register_custom_abilities(): void {
 			'ewpa/je-update-options-page-field',
 			array(
 				'label'               => __( 'Update Options Page Field', 'enable-abilities-for-mcp' ),
-				'description'         => __( 'Writes a new value to a single field of a JetEngine Options Page. Validates slug, field name, and field type before writing. Requires JetEngine with the Options Pages module enabled.', 'enable-abilities-for-mcp' ),
+				'description'         => __( 'Writes a new value to a single field of a JetEngine Options Page. Supports text, number, select, checkbox, repeater, and most other field types. UI-only types (html, tab, accordion, endpoint) are rejected. For repeater fields call ewpa/je-get-options-page first to see the repeater_fields structure, then pass an array of row objects. Requires JetEngine with the Options Pages module enabled.', 'enable-abilities-for-mcp' ),
 				'category'            => 'jetengine-options-pages',
 				'input_schema'        => array(
 					'type'       => 'object',
@@ -6460,7 +6486,7 @@ function ewpa_register_custom_abilities(): void {
 						),
 						'value'      => array(
 							'type'        => array( 'string', 'number', 'integer', 'boolean', 'null', 'array', 'object' ),
-							'description' => 'New value to persist.',
+							'description' => 'New value to persist. For repeater fields: an array of row objects where each key matches a sub-field name from repeater_fields. Call ewpa/je-get-options-page first to get the structure. Example: [{"city":"Buenos Aires","zip":"1001"},{"city":"Rosario","zip":"2000"}]. Passing wrong keys silently stores empty sub-values.',
 						),
 					),
 				),
@@ -6485,7 +6511,7 @@ function ewpa_register_custom_abilities(): void {
 					$slug       = sanitize_key( $input['slug'] );
 					$field_name = sanitize_key( $input['field_name'] );
 					$value      = $input['value']; // Intentionally unsanitized — JE sanitizes on save.
-					$blocklist  = array( 'repeater', 'html', 'tab', 'accordion', 'endpoint' );
+					$blocklist  = array( 'html', 'tab', 'accordion', 'endpoint' );
 
 					$pages    = jet_engine()->options_pages->registered_pages;
 					$page_obj = $pages[ $slug ] ?? null;
