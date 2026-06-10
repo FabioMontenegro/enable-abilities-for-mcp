@@ -5,7 +5,7 @@ Tags: mcp, ai, rest-api, content-management, woocommerce
 Requires at least: 6.9
 Tested up to: 7.0
 Requires PHP: 8.0
-Stable tag: 2.0.15
+Stable tag: 2.0.16
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -137,6 +137,9 @@ This plugin registers abilities using the standard `wp_register_ability()` API. 
 1. Admin settings page showing all abilities organized by category with toggle switches.
 
 == Changelog ==
+
+= 2.0.16 =
+* Fix: `ewpa_authenticate_api_key()` now uses a static re-entry guard (`$resolving`) to prevent infinite recursion when `user_can()` inside `ewpa_validate_api_key()` triggers `map_meta_cap`. Plugins like Yoast SEO hook `map_meta_cap` and call `wp_get_current_user()` from within it, re-entering the `determine_current_user` filter and causing unbounded recursion (PHP fatal / HTTP 500). Reproduced with Yoast SEO + WPML String Translation active.
 
 = 2.0.15 =
 * Enhancement: `ewpa/je-update-options-page-field` now supports repeater fields — pass an array of row objects where each key matches a sub-field name. `ewpa/je-get-options-page` now returns `repeater_fields` (name, title, type) for repeater fields so the AI can inspect the expected row structure before writing.

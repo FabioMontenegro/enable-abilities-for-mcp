@@ -111,6 +111,14 @@ function ewpa_get_authorization_header(): string {
  * @return int|false
  */
 function ewpa_authenticate_api_key( $user_id ) {
+	// Guard: prevent infinite recursion when user_can() inside ewpa_validate_api_key()
+	// triggers map_meta_cap, which some plugins (e.g. Yoast SEO) handle by calling
+	// wp_get_current_user() — re-entering this determine_current_user filter.
+	static $resolving = false;
+	if ( $resolving ) {
+		return $user_id;
+	}
+
 	if ( ! empty( $user_id ) ) {
 		return $user_id;
 	}
@@ -137,7 +145,10 @@ function ewpa_authenticate_api_key( $user_id ) {
 		return $user_id;
 	}
 
+	$resolving = true;
 	$validated = ewpa_validate_api_key( $token );
+	$resolving = false;
+
 	if ( false === $validated ) {
 		return $user_id;
 	}
