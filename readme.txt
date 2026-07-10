@@ -5,7 +5,7 @@ Tags: mcp, ai, rest-api, content-management, woocommerce
 Requires at least: 6.9
 Tested up to: 7.0
 Requires PHP: 8.0
-Stable tag: 2.0.16
+Stable tag: 2.0.17
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -137,6 +137,9 @@ This plugin registers abilities using the standard `wp_register_ability()` API. 
 1. Admin settings page showing all abilities organized by category with toggle switches.
 
 == Changelog ==
+
+= 2.0.17 =
+* Fix: `ewpa_filter_core_abilities()` wrapper closure now uses `$input = null` and calls `$original()` vs `$original($input)` conditionally — fixes `ArgumentCountError` on `core/get-user-info` and `core/get-environment-info` (PHP 8.4), which have no `input_schema` and are invoked with zero arguments by `WP_Ability::invoke_callback()`. `core/get-site-info` was unaffected because it declares an input schema. Same root cause as the v2.0.14 fix for `ewpa_register_ability_with_log()`.
 
 = 2.0.16 =
 * Fix: `ewpa_authenticate_api_key()` now uses a static re-entry guard (`$resolving`) to prevent infinite recursion when `user_can()` inside `ewpa_validate_api_key()` triggers `map_meta_cap`. Plugins like Yoast SEO hook `map_meta_cap` and call `wp_get_current_user()` from within it, re-entering the `determine_current_user` filter and causing unbounded recursion (PHP fatal / HTTP 500). Reproduced with Yoast SEO + WPML String Translation active.

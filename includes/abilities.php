@@ -153,8 +153,8 @@ function ewpa_filter_core_abilities( array $args, string $ability_name ): array 
 
 	if ( ! empty( $args['execute_callback'] ) && is_callable( $args['execute_callback'] ) ) {
 		$original                 = $args['execute_callback'];
-		$args['execute_callback'] = static function ( $input ) use ( $ability_name, $original ) {
-			$result = $original( $input );
+		$args['execute_callback'] = static function ( $input = null ) use ( $ability_name, $original ) {
+			$result = ( null === $input ) ? $original() : $original( $input );
 			ewpa_log_activity( get_current_user_id(), $ability_name );
 			return $result;
 		};
