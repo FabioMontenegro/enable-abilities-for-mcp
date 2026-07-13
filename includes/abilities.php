@@ -444,8 +444,9 @@ function ewpa_register_custom_abilities(): void {
 						'meta_description' => array( 'type' => 'string' ),
 					),
 				),
-				'permission_callback' => function () {
-					return current_user_can( 'read' );
+				'permission_callback' => function ( $input ) {
+					$post_id = absint( $input['post_id'] ?? 0 );
+					return $post_id && current_user_can( 'read_post', $post_id );
 				},
 				'execute_callback'    => function ( $input ) {
 					$post_id = absint( $input['post_id'] );
@@ -527,8 +528,9 @@ function ewpa_register_custom_abilities(): void {
 						'meta_description' => array( 'type' => 'string' ),
 					),
 				),
-				'permission_callback' => function () {
-					return current_user_can( 'read' );
+				'permission_callback' => function ( $input ) {
+					$page_id = absint( $input['page_id'] ?? 0 );
+					return $page_id && current_user_can( 'read_post', $page_id );
 				},
 				'execute_callback'    => function ( $input ) {
 					$page_id = absint( $input['page_id'] );
@@ -4179,8 +4181,9 @@ function ewpa_register_custom_abilities(): void {
 						'meta'            => array( 'type' => 'object' ),
 					),
 				),
-				'permission_callback' => function () {
-					return current_user_can( 'read' );
+				'permission_callback' => function ( $input ) {
+					$post_id = absint( $input['post_id'] ?? 0 );
+					return $post_id && current_user_can( 'read_post', $post_id );
 				},
 				'execute_callback'    => function ( $input ) {
 					$post_id = absint( $input['post_id'] );

@@ -5,7 +5,7 @@ Tags: mcp, ai, rest-api, content-management, woocommerce
 Requires at least: 6.9
 Tested up to: 7.0
 Requires PHP: 8.0
-Stable tag: 2.0.17
+Stable tag: 2.0.18
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -137,6 +137,9 @@ This plugin registers abilities using the standard `wp_register_ability()` API. 
 1. Admin settings page showing all abilities organized by category with toggle switches.
 
 == Changelog ==
+
+= 2.0.18 =
+* Security: `ewpa/get-post`, `ewpa/get-page`, and `ewpa/get-cpt-item` now enforce a per-post visibility check (`current_user_can( 'read_post', $id )`) in their `permission_callback`, instead of only the site-wide `read` capability. Previously a low-privilege user authenticating via Application Passwords could read drafts, private, or password-protected content of other authors by ID (IDOR). Not exploitable via the Bearer token (which authenticates as an administrator). Reported by Hardik (hnanda21).
 
 = 2.0.17 =
 * Fix: `ewpa_filter_core_abilities()` wrapper closure now uses `$input = null` and calls `$original()` vs `$original($input)` conditionally — fixes `ArgumentCountError` on `core/get-user-info` and `core/get-environment-info` (PHP 8.4), which have no `input_schema` and are invoked with zero arguments by `WP_Ability::invoke_callback()`. `core/get-site-info` was unaffected because it declares an input schema. Same root cause as the v2.0.14 fix for `ewpa_register_ability_with_log()`.
