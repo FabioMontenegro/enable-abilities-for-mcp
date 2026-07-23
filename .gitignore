@@ -52,3 +52,6 @@ future-plans.md
 # SVN publish credentials & workflow (never ship)
 svn-publish.md
 .svn-credentials
+
+# Local MCP config (contains bearer token, never commit)
+.mcp.json
