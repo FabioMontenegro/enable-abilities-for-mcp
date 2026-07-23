@@ -5,7 +5,7 @@ Tags: mcp, ai, rest-api, content-management, woocommerce
 Requires at least: 6.9
 Tested up to: 7.0
 Requires PHP: 8.0
-Stable tag: 2.0.19
+Stable tag: 2.0.20
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -19,7 +19,7 @@ WordPress 6.9 introduced the Abilities API, allowing external tools to discover 
 
 = Features =
 
-* **61 abilities** organized in 14 categories: Core, Read, Write, SEO (Rank Math), SEO (SEOPress), SEO (Yoast), Utility, Multilanguage, Custom Post Types, WooCommerce, The Events Calendar, Code Snippets, JetEngine Options Pages, and Elementor
+* **62 abilities** organized in 14 categories: Core, Read, Write, SEO (Rank Math), SEO (SEOPress), SEO (Yoast), Utility, Multilanguage, Custom Post Types, WooCommerce, The Events Calendar, Code Snippets, JetEngine Options Pages, and Elementor
 * **WooCommerce integration** — dedicated abilities to manage products, orders, and customers using the native WooCommerce API (HPOS-compatible, formally declared)
 * **The Events Calendar integration** — list, get, create, and update events with venue, organizer, and date filters
 * **Admin dashboard** with toggle switches for each ability
@@ -137,6 +137,10 @@ This plugin registers abilities using the standard `wp_register_ability()` API. 
 1. Admin settings page showing all abilities organized by category with toggle switches.
 
 == Changelog ==
+
+= 2.0.20 =
+* New: `ewpa/get-seopress-content-analysis` — reads the SEOPress content analysis for a post or page: every check (meta title, meta description, headings, internal links, structured data, image alt texts, content depth, etc.) with its impact level (good/low/medium/high) and plain-text recommendation, plus a summary count and the target keywords. Optional `refresh=true` runs a fresh SEOPress analysis of the rendered page first (internally dispatching `GET seopress/v1/posts/{id}/content-analysis`), so agents can update content and immediately re-check the recommendations. Requires SEOPress 7.5+ (fresh analysis honors SEOPress 30 req/min per-user rate limit). Read-only; auto-enabled on upgrade.
+* Updated: Total abilities: 62 in 14 categories
 
 = 2.0.19 =
 * New: Elementor section (3 abilities) — `ewpa/elementor-get-structure` returns a compact, read-only tree of an Elementor page/template (element ids, types, text preview); `ewpa/elementor-update-element` edits the settings of an element by id (static content or styles), supporting single edits and a batch `edits[]` mode applied in one read/write pass; `ewpa/elementor-bind-dynamic-field` binds a widget setting to a dynamic tag (native Post Title, or a JetEngine/meta field). All three are opt-in (disabled by default). Requires Elementor (Elementor Pro for post-title, JetEngine for meta fields). All edits validate the tree, save with correct slashing, and clear the Elementor cache.

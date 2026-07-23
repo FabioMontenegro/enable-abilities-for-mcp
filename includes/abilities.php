@@ -2921,6 +2921,169 @@ function ewpa_register_custom_abilities(): void {
 		);
 	}
 
+	// ── SP3: Get SEOPress Content Analysis ──────────────────────────────
+	if ( ewpa_is_ability_enabled( 'ewpa/get-seopress-content-analysis' ) ) {
+		ewpa_register_ability_with_log(
+			'ewpa/get-seopress-content-analysis',
+			array(
+				'label'               => __( 'Get SEOPress Content Analysis', 'enable-abilities-for-mcp' ),
+				'description'         => __( 'Retrieves the SEOPress content analysis for a post or page: every check (meta title, meta description, headings, internal links, structured data, image alt texts, etc.) with its impact level and recommendation text. Set refresh=true to run a fresh analysis of the rendered page before reading the results — recommended after updating content or metadata. Requires SEOPress 7.5+.', 'enable-abilities-for-mcp' ),
+				'category'            => 'content-management',
+				'input_schema'        => array(
+					'type'       => 'object',
+					'required'   => array( 'post_id' ),
+					'properties' => array(
+						'post_id' => array(
+							'type'        => 'integer',
+							'description' => 'Post or page ID to analyze',
+						),
+						'refresh' => array(
+							'type'        => 'boolean',
+							'description' => 'Run a fresh SEOPress analysis of the rendered page before reading the results. Default false (reads the last stored analysis). SEOPress rate-limits analysis to 30 requests per minute per user.',
+						),
+					),
+				),
+				'output_schema'       => array(
+					'type'       => 'object',
+					'properties' => array(
+						'post_id'             => array( 'type' => 'integer' ),
+						'post_title'          => array( 'type' => 'string' ),
+						'focus_keywords'      => array(
+							'type'  => 'array',
+							'items' => array( 'type' => 'string' ),
+						),
+						'refreshed'           => array( 'type' => 'boolean' ),
+						'refresh_warning'     => array( 'type' => 'string' ),
+						'has_stored_analysis' => array( 'type' => 'boolean' ),
+						'summary'             => array(
+							'type'       => 'object',
+							'properties' => array(
+								'good'   => array( 'type' => 'integer' ),
+								'low'    => array( 'type' => 'integer' ),
+								'medium' => array( 'type' => 'integer' ),
+								'high'   => array( 'type' => 'integer' ),
+							),
+						),
+						'checks'              => array(
+							'type'  => 'array',
+							'items' => array(
+								'type'       => 'object',
+								'properties' => array(
+									'id'             => array( 'type' => 'string' ),
+									'title'          => array( 'type' => 'string' ),
+									'impact'         => array( 'type' => 'string' ),
+									'recommendation' => array( 'type' => 'string' ),
+								),
+							),
+						),
+					),
+				),
+				'permission_callback' => function () {
+					return current_user_can( 'edit_posts' );
+				},
+				'execute_callback'    => function ( $input ) {
+					$post_id = absint( $input['post_id'] );
+					$post    = get_post( $post_id );
+					if ( ! $post ) {
+						return new WP_Error( 'not_found', 'Post or page not found.' );
+					}
+					if ( ! current_user_can( 'edit_post', $post_id ) ) {
+						return new WP_Error( 'forbidden', 'You are not allowed to analyze this post.' );
+					}
+					if ( ! defined( 'SEOPRESS_VERSION' ) ) {
+						return new WP_Error( 'seopress_inactive', 'SEOPress plugin is not active.' );
+					}
+					if ( ! function_exists( 'seopress_get_service' ) ) {
+						return new WP_Error( 'seopress_unsupported', 'This SEOPress version does not expose the content analysis services. SEOPress 7.5 or later is required.' );
+					}
+
+					$refresh         = ! empty( $input['refresh'] );
+					$refresh_warning = '';
+
+					if ( $refresh ) {
+						// Dispatch SEOPress own REST endpoint internally: it runs
+						// the full pipeline (rendered-page fetch, DOM analysis,
+						// persistence) exactly as the editor metabox does.
+						$request = new WP_REST_Request( 'GET', '/seopress/v1/posts/' . $post_id . '/content-analysis' );
+						$request->set_param( 'id', $post_id );
+						$response = rest_do_request( $request );
+
+						if ( $response->is_error() ) {
+							$refresh_warning = $response->as_error()->get_error_message();
+						} else {
+							$body = $response->get_data();
+							// A loop-back failure (WAF block, auth wall, unpublished
+							// post) returns a payload with only title/meta_desc.
+							if ( is_array( $body ) && ! isset( $body['score'] ) && isset( $body['title'] ) ) {
+								$refresh_warning = wp_strip_all_tags( (string) $body['title'] );
+							}
+						}
+					}
+
+					try {
+						$stored   = seopress_get_service( 'ContentAnalysisDatabase' )->getData( $post_id );
+						$analyzes = seopress_get_service( 'GetContentAnalysis' )->getAnalyzes( $post );
+					} catch ( \Throwable $e ) {
+						return new WP_Error( 'seopress_error', 'SEOPress content analysis services failed: ' . $e->getMessage() );
+					}
+
+					$checks  = array();
+					$summary = array(
+						'good'   => 0,
+						'low'    => 0,
+						'medium' => 0,
+						'high'   => 0,
+					);
+
+					if ( is_array( $analyzes ) ) {
+						foreach ( $analyzes as $key => $check ) {
+							$impact = ! empty( $check['impact'] ) ? (string) $check['impact'] : 'good';
+							if ( isset( $summary[ $impact ] ) ) {
+								++$summary[ $impact ];
+							}
+
+							// Recommendation descriptions are HTML (lists, line
+							// breaks): convert block boundaries to newlines so the
+							// plain-text output stays readable.
+							$desc = isset( $check['desc'] ) ? (string) $check['desc'] : '';
+							if ( '' !== $desc ) {
+								$desc = preg_replace( '#<(?:br\s*/?|/li|/p|/ul|/ol)>#i', "\n", $desc );
+								$desc = trim( preg_replace( "/\n{2,}/", "\n", wp_strip_all_tags( $desc ) ) );
+							}
+
+							$checks[] = array(
+								'id'             => (string) $key,
+								'title'          => isset( $check['title'] ) ? (string) $check['title'] : (string) $key,
+								'impact'         => $impact,
+								'recommendation' => $desc,
+							);
+						}
+					}
+
+					$keywords_raw   = ewpa_get_meta_string( $post_id, '_seopress_analysis_target_kw' );
+					$focus_keywords = array_values( array_filter( array_map( 'trim', explode( ',', $keywords_raw ) ) ) );
+
+					return array(
+						'post_id'             => $post_id,
+						'post_title'          => $post->post_title,
+						'focus_keywords'      => $focus_keywords,
+						'refreshed'           => $refresh && '' === $refresh_warning,
+						'refresh_warning'     => $refresh_warning,
+						'has_stored_analysis' => ! empty( $stored ),
+						'summary'             => $summary,
+						'checks'              => $checks,
+					);
+				},
+				'meta'                => array(
+					'show_in_rest' => true,
+					'mcp'          => array(
+						'public' => true,
+					),
+				),
+			)
+		);
+	}
+
 	/*
 	 * ======================================================================
 	 * SECTION Y: SEO — YOAST SEO ABILITIES

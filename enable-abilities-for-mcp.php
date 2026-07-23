@@ -2,7 +2,7 @@
 /**
  * Plugin Name:       Enable Abilities for MCP
  * Description:       Manage which WordPress Abilities are exposed to MCP servers. Enable or disable each ability individually from the dashboard.
- * Version:           2.0.19
+ * Version:           2.0.20
  * Requires at least: 6.9
  * Requires PHP:      8.0
  * Author:            Fabio Montenegro
@@ -18,7 +18,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'EWPA_VERSION', '2.0.19' );
+define( 'EWPA_VERSION', '2.0.20' );
 define( 'EWPA_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'EWPA_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 define( 'EWPA_OPTION_KEY', 'ewpa_enabled_abilities' );
@@ -107,6 +107,9 @@ add_action( 'plugins_loaded', 'ewpa_maybe_migrate_keys_v208b' );
 
 // Migration: add JetEngine Options Pages abilities introduced in v2.0.14 to existing installs.
 add_action( 'plugins_loaded', 'ewpa_maybe_migrate_keys_v2014' );
+
+// Migration: add ewpa/get-seopress-content-analysis introduced in v2.0.20 to existing installs.
+add_action( 'plugins_loaded', 'ewpa_maybe_migrate_keys_v2020' );
 
 
 /*
@@ -324,6 +327,32 @@ function ewpa_maybe_migrate_keys_v2014(): void {
 }
 
 /**
+ * Adds the SEOPress content analysis ability introduced in v2.0.20 to existing installs.
+ *
+ * Auto-enables ewpa/get-seopress-content-analysis (read-only ability).
+ *
+ * @return void
+ */
+function ewpa_maybe_migrate_keys_v2020(): void {
+	if ( get_option( 'ewpa_keys_migrated_v2020' ) ) {
+		return;
+	}
+
+	$enabled = get_option( EWPA_OPTION_KEY );
+	if ( ! is_array( $enabled ) ) {
+		update_option( 'ewpa_keys_migrated_v2020', true );
+		return;
+	}
+
+	if ( ! in_array( 'ewpa/get-seopress-content-analysis', $enabled, true ) ) {
+		$enabled[] = 'ewpa/get-seopress-content-analysis';
+		update_option( EWPA_OPTION_KEY, $enabled );
+	}
+
+	update_option( 'ewpa_keys_migrated_v2020', true );
+}
+
+/**
  * Returns the mapping from old Spanish keys to new English keys.
  *
  * @return array
@@ -514,6 +543,10 @@ function ewpa_get_abilities_registry() {
 				'ewpa/update-seopress' => array(
 					'label' => __( 'Update SEOPress Metadata', 'enable-abilities-for-mcp' ),
 					'desc'  => __( 'Update SEOPress SEO title, description, focus keyword, canonical URL, robots directives, and Open Graph / Twitter Card fields.', 'enable-abilities-for-mcp' ),
+				),
+				'ewpa/get-seopress-content-analysis' => array(
+					'label' => __( 'Get SEOPress Content Analysis', 'enable-abilities-for-mcp' ),
+					'desc'  => __( 'Read the SEOPress content analysis checks and recommendations for a post or page, optionally running a fresh analysis first. Requires SEOPress 7.5+.', 'enable-abilities-for-mcp' ),
 				),
 			),
 		),
