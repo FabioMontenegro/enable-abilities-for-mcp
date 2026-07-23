@@ -240,6 +240,14 @@ function ewpa_register_ability_categories(): void {
 			'description' => __( 'Abilities to read and write JetEngine Options Pages fields. Requires JetEngine with the Options Pages module enabled.', 'enable-abilities-for-mcp' ),
 		)
 	);
+
+	wp_register_ability_category(
+		'elementor',
+		array(
+			'label'       => __( 'Elementor', 'enable-abilities-for-mcp' ),
+			'description' => __( 'Abilities to read and edit Elementor page and template data.', 'enable-abilities-for-mcp' ),
+		)
+	);
 }
 
 /*
@@ -6555,6 +6563,450 @@ function ewpa_register_custom_abilities(): void {
 						'old_value'  => $old_value,
 						'new_value'  => $value,
 						'message'    => __( 'Field updated successfully.', 'enable-abilities-for-mcp' ),
+					);
+				},
+				'meta'                => array(
+					'show_in_rest' => true,
+					'annotations'  => array(
+						'readonly'    => false,
+						'destructive' => true,
+					),
+					'mcp'          => array(
+						'public' => true,
+					),
+				),
+			)
+		);
+	}
+
+	// ── SECTION I: ELEMENTOR ──────────────────────────────────────────────
+	if ( ewpa_is_ability_enabled( 'ewpa/elementor-bind-dynamic-field' ) ) {
+		ewpa_register_ability_with_log(
+			'ewpa/elementor-bind-dynamic-field',
+			array(
+				'label'               => __( 'Elementor: Bind Dynamic Field', 'enable-abilities-for-mcp' ),
+				'description'         => __( 'Binds a single Elementor widget setting to a dynamic tag. source=post_title uses the native Post Title tag; source=meta uses a JetEngine dynamic field reading the given meta_key. Edits _elementor_data server-side, validates the tree, injects the __dynamic__ binding using Elementor own tag encoder, saves, and clears Elementor cache. Requires Elementor (Elementor Pro for post_title, JetEngine for meta).', 'enable-abilities-for-mcp' ),
+				'category'            => 'elementor',
+				'input_schema'        => array(
+					'type'       => 'object',
+					'required'   => array( 'post_id', 'element_id', 'setting', 'source' ),
+					'properties' => array(
+						'post_id'    => array(
+							'type'        => 'integer',
+							'description' => 'ID of the post, page, or template that holds the Elementor data.',
+						),
+						'element_id' => array(
+							'type'        => 'string',
+							'description' => 'Target Elementor element id (e.g. "22b972c8").',
+						),
+						'setting'    => array(
+							'type'        => 'string',
+							'description' => 'Setting key to bind. Heading widget: "title"; text-editor: "editor"; button: "text".',
+						),
+						'source'     => array(
+							'type'        => 'string',
+							'enum'        => array( 'post_title', 'meta' ),
+							'description' => 'Dynamic source: post_title (native Elementor Pro tag) or meta (JetEngine dynamic field).',
+						),
+						'meta_key'   => array(
+							'type'        => 'string',
+							'description' => 'Meta key to read when source=meta (e.g. "tour_duracion_dias").',
+						),
+						'tag_name'   => array(
+							'type'        => 'string',
+							'description' => 'Optional: override the dynamic tag name directly (advanced).',
+						),
+						'list_tags'  => array(
+							'type'        => 'boolean',
+							'description' => 'Optional: if true, return the list of available dynamic tag names instead of binding (diagnostic).',
+						),
+						'tag_settings' => array(
+							'type'        => 'object',
+							'description' => 'Optional: override the dynamic tag settings object directly (advanced).',
+						),
+					),
+				),
+				'output_schema'       => array(
+					'type'       => 'object',
+					'properties' => array(
+						'post_id'    => array( 'type' => 'integer' ),
+						'element_id' => array( 'type' => 'string' ),
+						'setting'    => array( 'type' => 'string' ),
+						'tag_name'   => array( 'type' => 'string' ),
+						'tag_text'   => array( 'type' => 'string' ),
+						'message'    => array( 'type' => 'string' ),
+					),
+				),
+				'permission_callback' => function ( $input ) {
+					$post_id = absint( $input['post_id'] ?? 0 );
+					return $post_id && current_user_can( 'edit_post', $post_id );
+				},
+				'execute_callback'    => function ( $input ) {
+					$post_id    = absint( $input['post_id'] );
+					$element_id = sanitize_text_field( $input['element_id'] );
+					$setting    = sanitize_text_field( $input['setting'] );
+					$source     = sanitize_text_field( $input['source'] );
+					$meta_key   = isset( $input['meta_key'] ) ? sanitize_text_field( $input['meta_key'] ) : '';
+
+					if ( ! class_exists( '\Elementor\Plugin' ) || ! isset( \Elementor\Plugin::$instance ) ) {
+						return new WP_Error( 'elementor_inactive', __( 'Elementor is not active on this site.', 'enable-abilities-for-mcp' ) );
+					}
+
+					$tags_manager = \Elementor\Plugin::$instance->dynamic_tags;
+					if ( ! $tags_manager || ! method_exists( $tags_manager, 'tag_data_to_tag_text' ) ) {
+						return new WP_Error( 'no_tags_manager', __( 'Elementor dynamic tags manager not available.', 'enable-abilities-for-mcp' ) );
+					}
+
+					// Force third-party dynamic tags (JetEngine, ACF, etc.) to register in this REST request.
+					if ( ! did_action( 'elementor/dynamic_tags/register' ) ) {
+						do_action( 'elementor/dynamic_tags/register', $tags_manager );
+					}
+					$tags_config = method_exists( $tags_manager, 'get_tags_config' ) ? (array) $tags_manager->get_tags_config() : array();
+
+					if ( ! empty( $input['list_tags'] ) ) {
+						$list = array();
+						foreach ( $tags_config as $tname => $tcfg ) {
+							$list[] = array(
+								'name'  => (string) $tname,
+								'title' => isset( $tcfg['title'] ) ? $tcfg['title'] : '',
+							);
+						}
+						return array( 'available_tags' => $list, 'count' => count( $list ) );
+					}
+
+					$raw = get_post_meta( $post_id, '_elementor_data', true );
+					if ( empty( $raw ) ) {
+						return new WP_Error( 'no_data', __( 'This post has no _elementor_data (is it built with Elementor?).', 'enable-abilities-for-mcp' ) );
+					}
+
+					$data = is_string( $raw ) ? json_decode( $raw, true ) : $raw;
+					if ( JSON_ERROR_NONE !== json_last_error() || ! is_array( $data ) ) {
+						return new WP_Error( 'bad_json', __( 'Could not parse _elementor_data.', 'enable-abilities-for-mcp' ) );
+					}
+
+					if ( 'post_title' === $source ) {
+						$tag_name = 'post-title';
+						$settings = array();
+					} elseif ( 'meta' === $source ) {
+						if ( empty( $meta_key ) ) {
+							return new WP_Error( 'missing_meta_key', __( 'meta_key is required when source=meta.', 'enable-abilities-for-mcp' ) );
+						}
+						$tag_name = 'jet-post-custom-field';
+						$settings = array(
+							'meta_field'   => $meta_key,
+							'custom_field' => $meta_key,
+						);
+					} else {
+						return new WP_Error( 'bad_source', __( 'source must be "post_title" or "meta".', 'enable-abilities-for-mcp' ) );
+					}
+
+					$tag_id       = substr( md5( $element_id . $setting . $meta_key . microtime() ), 0, 7 );
+					if ( ! empty( $input['tag_name'] ) ) {
+						$tag_name = sanitize_text_field( $input['tag_name'] );
+					}
+					if ( isset( $input['tag_settings'] ) && is_array( $input['tag_settings'] ) ) {
+						$settings = $input['tag_settings'];
+					}
+					$tag_text = $tags_manager->tag_data_to_tag_text( $tag_id, $tag_name, $settings );
+					if ( empty( $tag_text ) ) {
+						$available = implode( ', ', array_keys( $tags_config ) );
+						return new WP_Error( 'tag_failed', 'Could not create dynamic tag ' . $tag_name . '. Available tags: ' . $available );
+					}
+
+					$found  = false;
+					$walker = function ( &$elements ) use ( &$walker, $element_id, $setting, $tag_text, &$found ) {
+						foreach ( $elements as &$el ) {
+							if ( isset( $el['id'] ) && $el['id'] === $element_id ) {
+								if ( ! isset( $el['settings'] ) || ! is_array( $el['settings'] ) ) {
+									$el['settings'] = array();
+								}
+								if ( ! isset( $el['settings']['__dynamic__'] ) || ! is_array( $el['settings']['__dynamic__'] ) ) {
+									$el['settings']['__dynamic__'] = array();
+								}
+								$el['settings']['__dynamic__'][ $setting ] = $tag_text;
+								$found = true;
+								return;
+							}
+							if ( ! empty( $el['elements'] ) && is_array( $el['elements'] ) ) {
+								$walker( $el['elements'] );
+								if ( $found ) {
+									return;
+								}
+							}
+						}
+					};
+					$walker( $data );
+
+					if ( ! $found ) {
+						return new WP_Error( 'element_not_found', __( 'Element id not found in _elementor_data.', 'enable-abilities-for-mcp' ) );
+					}
+
+					$json = wp_json_encode( $data );
+					if ( false === $json ) {
+						return new WP_Error( 'encode_failed', __( 'Failed to encode the modified Elementor data.', 'enable-abilities-for-mcp' ) );
+					}
+
+					update_post_meta( $post_id, '_elementor_data', wp_slash( $json ) );
+
+					if ( isset( \Elementor\Plugin::$instance->files_manager ) && method_exists( \Elementor\Plugin::$instance->files_manager, 'clear_cache' ) ) {
+						\Elementor\Plugin::$instance->files_manager->clear_cache();
+					}
+
+					return array(
+						'post_id'    => $post_id,
+						'element_id' => $element_id,
+						'setting'    => $setting,
+						'tag_name'   => $tag_name,
+						'tag_text'   => $tag_text,
+						'message'    => __( 'Dynamic binding applied successfully.', 'enable-abilities-for-mcp' ),
+					);
+				},
+				'meta'                => array(
+					'show_in_rest' => true,
+					'annotations'  => array(
+						'readonly'    => false,
+						'destructive' => true,
+					),
+					'mcp'          => array(
+						'public' => true,
+					),
+				),
+			)
+		);
+	}
+
+	// ── I2: Elementor — Get Structure ─────────────────────────────────────
+	if ( ewpa_is_ability_enabled( 'ewpa/elementor-get-structure' ) ) {
+		ewpa_register_ability_with_log(
+			'ewpa/elementor-get-structure',
+			array(
+				'label'               => __( 'Elementor: Get Structure', 'enable-abilities-for-mcp' ),
+				'description'         => __( 'Returns a compact, flattened tree of an Elementor page/template: every element with its id, depth, type, and a short text preview. Read-only. Use this to locate element ids before editing.', 'enable-abilities-for-mcp' ),
+				'category'            => 'elementor',
+				'input_schema'        => array(
+					'type'       => 'object',
+					'required'   => array( 'post_id' ),
+					'properties' => array(
+						'post_id' => array(
+							'type'        => 'integer',
+							'description' => 'ID of the post, page, or template built with Elementor.',
+						),
+					),
+				),
+				'output_schema'       => array(
+					'type'       => 'object',
+					'properties' => array(
+						'post_id'  => array( 'type' => 'integer' ),
+						'count'    => array( 'type' => 'integer' ),
+						'elements' => array(
+							'type'  => 'array',
+							'items' => array(
+								'type'       => 'object',
+								'properties' => array(
+									'id'    => array( 'type' => 'string' ),
+									'depth' => array( 'type' => 'integer' ),
+									'type'  => array( 'type' => 'string' ),
+									'text'  => array( 'type' => 'string' ),
+								),
+							),
+						),
+					),
+				),
+				'permission_callback' => function ( $input ) {
+					$post_id = absint( $input['post_id'] ?? 0 );
+					return $post_id && current_user_can( 'edit_post', $post_id );
+				},
+				'execute_callback'    => function ( $input ) {
+					$post_id = absint( $input['post_id'] );
+					$raw     = get_post_meta( $post_id, '_elementor_data', true );
+					if ( empty( $raw ) ) {
+						return new WP_Error( 'no_data', __( 'This post has no _elementor_data.', 'enable-abilities-for-mcp' ) );
+					}
+					$data = is_string( $raw ) ? json_decode( $raw, true ) : $raw;
+					if ( JSON_ERROR_NONE !== json_last_error() || ! is_array( $data ) ) {
+						return new WP_Error( 'bad_json', __( 'Could not parse _elementor_data.', 'enable-abilities-for-mcp' ) );
+					}
+
+					$preview = function ( $s ) {
+						$keys = array( 'title', 'text', 'editor', 'title_text', 'description_text', 'button_text', 'html' );
+						foreach ( $keys as $k ) {
+							if ( ! empty( $s[ $k ] ) && is_string( $s[ $k ] ) ) {
+								$t = trim( wp_strip_all_tags( $s[ $k ] ) );
+								if ( '' !== $t ) {
+									return mb_substr( $t, 0, 80 );
+								}
+							}
+						}
+						if ( ! empty( $s['image']['url'] ) ) {
+							return $s['image']['url'];
+						}
+						return '';
+					};
+
+					$out    = array();
+					$walker = function ( $elements, $depth ) use ( &$walker, &$out, $preview ) {
+						foreach ( $elements as $el ) {
+							$type  = ( 'widget' === ( $el['elType'] ?? '' ) ) ? ( $el['widgetType'] ?? 'widget' ) : ( $el['elType'] ?? '?' );
+							$out[] = array(
+								'id'    => (string) ( $el['id'] ?? '' ),
+								'depth' => $depth,
+								'type'  => $type,
+								'text'  => ( isset( $el['settings'] ) && is_array( $el['settings'] ) ) ? $preview( $el['settings'] ) : '',
+							);
+							if ( ! empty( $el['elements'] ) && is_array( $el['elements'] ) ) {
+								$walker( $el['elements'], $depth + 1 );
+							}
+						}
+					};
+					$walker( $data, 0 );
+
+					return array(
+						'post_id'  => $post_id,
+						'count'    => count( $out ),
+						'elements' => $out,
+					);
+				},
+				'meta'                => array(
+					'show_in_rest' => true,
+					'annotations'  => array(
+						'readonly'    => true,
+						'destructive' => false,
+					),
+					'mcp'          => array(
+						'public' => true,
+					),
+				),
+			)
+		);
+	}
+
+	// ── I3: Elementor — Update Element ────────────────────────────────────
+	if ( ewpa_is_ability_enabled( 'ewpa/elementor-update-element' ) ) {
+		ewpa_register_ability_with_log(
+			'ewpa/elementor-update-element',
+			array(
+				'label'               => __( 'Elementor: Update Element', 'enable-abilities-for-mcp' ),
+				'description'         => __( 'Updates the settings of a single Elementor element by id (static content or styles). Provided keys are merged into the element settings; other keys are preserved. Examples: {"title":"New heading"} for a heading, {"text":"Click"} for a button, {"editor":"<p>HTML</p>"} for a text-editor. Saves and clears Elementor cache. Batch mode: pass an edits[] array to update multiple elements in a single call.', 'enable-abilities-for-mcp' ),
+				'category'            => 'elementor',
+				'input_schema'        => array(
+					'type'       => 'object',
+					'required'   => array( 'post_id' ),
+					'properties' => array(
+						'post_id'    => array(
+							'type'        => 'integer',
+							'description' => 'ID of the post, page, or template built with Elementor.',
+						),
+						'element_id' => array(
+							'type'        => 'string',
+							'description' => 'Target element id (from elementor-get-structure).',
+						),
+						'settings'   => array(
+							'type'        => 'object',
+							'description' => 'Object of setting keys to merge into the element (e.g. {"title":"New text"}).',
+						),
+						'edits'      => array(
+							'type'        => 'array',
+							'description' => 'Batch mode: array of {element_id, settings} objects, applied in one read/write pass.',
+							'items'       => array(
+								'type'       => 'object',
+								'properties' => array(
+									'element_id' => array( 'type' => 'string' ),
+									'settings'   => array( 'type' => 'object' ),
+								),
+							),
+						),
+					),
+				),
+				'output_schema'       => array(
+					'type'       => 'object',
+					'properties' => array(
+						'post_id'   => array( 'type' => 'integer' ),
+						'updated'   => array(
+							'type'  => 'array',
+							'items' => array( 'type' => 'string' ),
+						),
+						'not_found' => array(
+							'type'  => 'array',
+							'items' => array( 'type' => 'string' ),
+						),
+						'message'   => array( 'type' => 'string' ),
+					),
+				),
+				'permission_callback' => function ( $input ) {
+					$post_id = absint( $input['post_id'] ?? 0 );
+					return $post_id && current_user_can( 'edit_post', $post_id );
+				},
+				'execute_callback'    => function ( $input ) {
+					$post_id = absint( $input['post_id'] );
+
+					// Build the edit list: single mode (element_id + settings) or batch mode (edits[]).
+					$edits = array();
+					if ( ! empty( $input['edits'] ) && is_array( $input['edits'] ) ) {
+						foreach ( $input['edits'] as $e ) {
+							if ( ! empty( $e['element_id'] ) && ! empty( $e['settings'] ) && is_array( $e['settings'] ) ) {
+								$edits[ sanitize_text_field( $e['element_id'] ) ] = $e['settings'];
+							}
+						}
+					} elseif ( ! empty( $input['element_id'] ) && ! empty( $input['settings'] ) && is_array( $input['settings'] ) ) {
+						$edits[ sanitize_text_field( $input['element_id'] ) ] = $input['settings'];
+					}
+
+					if ( empty( $edits ) ) {
+						return new WP_Error( 'no_edits', __( 'Provide either (element_id + settings) or a non-empty edits[] array.', 'enable-abilities-for-mcp' ) );
+					}
+
+					$raw = get_post_meta( $post_id, '_elementor_data', true );
+					if ( empty( $raw ) ) {
+						return new WP_Error( 'no_data', __( 'This post has no _elementor_data.', 'enable-abilities-for-mcp' ) );
+					}
+					$data = is_string( $raw ) ? json_decode( $raw, true ) : $raw;
+					if ( JSON_ERROR_NONE !== json_last_error() || ! is_array( $data ) ) {
+						return new WP_Error( 'bad_json', __( 'Could not parse _elementor_data.', 'enable-abilities-for-mcp' ) );
+					}
+
+					$applied = array();
+					$walker  = function ( &$elements ) use ( &$walker, $edits, &$applied ) {
+						foreach ( $elements as &$el ) {
+							$eid = $el['id'] ?? '';
+							if ( '' !== $eid && isset( $edits[ $eid ] ) && ! in_array( $eid, $applied, true ) ) {
+								if ( ! isset( $el['settings'] ) || ! is_array( $el['settings'] ) ) {
+									$el['settings'] = array();
+								}
+								$el['settings'] = array_merge( $el['settings'], $edits[ $eid ] );
+								$applied[]      = $eid;
+							}
+							if ( ! empty( $el['elements'] ) && is_array( $el['elements'] ) ) {
+								$walker( $el['elements'] );
+							}
+						}
+					};
+					$walker( $data );
+
+					$not_found = array_values( array_diff( array_keys( $edits ), $applied ) );
+					if ( empty( $applied ) ) {
+						return new WP_Error( 'element_not_found', __( 'None of the given element ids were found in _elementor_data.', 'enable-abilities-for-mcp' ) );
+					}
+
+					$json = wp_json_encode( $data );
+					if ( false === $json ) {
+						return new WP_Error( 'encode_failed', __( 'Failed to encode the modified Elementor data.', 'enable-abilities-for-mcp' ) );
+					}
+					update_post_meta( $post_id, '_elementor_data', wp_slash( $json ) );
+
+					if ( class_exists( '\Elementor\Plugin' ) && isset( \Elementor\Plugin::$instance->files_manager ) && method_exists( \Elementor\Plugin::$instance->files_manager, 'clear_cache' ) ) {
+						\Elementor\Plugin::$instance->files_manager->clear_cache();
+					}
+
+					return array(
+						'post_id'   => $post_id,
+						'updated'   => $applied,
+						'not_found' => $not_found,
+						'message'   => sprintf(
+							/* translators: 1: updated count, 2: not-found count */
+							__( '%1$d element(s) updated, %2$d not found.', 'enable-abilities-for-mcp' ),
+							count( $applied ),
+							count( $not_found )
+						),
 					);
 				},
 				'meta'                => array(

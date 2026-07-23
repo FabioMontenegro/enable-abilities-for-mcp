@@ -5,7 +5,7 @@ Tags: mcp, ai, rest-api, content-management, woocommerce
 Requires at least: 6.9
 Tested up to: 7.0
 Requires PHP: 8.0
-Stable tag: 2.0.18
+Stable tag: 2.0.19
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -19,7 +19,7 @@ WordPress 6.9 introduced the Abilities API, allowing external tools to discover 
 
 = Features =
 
-* **58 abilities** organized in 13 categories: Core, Read, Write, SEO (Rank Math), SEO (SEOPress), SEO (Yoast), Utility, Multilanguage, Custom Post Types, WooCommerce, The Events Calendar, Code Snippets, and JetEngine Options Pages
+* **61 abilities** organized in 14 categories: Core, Read, Write, SEO (Rank Math), SEO (SEOPress), SEO (Yoast), Utility, Multilanguage, Custom Post Types, WooCommerce, The Events Calendar, Code Snippets, JetEngine Options Pages, and Elementor
 * **WooCommerce integration** — dedicated abilities to manage products, orders, and customers using the native WooCommerce API (HPOS-compatible, formally declared)
 * **The Events Calendar integration** — list, get, create, and update events with venue, organizer, and date filters
 * **Admin dashboard** with toggle switches for each ability
@@ -137,6 +137,10 @@ This plugin registers abilities using the standard `wp_register_ability()` API. 
 1. Admin settings page showing all abilities organized by category with toggle switches.
 
 == Changelog ==
+
+= 2.0.19 =
+* New: Elementor section (3 abilities) — `ewpa/elementor-get-structure` returns a compact, read-only tree of an Elementor page/template (element ids, types, text preview); `ewpa/elementor-update-element` edits the settings of an element by id (static content or styles), supporting single edits and a batch `edits[]` mode applied in one read/write pass; `ewpa/elementor-bind-dynamic-field` binds a widget setting to a dynamic tag (native Post Title, or a JetEngine/meta field). All three are opt-in (disabled by default). Requires Elementor (Elementor Pro for post-title, JetEngine for meta fields). All edits validate the tree, save with correct slashing, and clear the Elementor cache.
+* Updated: Total abilities: 61 in 14 categories
 
 = 2.0.18 =
 * Security: `ewpa/get-post`, `ewpa/get-page`, and `ewpa/get-cpt-item` now enforce a per-post visibility check (`current_user_can( 'read_post', $id )`) in their `permission_callback`, instead of only the site-wide `read` capability. Previously a low-privilege user authenticating via Application Passwords could read drafts, private, or password-protected content of other authors by ID (IDOR). Not exploitable via the Bearer token (which authenticates as an administrator). Reported by Hardik (hnanda21).

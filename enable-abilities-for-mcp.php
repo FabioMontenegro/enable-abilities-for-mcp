@@ -2,7 +2,7 @@
 /**
  * Plugin Name:       Enable Abilities for MCP
  * Description:       Manage which WordPress Abilities are exposed to MCP servers. Enable or disable each ability individually from the dashboard.
- * Version:           2.0.18
+ * Version:           2.0.19
  * Requires at least: 6.9
  * Requires PHP:      8.0
  * Author:            Fabio Montenegro
@@ -18,7 +18,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'EWPA_VERSION', '2.0.18' );
+define( 'EWPA_VERSION', '2.0.19' );
 define( 'EWPA_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'EWPA_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 define( 'EWPA_OPTION_KEY', 'ewpa_enabled_abilities' );
@@ -720,6 +720,29 @@ function ewpa_get_abilities_registry() {
 				'ewpa/je-update-options-page-field' => array(
 					'label'   => __( 'Update Options Page Field', 'enable-abilities-for-mcp' ),
 					'desc'    => __( 'Write a new value to a single field of a JetEngine Options Page. Destructive — opt-in required.', 'enable-abilities-for-mcp' ),
+					'default' => false,
+				),
+			),
+		),
+		'elementor'               => array(
+			'section_label' => __( 'Elementor', 'enable-abilities-for-mcp' ),
+			'section_desc'  => __( 'Read and edit Elementor page/template data. Requires Elementor (Pro for post title, JetEngine for meta fields).', 'enable-abilities-for-mcp' ),
+			'section_icon'  => 'dashicons-layout',
+			'section_badge' => 'danger',
+			'abilities'     => array(
+				'ewpa/elementor-bind-dynamic-field' => array(
+					'label'   => __( 'Bind Dynamic Field', 'enable-abilities-for-mcp' ),
+					'desc'    => __( 'Bind an Elementor widget setting to a dynamic tag (post title or a JetEngine/meta field). Edits _elementor_data server-side. Destructive — opt-in required.', 'enable-abilities-for-mcp' ),
+					'default' => false,
+				),
+				'ewpa/elementor-get-structure'      => array(
+					'label'   => __( 'Get Structure', 'enable-abilities-for-mcp' ),
+					'desc'    => __( 'Read-only compact tree of an Elementor page (element ids, types, text preview).', 'enable-abilities-for-mcp' ),
+					'default' => false,
+				),
+				'ewpa/elementor-update-element'     => array(
+					'label'   => __( 'Update Element', 'enable-abilities-for-mcp' ),
+					'desc'    => __( 'Edit the settings of an Elementor element by id (static content/styles). Destructive.', 'enable-abilities-for-mcp' ),
 					'default' => false,
 				),
 			),
