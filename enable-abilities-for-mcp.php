@@ -2,7 +2,7 @@
 /**
  * Plugin Name:       Enable Abilities for MCP
  * Description:       Manage which WordPress Abilities are exposed to MCP servers. Enable or disable each ability individually from the dashboard.
- * Version:           2.0.20
+ * Version:           2.0.21
  * Requires at least: 6.9
  * Requires PHP:      8.0
  * Author:            Fabio Montenegro
@@ -18,7 +18,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'EWPA_VERSION', '2.0.20' );
+define( 'EWPA_VERSION', '2.0.21' );
 define( 'EWPA_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'EWPA_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 define( 'EWPA_OPTION_KEY', 'ewpa_enabled_abilities' );
@@ -110,6 +110,9 @@ add_action( 'plugins_loaded', 'ewpa_maybe_migrate_keys_v2014' );
 
 // Migration: add ewpa/get-seopress-content-analysis introduced in v2.0.20 to existing installs.
 add_action( 'plugins_loaded', 'ewpa_maybe_migrate_keys_v2020' );
+
+// Migration: add LearnDash read abilities introduced in v2.0.21 to existing installs.
+add_action( 'plugins_loaded', 'ewpa_maybe_migrate_keys_v2021' );
 
 
 /*
@@ -350,6 +353,47 @@ function ewpa_maybe_migrate_keys_v2020(): void {
 	}
 
 	update_option( 'ewpa_keys_migrated_v2020', true );
+}
+
+/**
+ * Adds the LearnDash read abilities introduced in v2.0.21 to existing installs.
+ *
+ * Auto-enables the four read-only abilities. The two write abilities
+ * (ld-enroll-user, ld-unenroll-user) are opt-in and NOT added automatically.
+ *
+ * @return void
+ */
+function ewpa_maybe_migrate_keys_v2021(): void {
+	if ( get_option( 'ewpa_keys_migrated_v2021' ) ) {
+		return;
+	}
+
+	$enabled = get_option( EWPA_OPTION_KEY );
+	if ( ! is_array( $enabled ) ) {
+		update_option( 'ewpa_keys_migrated_v2021', true );
+		return;
+	}
+
+	$new_abilities = array(
+		'ewpa/ld-get-courses',
+		'ewpa/ld-get-course',
+		'ewpa/ld-get-user-progress',
+		'ewpa/ld-get-quiz-results',
+	);
+
+	$changed = false;
+	foreach ( $new_abilities as $key ) {
+		if ( ! in_array( $key, $enabled, true ) ) {
+			$enabled[] = $key;
+			$changed   = true;
+		}
+	}
+
+	if ( $changed ) {
+		update_option( EWPA_OPTION_KEY, $enabled );
+	}
+
+	update_option( 'ewpa_keys_migrated_v2021', true );
 }
 
 /**
@@ -780,6 +824,45 @@ function ewpa_get_abilities_registry() {
 				),
 			),
 		),
+		'learndash'               => array(
+			'section_label'  => __( 'LearnDash', 'enable-abilities-for-mcp' ),
+			'section_desc'   => __( 'Query and manage LearnDash courses, user progress, quiz results, and enrollments. Requires LearnDash (SFWD_LMS class).', 'enable-abilities-for-mcp' ),
+			'section_icon'   => 'dashicons-welcome-learn-more',
+			'section_badge'  => 'warning',
+			'section_notice' => 'ewpa_section_notice_learndash',
+			'abilities'      => array(
+				'ewpa/ld-get-courses'       => array(
+					'label'   => __( 'Get Courses', 'enable-abilities-for-mcp' ),
+					'desc'    => __( 'List published LearnDash courses with title, slug, permalink, and enrolled user count. Supports pagination and title search.', 'enable-abilities-for-mcp' ),
+					'default' => true,
+				),
+				'ewpa/ld-get-course'        => array(
+					'label'   => __( 'Get Single Course', 'enable-abilities-for-mcp' ),
+					'desc'    => __( 'Full course detail: title, description, permalink, ordered lessons with topics, and course-level quizzes.', 'enable-abilities-for-mcp' ),
+					'default' => true,
+				),
+				'ewpa/ld-get-user-progress' => array(
+					'label'   => __( 'Get User Progress', 'enable-abilities-for-mcp' ),
+					'desc'    => __( 'User progress in a specific course: enrollment status, steps completed/total, percentage, and completion flag.', 'enable-abilities-for-mcp' ),
+					'default' => true,
+				),
+				'ewpa/ld-get-quiz-results'  => array(
+					'label'   => __( 'Get Quiz Results', 'enable-abilities-for-mcp' ),
+					'desc'    => __( 'Quiz attempt history for a user (optionally filtered by quiz ID): score, total, pass/fail, and timestamp. Sorted newest first.', 'enable-abilities-for-mcp' ),
+					'default' => true,
+				),
+				'ewpa/ld-enroll-user'       => array(
+					'label'   => __( 'Enroll User', 'enable-abilities-for-mcp' ),
+					'desc'    => __( 'Enroll a user in a LearnDash course. Requires manage_options. Opt-in required — disabled by default.', 'enable-abilities-for-mcp' ),
+					'default' => false,
+				),
+				'ewpa/ld-unenroll-user'     => array(
+					'label'   => __( 'Unenroll User', 'enable-abilities-for-mcp' ),
+					'desc'    => __( 'Remove a user\'s access to a LearnDash course. Requires manage_options. Destructive — opt-in required.', 'enable-abilities-for-mcp' ),
+					'default' => false,
+				),
+			),
+		),
 	);
 }
 
@@ -1069,5 +1152,21 @@ function ewpa_section_notice_jetengine_options_pages(): string {
 	return '<div class="ewpa-section-notice ewpa-section-notice-info">'
 		. '<span class="dashicons dashicons-info"></span> '
 		. esc_html( $msg )
+		. '</div>';
+}
+
+/**
+ * Section notice for LearnDash: shows info when LearnDash is not active.
+ *
+ * @return string
+ */
+function ewpa_section_notice_learndash(): string {
+	if ( class_exists( 'SFWD_LMS' ) ) {
+		return '';
+	}
+
+	return '<div class="ewpa-section-notice ewpa-section-notice-info">'
+		. '<span class="dashicons dashicons-info"></span> '
+		. esc_html__( 'LearnDash is not active. These abilities require LearnDash (SFWD_LMS) to function.', 'enable-abilities-for-mcp' )
 		. '</div>';
 }

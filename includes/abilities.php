@@ -122,6 +122,44 @@ function ewpa_get_wp_internal_meta_keys() {
 	);
 }
 
+/**
+ * Permission check for abilities that target a specific post.
+ *
+ * Returns WP_Error (instead of bare false) so MCP clients receive an
+ * actionable message: a missing parameter or a nonexistent post ID would
+ * otherwise surface as a generic "Permission denied" — current_user_can()
+ * with a per-post capability returns false even for administrators when
+ * the post does not exist (map_meta_cap resolves to do_not_allow).
+ *
+ * @param mixed  $input      The ability input.
+ * @param string $capability Per-post capability to check (read_post, edit_post).
+ * @param string $param      Input key holding the post ID. Default 'post_id'.
+ * @return true|WP_Error
+ */
+function ewpa_check_post_permission( $input, string $capability, string $param = 'post_id' ) {
+	$post_id = absint( $input[ $param ] ?? 0 );
+
+	if ( ! $post_id ) {
+		return new WP_Error(
+			'missing_parameter',
+			sprintf( 'The "%s" parameter is required. Pass it inside the "parameters" object of the execute-ability call.', $param )
+		);
+	}
+
+	if ( ! get_post( $post_id ) ) {
+		return new WP_Error( 'not_found', sprintf( 'Invalid post ID: %d does not exist.', $post_id ) );
+	}
+
+	if ( ! current_user_can( $capability, $post_id ) ) {
+		return new WP_Error(
+			'forbidden',
+			sprintf( 'The authenticated user is not allowed to %s post %d.', 'read_post' === $capability ? 'read' : 'edit', $post_id )
+		);
+	}
+
+	return true;
+}
+
 /*
  * ==========================================================================
  * CORE ABILITIES FILTER
@@ -246,6 +284,14 @@ function ewpa_register_ability_categories(): void {
 		array(
 			'label'       => __( 'Elementor', 'enable-abilities-for-mcp' ),
 			'description' => __( 'Abilities to read and edit Elementor page and template data.', 'enable-abilities-for-mcp' ),
+		)
+	);
+
+	wp_register_ability_category(
+		'learndash',
+		array(
+			'label'       => __( 'LearnDash', 'enable-abilities-for-mcp' ),
+			'description' => __( 'Abilities to manage LearnDash courses, lessons, quizzes, and user enrollments.', 'enable-abilities-for-mcp' ),
 		)
 	);
 }
@@ -453,8 +499,7 @@ function ewpa_register_custom_abilities(): void {
 					),
 				),
 				'permission_callback' => function ( $input ) {
-					$post_id = absint( $input['post_id'] ?? 0 );
-					return $post_id && current_user_can( 'read_post', $post_id );
+					return ewpa_check_post_permission( $input, 'read_post' );
 				},
 				'execute_callback'    => function ( $input ) {
 					$post_id = absint( $input['post_id'] );
@@ -537,8 +582,7 @@ function ewpa_register_custom_abilities(): void {
 					),
 				),
 				'permission_callback' => function ( $input ) {
-					$page_id = absint( $input['page_id'] ?? 0 );
-					return $page_id && current_user_can( 'read_post', $page_id );
+					return ewpa_check_post_permission( $input, 'read_post', 'page_id' );
 				},
 				'execute_callback'    => function ( $input ) {
 					$page_id = absint( $input['page_id'] );
@@ -3522,9 +3566,6 @@ function ewpa_register_custom_abilities(): void {
 				'label'               => __( 'Get Yoast Sitemap Index', 'enable-abilities-for-mcp' ),
 				'description'         => __( 'Fetches and parses the Yoast SEO sitemap index for this site, returning the list of all sitemap URLs and their last modification date.', 'enable-abilities-for-mcp' ),
 				'category'            => 'content-management',
-				'input_schema'        => array(
-					'type' => 'object',
-				),
 				'output_schema'       => array(
 					'type'       => 'object',
 					'properties' => array(
@@ -3704,9 +3745,6 @@ function ewpa_register_custom_abilities(): void {
 				'label'               => __( 'Site Statistics', 'enable-abilities-for-mcp' ),
 				'description'         => __( 'Returns a summary with the total posts, pages, categories, tags, comments, and users of the site.', 'enable-abilities-for-mcp' ),
 				'category'            => 'site-information',
-				'input_schema'        => array(
-					'type' => 'object',
-				),
 				'output_schema'       => array(
 					'type'       => 'object',
 					'properties' => array(
@@ -3810,8 +3848,7 @@ function ewpa_register_custom_abilities(): void {
 					),
 				),
 				'permission_callback' => function ( $input ) {
-					$post_id = absint( $input['post_id'] ?? 0 );
-					return $post_id && current_user_can( 'edit_post', $post_id );
+					return ewpa_check_post_permission( $input, 'edit_post' );
 				},
 				'execute_callback'    => function ( $input ) {
 					$post_id    = absint( $input['post_id'] );
@@ -3902,8 +3939,7 @@ function ewpa_register_custom_abilities(): void {
 					),
 				),
 				'permission_callback' => function ( $input ) {
-					$post_id = absint( $input['post_id'] ?? 0 );
-					return $post_id && current_user_can( 'edit_post', $post_id );
+					return ewpa_check_post_permission( $input, 'edit_post' );
 				},
 				'execute_callback'    => function ( $input ) {
 					$post_id  = absint( $input['post_id'] );
@@ -3948,9 +3984,6 @@ function ewpa_register_custom_abilities(): void {
 				'label'               => __( 'Get Active Plugins', 'enable-abilities-for-mcp' ),
 				'description'         => __( 'Returns a list of all currently active plugins on the site, including name, version, and detected capabilities (multilanguage, SEO, WooCommerce, etc.).', 'enable-abilities-for-mcp' ),
 				'category'            => 'site-information',
-				'input_schema'        => array(
-					'type' => 'object',
-				),
 				'output_schema'       => array(
 					'type'  => 'array',
 					'items' => array(
@@ -4065,9 +4098,6 @@ function ewpa_register_custom_abilities(): void {
 				'label'               => __( 'List Post Types', 'enable-abilities-for-mcp' ),
 				'description'         => __( 'Lists all custom post types registered on the site, with their configuration, supported features, and associated taxonomies.', 'enable-abilities-for-mcp' ),
 				'category'            => 'cpt-management',
-				'input_schema'        => array(
-					'type' => 'object',
-				),
 				'output_schema'       => array(
 					'type'  => 'array',
 					'items' => array(
@@ -4353,8 +4383,7 @@ function ewpa_register_custom_abilities(): void {
 					),
 				),
 				'permission_callback' => function ( $input ) {
-					$post_id = absint( $input['post_id'] ?? 0 );
-					return $post_id && current_user_can( 'read_post', $post_id );
+					return ewpa_check_post_permission( $input, 'read_post' );
 				},
 				'execute_callback'    => function ( $input ) {
 					$post_id = absint( $input['post_id'] );
@@ -6197,8 +6226,7 @@ function ewpa_register_custom_abilities(): void {
 					),
 				),
 				'permission_callback' => function ( $input ) {
-					$post_id = absint( $input['post_id'] ?? 0 );
-					return $post_id && current_user_can( 'edit_post', $post_id );
+					return ewpa_check_post_permission( $input, 'edit_post' );
 				},
 				'execute_callback'    => function ( $input ) {
 					$post_id = absint( $input['post_id'] );
@@ -6281,11 +6309,11 @@ function ewpa_register_custom_abilities(): void {
 					),
 				),
 				'permission_callback' => function ( $input ) {
-					$orig = absint( $input['original_post_id'] ?? 0 );
-					$tran = absint( $input['translated_post_id'] ?? 0 );
-					return $orig && $tran
-						&& current_user_can( 'edit_post', $orig )
-						&& current_user_can( 'edit_post', $tran );
+					$orig = ewpa_check_post_permission( $input, 'edit_post', 'original_post_id' );
+					if ( true !== $orig ) {
+						return $orig;
+					}
+					return ewpa_check_post_permission( $input, 'edit_post', 'translated_post_id' );
 				},
 				'execute_callback'    => function ( $input ) {
 					$original_id     = absint( $input['original_post_id'] );
@@ -6384,8 +6412,7 @@ function ewpa_register_custom_abilities(): void {
 					),
 				),
 				'permission_callback' => function ( $input ) {
-					$post_id = absint( $input['post_id'] ?? 0 );
-					return $post_id && current_user_can( 'read_post', $post_id );
+					return ewpa_check_post_permission( $input, 'read_post' );
 				},
 				'execute_callback'    => function ( $input ) {
 					$post_id = absint( $input['post_id'] );
@@ -6801,8 +6828,7 @@ function ewpa_register_custom_abilities(): void {
 					),
 				),
 				'permission_callback' => function ( $input ) {
-					$post_id = absint( $input['post_id'] ?? 0 );
-					return $post_id && current_user_can( 'edit_post', $post_id );
+					return ewpa_check_post_permission( $input, 'edit_post' );
 				},
 				'execute_callback'    => function ( $input ) {
 					$post_id    = absint( $input['post_id'] );
@@ -6976,8 +7002,7 @@ function ewpa_register_custom_abilities(): void {
 					),
 				),
 				'permission_callback' => function ( $input ) {
-					$post_id = absint( $input['post_id'] ?? 0 );
-					return $post_id && current_user_can( 'edit_post', $post_id );
+					return ewpa_check_post_permission( $input, 'edit_post' );
 				},
 				'execute_callback'    => function ( $input ) {
 					$post_id = absint( $input['post_id'] );
@@ -7096,8 +7121,7 @@ function ewpa_register_custom_abilities(): void {
 					),
 				),
 				'permission_callback' => function ( $input ) {
-					$post_id = absint( $input['post_id'] ?? 0 );
-					return $post_id && current_user_can( 'edit_post', $post_id );
+					return ewpa_check_post_permission( $input, 'edit_post' );
 				},
 				'execute_callback'    => function ( $input ) {
 					$post_id = absint( $input['post_id'] );
@@ -7185,4 +7209,451 @@ function ewpa_register_custom_abilities(): void {
 			)
 		);
 	}
+
+	// ── SECTION J: LEARNDASH ─────────────────────────────────────────────────
+	if ( class_exists( 'SFWD_LMS' ) ) {
+
+		// ── J1: Get Courses ───────────────────────────────────────────────────
+		if ( ewpa_is_ability_enabled( 'ewpa/ld-get-courses' ) ) {
+			ewpa_register_ability_with_log(
+				'ewpa/ld-get-courses',
+				array(
+					'label'               => __( 'LearnDash: List Courses', 'enable-abilities-for-mcp' ),
+					'category'            => 'learndash',
+					'description'         => __( 'Returns a paginated list of published LearnDash courses with title, slug, permalink, and enrolled user count.', 'enable-abilities-for-mcp' ),
+					'input_schema'        => array(
+						'properties' => array(
+							'per_page' => array(
+								'type'        => 'integer',
+								'description' => __( 'Number of courses to return (1–100). Default: 20.', 'enable-abilities-for-mcp' ),
+							),
+							'page'     => array(
+								'type'        => 'integer',
+								'description' => __( 'Page number. Default: 1.', 'enable-abilities-for-mcp' ),
+							),
+							'search'   => array(
+								'type'        => 'string',
+								'description' => __( 'Filter by course title.', 'enable-abilities-for-mcp' ),
+							),
+						),
+					),
+					'permission_callback' => function ( $input ) {
+						return current_user_can( 'edit_posts' );
+					},
+					'execute_callback'    => function ( $input ) {
+						$args = array(
+							'post_type'        => 'sfwd-courses',
+							'post_status'      => 'publish',
+							'posts_per_page'   => min( (int) ( $input['per_page'] ?? 20 ), 100 ),
+							'paged'            => max( 1, (int) ( $input['page'] ?? 1 ) ),
+							'suppress_filters' => true,
+						);
+						if ( ! empty( $input['search'] ) ) {
+							$args['s'] = sanitize_text_field( $input['search'] );
+						}
+						$courses = get_posts( $args );
+						$result  = array();
+						foreach ( $courses as $course ) {
+							$access_list = learndash_get_course_users_access_from_meta( $course->ID );
+							$result[]    = array(
+								'id'             => $course->ID,
+								'title'          => $course->post_title,
+								'slug'           => $course->post_name,
+								'permalink'      => get_permalink( $course->ID ),
+								'enrolled_count' => is_array( $access_list ) ? count( $access_list ) : 0,
+							);
+						}
+						return array(
+							'courses' => $result,
+							'total'   => count( $result ),
+						);
+					},
+					'meta'                => array(
+						'show_in_rest' => true,
+						'annotations'  => array(
+							'readonly'    => true,
+							'destructive' => false,
+						),
+						'mcp'          => array(
+							'public' => true,
+						),
+					),
+				)
+			);
+		}
+
+		// ── J2: Get Course ────────────────────────────────────────────────────
+		if ( ewpa_is_ability_enabled( 'ewpa/ld-get-course' ) ) {
+			ewpa_register_ability_with_log(
+				'ewpa/ld-get-course',
+				array(
+					'label'               => __( 'LearnDash: Get Course', 'enable-abilities-for-mcp' ),
+					'category'            => 'learndash',
+					'description'         => __( 'Returns full detail for a single LearnDash course: title, description, permalink, ordered lessons with their topics, and course-level quizzes.', 'enable-abilities-for-mcp' ),
+					'input_schema'        => array(
+						'type'       => 'object',
+						'required'   => array( 'course_id' ),
+						'properties' => array(
+							'course_id' => array(
+								'type'        => 'integer',
+								'description' => __( 'The course post ID.', 'enable-abilities-for-mcp' ),
+							),
+						),
+					),
+					'permission_callback' => function ( $input ) {
+						return current_user_can( 'edit_posts' );
+					},
+					'execute_callback'    => function ( $input ) {
+						$course_id = (int) ( $input['course_id'] ?? 0 );
+						$course    = get_post( $course_id );
+						if ( ! $course || 'sfwd-courses' !== $course->post_type ) {
+							return new WP_Error( 'not_found', __( 'Course not found.', 'enable-abilities-for-mcp' ), array( 'status' => 404 ) );
+						}
+						$lessons      = learndash_get_course_lessons_list( $course );
+						$lessons_data = array();
+						foreach ( $lessons as $lesson_data ) {
+							$lesson = $lesson_data['post'] ?? $lesson_data;
+							if ( is_object( $lesson ) ) {
+								$topics      = learndash_get_topic_list( $lesson->ID, $course_id );
+								$topics_data = array();
+								foreach ( $topics as $topic ) {
+									$t = $topic['post'] ?? $topic;
+									if ( is_object( $t ) ) {
+										$topics_data[] = array(
+											'id'    => $t->ID,
+											'title' => $t->post_title,
+										);
+									}
+								}
+								$lessons_data[] = array(
+									'id'     => $lesson->ID,
+									'title'  => $lesson->post_title,
+									'topics' => $topics_data,
+								);
+							}
+						}
+						$quizzes      = learndash_get_course_quiz_list( $course );
+						$quizzes_data = array();
+						foreach ( $quizzes as $quiz_data ) {
+							$quiz = $quiz_data['post'] ?? $quiz_data;
+							if ( is_object( $quiz ) ) {
+								$quizzes_data[] = array(
+									'id'    => $quiz->ID,
+									'title' => $quiz->post_title,
+								);
+							}
+						}
+						return array(
+							'id'          => $course->ID,
+							'title'       => $course->post_title,
+							'description' => wp_strip_all_tags( $course->post_content ),
+							'permalink'   => get_permalink( $course->ID ),
+							'lessons'     => $lessons_data,
+							'quizzes'     => $quizzes_data,
+						);
+					},
+					'meta'                => array(
+						'show_in_rest' => true,
+						'annotations'  => array(
+							'readonly'    => true,
+							'destructive' => false,
+						),
+						'mcp'          => array(
+							'public' => true,
+						),
+					),
+				)
+			);
+		}
+
+		// ── J3: Get User Progress ─────────────────────────────────────────────
+		if ( ewpa_is_ability_enabled( 'ewpa/ld-get-user-progress' ) ) {
+			ewpa_register_ability_with_log(
+				'ewpa/ld-get-user-progress',
+				array(
+					'label'               => __( 'LearnDash: Get User Progress', 'enable-abilities-for-mcp' ),
+					'category'            => 'learndash',
+					'description'         => __( "Returns a user's progress in a specific LearnDash course: enrollment status, steps completed/total, percentage, and completion flag.", 'enable-abilities-for-mcp' ),
+					'input_schema'        => array(
+						'type'       => 'object',
+						'required'   => array( 'user_id', 'course_id' ),
+						'properties' => array(
+							'user_id'   => array(
+								'type'        => 'integer',
+								'description' => __( 'WordPress user ID.', 'enable-abilities-for-mcp' ),
+							),
+							'course_id' => array(
+								'type'        => 'integer',
+								'description' => __( 'Course post ID.', 'enable-abilities-for-mcp' ),
+							),
+						),
+					),
+					'permission_callback' => function ( $input ) {
+						return current_user_can( 'edit_users' );
+					},
+					'execute_callback'    => function ( $input ) {
+						$user_id   = (int) ( $input['user_id'] ?? 0 );
+						$course_id = (int) ( $input['course_id'] ?? 0 );
+						$user      = get_userdata( $user_id );
+						if ( ! $user ) {
+							return new WP_Error( 'not_found', __( 'User not found.', 'enable-abilities-for-mcp' ), array( 'status' => 404 ) );
+						}
+						$course = get_post( $course_id );
+						if ( ! $course || 'sfwd-courses' !== $course->post_type ) {
+							return new WP_Error( 'not_found', __( 'Course not found.', 'enable-abilities-for-mcp' ), array( 'status' => 404 ) );
+						}
+						$has_access = sfwd_lms_has_access( $course_id, $user_id );
+						$progress   = learndash_user_get_course_progress( $user_id, $course_id, 'summary' );
+						$completed  = learndash_course_completed( $user_id, $course_id );
+						$total      = (int) ( $progress['total'] ?? 0 );
+						$done       = (int) ( $progress['completed'] ?? 0 );
+						return array(
+							'user_id'          => $user_id,
+							'user_email'       => $user->user_email,
+							'course_id'        => $course_id,
+							'course_title'     => $course->post_title,
+							'enrolled'         => $has_access,
+							'status'           => $progress['status'] ?? ( $has_access ? 'in-progress' : 'not_enrolled' ),
+							'completed'        => $done,
+							'total'            => $total,
+							'percentage'       => ( $total > 0 ) ? round( ( $done / $total ) * 100, 1 ) : 0,
+							'course_completed' => $completed,
+						);
+					},
+					'meta'                => array(
+						'show_in_rest' => true,
+						'annotations'  => array(
+							'readonly'    => true,
+							'destructive' => false,
+						),
+						'mcp'          => array(
+							'public' => true,
+						),
+					),
+				)
+			);
+		}
+
+		// ── J4: Get Quiz Results ──────────────────────────────────────────────
+		if ( ewpa_is_ability_enabled( 'ewpa/ld-get-quiz-results' ) ) {
+			ewpa_register_ability_with_log(
+				'ewpa/ld-get-quiz-results',
+				array(
+					'label'               => __( 'LearnDash: Get Quiz Results', 'enable-abilities-for-mcp' ),
+					'category'            => 'learndash',
+					'description'         => __( 'Returns quiz attempt history for a user, optionally filtered by quiz ID. Sorted newest first.', 'enable-abilities-for-mcp' ),
+					'input_schema'        => array(
+						'type'       => 'object',
+						'required'   => array( 'user_id' ),
+						'properties' => array(
+							'user_id' => array(
+								'type'        => 'integer',
+								'description' => __( 'WordPress user ID.', 'enable-abilities-for-mcp' ),
+							),
+							'quiz_id' => array(
+								'type'        => 'integer',
+								'description' => __( 'Filter by specific quiz post ID (optional).', 'enable-abilities-for-mcp' ),
+							),
+							'limit'   => array(
+								'type'        => 'integer',
+								'description' => __( 'Max attempts to return (1–50). Default: 10.', 'enable-abilities-for-mcp' ),
+							),
+						),
+					),
+					'permission_callback' => function ( $input ) {
+						return current_user_can( 'edit_users' );
+					},
+					'execute_callback'    => function ( $input ) {
+						$user_id = (int) ( $input['user_id'] ?? 0 );
+						$quiz_id = isset( $input['quiz_id'] ) ? (int) $input['quiz_id'] : null;
+						$limit   = min( max( 1, (int) ( $input['limit'] ?? 10 ) ), 50 );
+						$user    = get_userdata( $user_id );
+						if ( ! $user ) {
+							return new WP_Error( 'not_found', __( 'User not found.', 'enable-abilities-for-mcp' ), array( 'status' => 404 ) );
+						}
+						$all_attempts = get_user_meta( $user_id, '_sfwd-quizzes', true );
+						if ( empty( $all_attempts ) || ! is_array( $all_attempts ) ) {
+							return array(
+								'user_id'  => $user_id,
+								'attempts' => array(),
+								'total'    => 0,
+							);
+						}
+						if ( null !== $quiz_id ) {
+							$all_attempts = array_filter(
+								$all_attempts,
+								function ( $a ) use ( $quiz_id ) {
+									return isset( $a['quiz'] ) && (int) $a['quiz'] === $quiz_id;
+								}
+							);
+						}
+						usort(
+							$all_attempts,
+							function ( $a, $b ) {
+								return ( (int) ( $b['time'] ?? 0 ) ) - ( (int) ( $a['time'] ?? 0 ) );
+							}
+						);
+						$attempts = array_slice( array_values( $all_attempts ), 0, $limit );
+						$result   = array();
+						foreach ( $attempts as $attempt ) {
+							$result[] = array(
+								'quiz_id'    => (int) ( $attempt['quiz'] ?? 0 ),
+								'quiz_title' => get_the_title( (int) ( $attempt['quiz'] ?? 0 ) ),
+								'course_id'  => (int) ( $attempt['course'] ?? 0 ),
+								'score'      => $attempt['score'] ?? 0,
+								'total'      => $attempt['count'] ?? 0,
+								'percentage' => $attempt['percentage'] ?? 0,
+								'pass'       => (bool) ( $attempt['pass'] ?? false ),
+								'timestamp'  => isset( $attempt['time'] ) ? gmdate( 'Y-m-d H:i:s', (int) $attempt['time'] ) : null,
+							);
+						}
+						return array(
+							'user_id'  => $user_id,
+							'attempts' => $result,
+							'total'    => count( $result ),
+						);
+					},
+					'meta'                => array(
+						'show_in_rest' => true,
+						'annotations'  => array(
+							'readonly'    => true,
+							'destructive' => false,
+						),
+						'mcp'          => array(
+							'public' => true,
+						),
+					),
+				)
+			);
+		}
+
+		// ── J5: Enroll User (disabled by default) ─────────────────────────────
+		if ( ewpa_is_ability_enabled( 'ewpa/ld-enroll-user' ) ) {
+			ewpa_register_ability_with_log(
+				'ewpa/ld-enroll-user',
+				array(
+					'label'               => __( 'LearnDash: Enroll User', 'enable-abilities-for-mcp' ),
+					'category'            => 'learndash',
+					'description'         => __( 'Enrolls a user in a LearnDash course. Requires manage_options. Opt-in required — disabled by default.', 'enable-abilities-for-mcp' ),
+					'input_schema'        => array(
+						'type'       => 'object',
+						'required'   => array( 'user_id', 'course_id' ),
+						'properties' => array(
+							'user_id'   => array(
+								'type'        => 'integer',
+								'description' => __( 'WordPress user ID.', 'enable-abilities-for-mcp' ),
+							),
+							'course_id' => array(
+								'type'        => 'integer',
+								'description' => __( 'Course post ID.', 'enable-abilities-for-mcp' ),
+							),
+						),
+					),
+					'permission_callback' => function ( $input ) {
+						return current_user_can( 'manage_options' );
+					},
+					'execute_callback'    => function ( $input ) {
+						$user_id   = (int) ( $input['user_id'] ?? 0 );
+						$course_id = (int) ( $input['course_id'] ?? 0 );
+						if ( ! get_userdata( $user_id ) ) {
+							return new WP_Error( 'not_found', __( 'User not found.', 'enable-abilities-for-mcp' ), array( 'status' => 404 ) );
+						}
+						$course = get_post( $course_id );
+						if ( ! $course || 'sfwd-courses' !== $course->post_type ) {
+							return new WP_Error( 'not_found', __( 'Course not found.', 'enable-abilities-for-mcp' ), array( 'status' => 404 ) );
+						}
+						if ( learndash_user_has_course_access( $user_id, $course_id ) ) {
+							return array(
+								'success'          => true,
+								'message'          => __( 'User already enrolled in this course.', 'enable-abilities-for-mcp' ),
+								'already_enrolled' => true,
+							);
+						}
+						ld_update_course_access( $user_id, $course_id );
+						return array(
+							'success'   => true,
+							'user_id'   => $user_id,
+							'course_id' => $course_id,
+							'message'   => __( 'User enrolled successfully.', 'enable-abilities-for-mcp' ),
+						);
+					},
+					'meta'                => array(
+						'show_in_rest' => true,
+						'annotations'  => array(
+							'readonly'    => false,
+							'destructive' => false,
+						),
+						'mcp'          => array(
+							'public' => true,
+						),
+					),
+				)
+			);
+		}
+
+		// ── J6: Unenroll User (disabled by default) ───────────────────────────
+		if ( ewpa_is_ability_enabled( 'ewpa/ld-unenroll-user' ) ) {
+			ewpa_register_ability_with_log(
+				'ewpa/ld-unenroll-user',
+				array(
+					'label'               => __( 'LearnDash: Unenroll User', 'enable-abilities-for-mcp' ),
+					'category'            => 'learndash',
+					'description'         => __( "Removes a user's access to a LearnDash course. Requires manage_options. Opt-in required — disabled by default.", 'enable-abilities-for-mcp' ),
+					'input_schema'        => array(
+						'type'       => 'object',
+						'required'   => array( 'user_id', 'course_id' ),
+						'properties' => array(
+							'user_id'   => array(
+								'type'        => 'integer',
+								'description' => __( 'WordPress user ID.', 'enable-abilities-for-mcp' ),
+							),
+							'course_id' => array(
+								'type'        => 'integer',
+								'description' => __( 'Course post ID.', 'enable-abilities-for-mcp' ),
+							),
+						),
+					),
+					'permission_callback' => function ( $input ) {
+						return current_user_can( 'manage_options' );
+					},
+					'execute_callback'    => function ( $input ) {
+						$user_id   = (int) ( $input['user_id'] ?? 0 );
+						$course_id = (int) ( $input['course_id'] ?? 0 );
+						if ( ! get_userdata( $user_id ) ) {
+							return new WP_Error( 'not_found', __( 'User not found.', 'enable-abilities-for-mcp' ), array( 'status' => 404 ) );
+						}
+						$course = get_post( $course_id );
+						if ( ! $course || 'sfwd-courses' !== $course->post_type ) {
+							return new WP_Error( 'not_found', __( 'Course not found.', 'enable-abilities-for-mcp' ), array( 'status' => 404 ) );
+						}
+						if ( ! learndash_user_has_course_access( $user_id, $course_id ) ) {
+							return array(
+								'success'      => true,
+								'message'      => __( 'User was not enrolled in this course.', 'enable-abilities-for-mcp' ),
+								'was_enrolled' => false,
+							);
+						}
+						ld_update_course_access( $user_id, $course_id, true );
+						return array(
+							'success'   => true,
+							'user_id'   => $user_id,
+							'course_id' => $course_id,
+							'message'   => __( 'User unenrolled successfully.', 'enable-abilities-for-mcp' ),
+						);
+					},
+					'meta'                => array(
+						'show_in_rest' => true,
+						'annotations'  => array(
+							'readonly'    => false,
+							'destructive' => true,
+						),
+						'mcp'          => array(
+							'public' => true,
+						),
+					),
+				)
+			);
+		}
+
+	} // end if class_exists( 'SFWD_LMS' )
 }

@@ -5,7 +5,7 @@ Tags: mcp, ai, rest-api, content-management, woocommerce
 Requires at least: 6.9
 Tested up to: 7.0
 Requires PHP: 8.0
-Stable tag: 2.0.20
+Stable tag: 2.0.21
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -19,7 +19,7 @@ WordPress 6.9 introduced the Abilities API, allowing external tools to discover 
 
 = Features =
 
-* **62 abilities** organized in 14 categories: Core, Read, Write, SEO (Rank Math), SEO (SEOPress), SEO (Yoast), Utility, Multilanguage, Custom Post Types, WooCommerce, The Events Calendar, Code Snippets, JetEngine Options Pages, and Elementor
+* **68 abilities** organized in 15 categories: Core, Read, Write, SEO (Rank Math), SEO (SEOPress), SEO (Yoast), Utility, Multilanguage, Custom Post Types, WooCommerce, The Events Calendar, Code Snippets, JetEngine Options Pages, Elementor, and LearnDash
 * **WooCommerce integration** — dedicated abilities to manage products, orders, and customers using the native WooCommerce API (HPOS-compatible, formally declared)
 * **The Events Calendar integration** — list, get, create, and update events with venue, organizer, and date filters
 * **Admin dashboard** with toggle switches for each ability
@@ -137,6 +137,11 @@ This plugin registers abilities using the standard `wp_register_ability()` API. 
 1. Admin settings page showing all abilities organized by category with toggle switches.
 
 == Changelog ==
+
+= 2.0.21 =
+* New: LearnDash section (6 abilities) — `ewpa/ld-get-courses`, `ewpa/ld-get-course`, `ewpa/ld-get-user-progress`, `ewpa/ld-get-quiz-results` (read, enabled by default); `ewpa/ld-enroll-user`, `ewpa/ld-unenroll-user` (write, disabled by default). Requires LearnDash. Guard: `class_exists('SFWD_LMS')`. `learndash_get_course_users_access_from_meta()` wrapped in `function_exists()` for broad compatibility.
+* Fix: Per-post permission callbacks (get-post, get-page, get-cpt-item, update-post, delete-post, and 7 more) now return a descriptive `WP_Error` instead of bare `false`. Previously, a missing `post_id` parameter or a nonexistent post ID surfaced as a generic "Permission denied" with no detail — even for administrators — because `current_user_can()` with a per-post capability resolves to `do_not_allow` when the post does not exist. MCP clients now receive actionable messages: missing parameter, invalid post ID, or an actual capability denial. Reported in the support forum (bearer-token thread).
+* Updated: Total abilities: 68 in 15 categories
 
 = 2.0.20 =
 * New: `ewpa/get-seopress-content-analysis` — reads the SEOPress content analysis for a post or page: every check (meta title, meta description, headings, internal links, structured data, image alt texts, content depth, etc.) with its impact level (good/low/medium/high) and plain-text recommendation, plus a summary count and the target keywords. Optional `refresh=true` runs a fresh SEOPress analysis of the rendered page first (internally dispatching `GET seopress/v1/posts/{id}/content-analysis`), so agents can update content and immediately re-check the recommendations. Requires SEOPress 7.5+ (fresh analysis honors SEOPress 30 req/min per-user rate limit). Read-only; auto-enabled on upgrade.
