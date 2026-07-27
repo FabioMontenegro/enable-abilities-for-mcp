@@ -55,3 +55,6 @@ svn-publish.md
 
 # Local MCP config (contains bearer token, never commit)
 .mcp.json
+
+# Agent tooling cache (skill registry)
+.atl/
