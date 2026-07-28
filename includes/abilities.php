@@ -162,6 +162,138 @@ function ewpa_check_post_permission( $input, string $capability, string $param =
 
 /*
  * ==========================================================================
+ * LLMS.TXT (AGENT READINESS) HELPERS
+ * ==========================================================================
+ */
+
+/**
+ * Detects which component provides /llms.txt on this site.
+ *
+ * @return string One of: physical_file | seopress_pro | ewpa | none.
+ */
+function ewpa_llms_txt_provider(): string {
+	if ( file_exists( ABSPATH . 'llms.txt' ) ) {
+		return 'physical_file';
+	}
+	if ( function_exists( 'seopress_serve_llms_txt' ) ) {
+		return 'seopress_pro';
+	}
+	if ( '' !== (string) get_option( 'ewpa_llms_txt', '' ) ) {
+		return 'ewpa';
+	}
+	return 'none';
+}
+
+/**
+ * Validates llms.txt content against the llmstxt.org recommendations.
+ *
+ * @param string $content The llms.txt body.
+ * @return array List of issues: array{ severity: string, message: string }.
+ */
+function ewpa_validate_llms_txt( string $content ): array {
+	$issues = array();
+
+	if ( '' === trim( $content ) ) {
+		$issues[] = array(
+			'severity' => 'error',
+			'message'  => 'File is empty.',
+		);
+		return $issues;
+	}
+
+	if ( false !== stripos( $content, '<html' ) || false !== stripos( $content, '<body' ) ) {
+		$issues[] = array(
+			'severity' => 'error',
+			'message'  => 'Content is HTML, not Markdown — the request is probably falling through to a themed page or 404.',
+		);
+		return $issues;
+	}
+
+	$first = '';
+	foreach ( preg_split( '/\r\n|\r|\n/', $content ) as $line ) {
+		if ( '' !== trim( $line ) ) {
+			$first = trim( $line );
+			break;
+		}
+	}
+
+	if ( ! preg_match( '/^# \S/', $first ) ) {
+		$issues[] = array(
+			'severity' => 'error',
+			'message'  => 'The first non-empty line must be an H1 header ("# Site Name"). This is the only hard requirement of the spec and the main Lighthouse "Agentic Browsing" check.',
+		);
+	}
+
+	if ( ! preg_match( '/^> \S/m', $content ) ) {
+		$issues[] = array(
+			'severity' => 'warning',
+			'message'  => 'No blockquote summary ("> ...") found after the H1. Recommended by the spec.',
+		);
+	}
+
+	if ( ! preg_match( '/\[[^\]]+\]\([^)\s]+\)/', $content ) ) {
+		$issues[] = array(
+			'severity' => 'warning',
+			'message'  => 'No Markdown links found — llms.txt should curate links to your key pages.',
+		);
+	}
+
+	if ( preg_match( '/&#\d+;|&[a-zA-Z]+\d*;/', $content ) ) {
+		$issues[] = array(
+			'severity' => 'warning',
+			'message'  => 'Raw HTML entities detected (e.g. &#8220;). Decode them to plain UTF-8 so Markdown parsers read clean text.',
+		);
+	}
+
+	if ( strlen( $content ) > 100000 ) {
+		$issues[] = array(
+			'severity' => 'warning',
+			'message'  => 'File exceeds 100 KB. Keep llms.txt small and curated; use llms-full.txt for exhaustive content.',
+		);
+	}
+
+	return $issues;
+}
+
+/**
+ * Serves the plugin-managed virtual /llms.txt file.
+ *
+ * Runs on do_parse_request at priority 1: SEOPress Pro's own handler
+ * (priority 0) and a physical llms.txt file (served directly by the web
+ * server) both win before this fires, so the fallback only acts when the
+ * ewpa_llms_txt option has content and nothing else provides the file.
+ *
+ * @param bool         $do_parse         Whether to parse the request.
+ * @param WP           $wp               Current WordPress environment instance.
+ * @param array|string $extra_query_vars Extra passed query variables.
+ * @return bool
+ */
+function ewpa_serve_llms_txt( $do_parse, $wp, $extra_query_vars ) {
+	$content = (string) get_option( 'ewpa_llms_txt', '' );
+	if ( '' === $content ) {
+		return $do_parse;
+	}
+
+	$home_path = wp_parse_url( home_url(), PHP_URL_PATH );
+	$home_path = $home_path ? trim( $home_path, '/' ) : '';
+	$llms_path = $home_path ? $home_path . '/llms.txt' : 'llms.txt';
+
+	$request_uri  = isset( $_SERVER['REQUEST_URI'] ) ? sanitize_text_field( wp_unslash( $_SERVER['REQUEST_URI'] ) ) : '';
+	$request_path = trim( (string) wp_parse_url( $request_uri, PHP_URL_PATH ), '/' );
+
+	if ( $request_path !== $llms_path ) {
+		return $do_parse;
+	}
+
+	header( 'Content-Type: text/plain; charset=utf-8' );
+	header( 'X-Robots-Tag: noindex' );
+	echo $content; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- plain-text Markdown body, not HTML context.
+	exit;
+}
+add_filter( 'do_parse_request', 'ewpa_serve_llms_txt', 1, 3 );
+
+/*
+ * ==========================================================================
  * CORE ABILITIES FILTER
  * ==========================================================================
  * WordPress 6.9 core abilities exist but aren't exposed to MCP by default.
@@ -7656,4 +7788,232 @@ function ewpa_register_custom_abilities(): void {
 		}
 
 	} // end if class_exists( 'SFWD_LMS' )
+
+	/*
+	 * ======================================================================
+	 * SECTION AR: AI — AGENT READINESS (LLMS.TXT)
+	 * ======================================================================
+	 */
+
+	// ── AR1: Get / Validate llms.txt ────────────────────────────────────
+	if ( ewpa_is_ability_enabled( 'ewpa/get-llms-txt' ) ) {
+		ewpa_register_ability_with_log(
+			'ewpa/get-llms-txt',
+			array(
+				'label'               => __( 'Get llms.txt', 'enable-abilities-for-mcp' ),
+				'description'         => __( 'Fetches the site llms.txt file (the AI-crawler guidance file, llmstxt.org spec), detects which component serves it (SEOPress Pro, physical file, this plugin, third-party, or none), and validates it: H1 header present, blockquote summary, Markdown links, raw HTML entities, size. Returns the content plus a list of issues with severity, so an agent can diagnose why a Lighthouse "Agentic Browsing" audit fails.', 'enable-abilities-for-mcp' ),
+				'category'            => 'site-information',
+				'input_schema'        => array(
+					'type'       => 'object',
+					'properties' => array(
+						'include_content' => array(
+							'type'        => 'boolean',
+							'description' => 'Include the file content in the response (default true, truncated at 20000 characters)',
+						),
+					),
+				),
+				'output_schema'       => array(
+					'type'       => 'object',
+					'properties' => array(
+						'exists'         => array( 'type' => 'boolean' ),
+						'url'            => array( 'type' => 'string' ),
+						'http_status'    => array( 'type' => 'integer' ),
+						'provider'       => array( 'type' => 'string' ),
+						'editable_via'   => array( 'type' => 'string' ),
+						'valid'          => array( 'type' => 'boolean' ),
+						'issues'         => array(
+							'type'  => 'array',
+							'items' => array(
+								'type'       => 'object',
+								'properties' => array(
+									'severity' => array( 'type' => 'string' ),
+									'message'  => array( 'type' => 'string' ),
+								),
+							),
+						),
+						'content'        => array( 'type' => 'string' ),
+						'content_length' => array( 'type' => 'integer' ),
+					),
+				),
+				'permission_callback' => function () {
+					return current_user_can( 'edit_posts' );
+				},
+				'execute_callback'    => function ( $input ) {
+					$url      = home_url( '/llms.txt' );
+					$response = wp_remote_get( $url, array( 'timeout' => 15 ) );
+
+					if ( is_wp_error( $response ) ) {
+						return new WP_Error( 'fetch_failed', 'Could not fetch ' . $url . ': ' . $response->get_error_message() );
+					}
+
+					$status = (int) wp_remote_retrieve_response_code( $response );
+					$body   = (string) wp_remote_retrieve_body( $response );
+					$exists = 200 === $status && '' !== trim( $body );
+
+					$provider = ewpa_llms_txt_provider();
+					if ( 'none' === $provider && $exists ) {
+						$provider = 'third_party';
+					}
+
+					$editable_map = array(
+						'seopress_pro'  => 'ewpa/update-llms-txt (writes the SEOPress Pro option; SEOPress placeholders like {{latest_posts:5}} are supported)',
+						'ewpa'          => 'ewpa/update-llms-txt (writes this plugin\'s virtual file)',
+						'none'          => 'ewpa/update-llms-txt (will create a virtual file served by this plugin)',
+						'physical_file' => 'not editable via MCP - a physical llms.txt file exists in the WordPress root; edit it on the server',
+						'third_party'   => 'not editable via MCP - another plugin serves llms.txt; edit it in that plugin\'s settings',
+					);
+
+					$issues = $exists
+						? ewpa_validate_llms_txt( $body )
+						: array(
+							array(
+								'severity' => 'error',
+								'message'  => 'No llms.txt is served at ' . $url . ' (HTTP ' . $status . ').',
+							),
+						);
+
+					$has_error = false;
+					foreach ( $issues as $issue ) {
+						if ( 'error' === $issue['severity'] ) {
+							$has_error = true;
+							break;
+						}
+					}
+
+					$include_content = ! isset( $input['include_content'] ) || ! empty( $input['include_content'] );
+
+					return array(
+						'exists'         => $exists,
+						'url'            => $url,
+						'http_status'    => $status,
+						'provider'       => $provider,
+						'editable_via'   => $editable_map[ $provider ],
+						'valid'          => $exists && ! $has_error,
+						'issues'         => $issues,
+						'content'        => $include_content ? mb_substr( $body, 0, 20000 ) : '',
+						'content_length' => strlen( $body ),
+					);
+				},
+				'meta'                => array(
+					'show_in_rest' => true,
+					'annotations'  => array(
+						'readonly'    => true,
+						'destructive' => false,
+						'idempotent'  => true,
+					),
+					'mcp'          => array(
+						'public' => true,
+					),
+				),
+			)
+		);
+	}
+
+	// ── AR2: Update llms.txt ────────────────────────────────────────────
+	if ( ewpa_is_ability_enabled( 'ewpa/update-llms-txt' ) ) {
+		ewpa_register_ability_with_log(
+			'ewpa/update-llms-txt',
+			array(
+				'label'               => __( 'Update llms.txt', 'enable-abilities-for-mcp' ),
+				'description'         => __( 'Writes the site llms.txt content (Markdown, llmstxt.org spec: H1 title, optional blockquote summary, H2 sections with link lists). Routes automatically: if SEOPress Pro is active it writes the SEOPress option (its dynamic placeholders like {{latest_posts:5}}, {{featured_products:3}}, {{site_name}} keep working); otherwise this plugin serves the content itself at /llms.txt. Refuses to act when a physical file or a third-party plugin already provides it. Content is validated before saving — an H1 first line is mandatory.', 'enable-abilities-for-mcp' ),
+				'category'            => 'site-information',
+				'input_schema'        => array(
+					'type'       => 'object',
+					'required'   => array( 'content' ),
+					'properties' => array(
+						'content' => array(
+							'type'        => 'string',
+							'description' => 'Full llms.txt body in Markdown. Must start with an H1 line ("# Site Name"). Max 100000 characters.',
+						),
+					),
+				),
+				'output_schema'       => array(
+					'type'       => 'object',
+					'properties' => array(
+						'provider' => array( 'type' => 'string' ),
+						'url'      => array( 'type' => 'string' ),
+						'bytes'    => array( 'type' => 'integer' ),
+						'warnings' => array( 'type' => 'array' ),
+						'message'  => array( 'type' => 'string' ),
+					),
+				),
+				'permission_callback' => function () {
+					return current_user_can( 'manage_options' );
+				},
+				'execute_callback'    => function ( $input ) {
+					$content = isset( $input['content'] ) ? sanitize_textarea_field( $input['content'] ) : '';
+
+					if ( strlen( $content ) > 100000 ) {
+						return new WP_Error( 'too_large', 'Content exceeds the 100000-character limit. Keep llms.txt curated.' );
+					}
+
+					$issues   = ewpa_validate_llms_txt( $content );
+					$errors   = array();
+					$warnings = array();
+					foreach ( $issues as $issue ) {
+						if ( 'error' === $issue['severity'] ) {
+							$errors[] = $issue['message'];
+						} else {
+							$warnings[] = $issue['message'];
+						}
+					}
+					if ( ! empty( $errors ) ) {
+						return new WP_Error( 'invalid_content', 'llms.txt content rejected: ' . implode( ' | ', $errors ) );
+					}
+
+					$provider = ewpa_llms_txt_provider();
+
+					if ( 'physical_file' === $provider ) {
+						return new WP_Error( 'physical_file_exists', 'A physical llms.txt file exists in the WordPress root directory. Edit or remove it on the server; MCP cannot manage it.' );
+					}
+
+					if ( 'seopress_pro' === $provider ) {
+						$opts = get_option( 'seopress_pro_option_name', array() );
+						if ( ! is_array( $opts ) ) {
+							$opts = array();
+						}
+						$opts['seopress_llms_file'] = $content;
+						update_option( 'seopress_pro_option_name', $opts );
+
+						return array(
+							'provider' => 'seopress_pro',
+							'url'      => home_url( '/llms.txt' ),
+							'bytes'    => strlen( $content ),
+							'warnings' => $warnings,
+							'message'  => 'llms.txt saved to the SEOPress Pro option (seopress_llms_file). SEOPress placeholders will be expanded on output.',
+						);
+					}
+
+					// Before claiming /llms.txt ourselves, make sure no unknown
+					// third-party component is already serving it.
+					if ( 'none' === $provider ) {
+						$probe = wp_remote_get( home_url( '/llms.txt' ), array( 'timeout' => 10 ) );
+						if ( ! is_wp_error( $probe ) && 200 === (int) wp_remote_retrieve_response_code( $probe ) && '' !== trim( (string) wp_remote_retrieve_body( $probe ) ) ) {
+							return new WP_Error( 'third_party_provider', 'Another plugin already serves /llms.txt. Edit it in that plugin\'s settings instead, so the two do not conflict.' );
+						}
+					}
+
+					update_option( 'ewpa_llms_txt', $content, false );
+
+					return array(
+						'provider' => 'ewpa',
+						'url'      => home_url( '/llms.txt' ),
+						'bytes'    => strlen( $content ),
+						'warnings' => $warnings,
+						'message'  => 'llms.txt saved and served by Enable Abilities for MCP at /llms.txt.',
+					);
+				},
+				'meta'                => array(
+					'show_in_rest' => true,
+					'annotations'  => array(
+						'readonly'    => false,
+						'destructive' => true,
+					),
+					'mcp'          => array(
+						'public' => true,
+					),
+				),
+			)
+		);
+	}
 }

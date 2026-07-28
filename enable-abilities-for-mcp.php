@@ -2,7 +2,7 @@
 /**
  * Plugin Name:       Enable Abilities for MCP
  * Description:       Manage which WordPress Abilities are exposed to MCP servers. Enable or disable each ability individually from the dashboard.
- * Version:           2.0.21
+ * Version:           2.0.22
  * Requires at least: 6.9
  * Requires PHP:      8.0
  * Author:            Fabio Montenegro
@@ -18,7 +18,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'EWPA_VERSION', '2.0.21' );
+define( 'EWPA_VERSION', '2.0.22' );
 define( 'EWPA_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'EWPA_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 define( 'EWPA_OPTION_KEY', 'ewpa_enabled_abilities' );
@@ -113,6 +113,9 @@ add_action( 'plugins_loaded', 'ewpa_maybe_migrate_keys_v2020' );
 
 // Migration: add LearnDash read abilities introduced in v2.0.21 to existing installs.
 add_action( 'plugins_loaded', 'ewpa_maybe_migrate_keys_v2021' );
+
+// Migration: add ewpa/get-llms-txt introduced in v2.0.22 to existing installs.
+add_action( 'plugins_loaded', 'ewpa_maybe_migrate_keys_v2022' );
 
 
 /*
@@ -394,6 +397,33 @@ function ewpa_maybe_migrate_keys_v2021(): void {
 	}
 
 	update_option( 'ewpa_keys_migrated_v2021', true );
+}
+
+/**
+ * Adds the llms.txt read ability introduced in v2.0.22 to existing installs.
+ *
+ * Auto-enables ewpa/get-llms-txt (read-only). ewpa/update-llms-txt is
+ * NOT added (opt-in, default false).
+ *
+ * @return void
+ */
+function ewpa_maybe_migrate_keys_v2022(): void {
+	if ( get_option( 'ewpa_keys_migrated_v2022' ) ) {
+		return;
+	}
+
+	$enabled = get_option( EWPA_OPTION_KEY );
+	if ( ! is_array( $enabled ) ) {
+		update_option( 'ewpa_keys_migrated_v2022', true );
+		return;
+	}
+
+	if ( ! in_array( 'ewpa/get-llms-txt', $enabled, true ) ) {
+		$enabled[] = 'ewpa/get-llms-txt';
+		update_option( EWPA_OPTION_KEY, $enabled );
+	}
+
+	update_option( 'ewpa_keys_migrated_v2022', true );
 }
 
 /**
@@ -859,6 +889,22 @@ function ewpa_get_abilities_registry() {
 				'ewpa/ld-unenroll-user'     => array(
 					'label'   => __( 'Unenroll User', 'enable-abilities-for-mcp' ),
 					'desc'    => __( 'Remove a user\'s access to a LearnDash course. Requires manage_options. Destructive — opt-in required.', 'enable-abilities-for-mcp' ),
+					'default' => false,
+				),
+			),
+		),
+		'agent-readiness'         => array(
+			'section_label' => __( 'AI — Agent Readiness (llms.txt)', 'enable-abilities-for-mcp' ),
+			'section_desc'  => __( 'Read, validate, and manage the site llms.txt file — the AI-crawler guidance file audited by Lighthouse "Agentic Browsing". Integrates with SEOPress Pro when active; otherwise serves a virtual /llms.txt directly.', 'enable-abilities-for-mcp' ),
+			'section_icon'  => 'dashicons-superhero-alt',
+			'abilities'     => array(
+				'ewpa/get-llms-txt'    => array(
+					'label' => __( 'Get llms.txt', 'enable-abilities-for-mcp' ),
+					'desc'  => __( 'Fetch the site llms.txt, detect which component serves it, and validate it against the llmstxt.org spec with actionable issues.', 'enable-abilities-for-mcp' ),
+				),
+				'ewpa/update-llms-txt' => array(
+					'label'   => __( 'Update llms.txt', 'enable-abilities-for-mcp' ),
+					'desc'    => __( 'Write the llms.txt content (SEOPress Pro option when active, or a virtual file served by this plugin). Requires manage_options. Opt-in.', 'enable-abilities-for-mcp' ),
 					'default' => false,
 				),
 			),

@@ -5,7 +5,7 @@ Tags: mcp, ai, rest-api, content-management, woocommerce
 Requires at least: 6.9
 Tested up to: 7.0
 Requires PHP: 8.0
-Stable tag: 2.0.21
+Stable tag: 2.0.22
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -19,7 +19,7 @@ WordPress 6.9 introduced the Abilities API, allowing external tools to discover 
 
 = Features =
 
-* **68 abilities** organized in 15 categories: Core, Read, Write, SEO (Rank Math), SEO (SEOPress), SEO (Yoast), Utility, Multilanguage, Custom Post Types, WooCommerce, The Events Calendar, Code Snippets, JetEngine Options Pages, Elementor, and LearnDash
+* **70 abilities** organized in 16 categories: Core, Read, Write, SEO (Rank Math), SEO (SEOPress), SEO (Yoast), Utility, Multilanguage, Custom Post Types, WooCommerce, The Events Calendar, Code Snippets, JetEngine Options Pages, Elementor, LearnDash, and AI Agent Readiness (llms.txt)
 * **WooCommerce integration** — dedicated abilities to manage products, orders, and customers using the native WooCommerce API (HPOS-compatible, formally declared)
 * **The Events Calendar integration** — list, get, create, and update events with venue, organizer, and date filters
 * **Admin dashboard** with toggle switches for each ability
@@ -137,6 +137,10 @@ This plugin registers abilities using the standard `wp_register_ability()` API. 
 1. Admin settings page showing all abilities organized by category with toggle switches.
 
 == Changelog ==
+
+= 2.0.22 =
+* New: AI — Agent Readiness section (2 abilities). `ewpa/get-llms-txt` fetches the site llms.txt (the AI-crawler guidance file audited by Lighthouse "Agentic Browsing"), detects which component serves it (SEOPress Pro, physical file, this plugin, third-party, or none), and validates it against the llmstxt.org spec with actionable issues (missing H1, no blockquote summary, no Markdown links, raw HTML entities, oversize). `ewpa/update-llms-txt` (opt-in, manage_options) writes the content with automatic routing: SEOPress Pro option when active (its dynamic placeholders keep working), or a virtual /llms.txt served by this plugin via do_parse_request; refuses when a physical file or third-party plugin already provides it. Content validated before saving.
+* Updated: Total abilities: 70 in 16 categories
 
 = 2.0.21 =
 * New: LearnDash section (6 abilities) — `ewpa/ld-get-courses`, `ewpa/ld-get-course`, `ewpa/ld-get-user-progress`, `ewpa/ld-get-quiz-results` (read, enabled by default); `ewpa/ld-enroll-user`, `ewpa/ld-unenroll-user` (write, disabled by default). Requires LearnDash. Guard: `class_exists('SFWD_LMS')`. `learndash_get_course_users_access_from_meta()` wrapped in `function_exists()` for broad compatibility.
