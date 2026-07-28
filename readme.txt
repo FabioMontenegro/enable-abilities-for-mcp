@@ -5,7 +5,7 @@ Tags: mcp, ai, rest-api, content-management, woocommerce
 Requires at least: 6.9
 Tested up to: 7.0
 Requires PHP: 8.0
-Stable tag: 2.0.22
+Stable tag: 2.0.23
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -137,6 +137,9 @@ This plugin registers abilities using the standard `wp_register_ability()` API. 
 1. Admin settings page showing all abilities organized by category with toggle switches.
 
 == Changelog ==
+
+= 2.0.23 =
+* i18n: Regenerated the POT template (524 strings, was stuck at v2.0.13) and completed the Spanish (es_ES) translation — 101 new strings covering the JetEngine Options Pages, Elementor, LearnDash, SEOPress content analysis, and llms.txt sections. Recompiled .mo files.
 
 = 2.0.22 =
 * New: AI — Agent Readiness section (2 abilities). `ewpa/get-llms-txt` fetches the site llms.txt (the AI-crawler guidance file audited by Lighthouse "Agentic Browsing"), detects which component serves it (SEOPress Pro, physical file, this plugin, third-party, or none), and validates it against the llmstxt.org spec with actionable issues (missing H1, no blockquote summary, no Markdown links, raw HTML entities, oversize). `ewpa/update-llms-txt` (opt-in, manage_options) writes the content with automatic routing: SEOPress Pro option when active (its dynamic placeholders keep working), or a virtual /llms.txt served by this plugin via do_parse_request; refuses when a physical file or third-party plugin already provides it. Content validated before saving.
