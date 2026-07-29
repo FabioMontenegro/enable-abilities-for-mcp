@@ -160,6 +160,30 @@ function ewpa_check_post_permission( $input, string $capability, string $param =
 	return true;
 }
 
+/**
+ * Detects the active page-cache plugin.
+ *
+ * @return string One of: wp_rocket | litespeed | w3_total_cache | wp_super_cache | wp_fastest_cache | none.
+ */
+function ewpa_detect_cache_plugin(): string {
+	if ( function_exists( 'rocket_clean_domain' ) ) {
+		return 'wp_rocket';
+	}
+	if ( defined( 'LSCWP_V' ) ) {
+		return 'litespeed';
+	}
+	if ( function_exists( 'w3tc_flush_all' ) ) {
+		return 'w3_total_cache';
+	}
+	if ( function_exists( 'wp_cache_clear_cache' ) ) {
+		return 'wp_super_cache';
+	}
+	if ( class_exists( 'WpFastestCache' ) ) {
+		return 'wp_fastest_cache';
+	}
+	return 'none';
+}
+
 /*
  * ==========================================================================
  * LLMS.TXT (AGENT READINESS) HELPERS
@@ -4208,6 +4232,137 @@ function ewpa_register_custom_abilities(): void {
 				},
 				'meta'                => array(
 					'show_in_rest' => true,
+					'mcp'          => array(
+						'public' => true,
+					),
+				),
+			)
+		);
+	}
+
+	// ── U6: Clear Cache ─────────────────────────────────────────────────
+	if ( ewpa_is_ability_enabled( 'ewpa/clear-cache' ) ) {
+		ewpa_register_ability_with_log(
+			'ewpa/clear-cache',
+			array(
+				'label'               => __( 'Clear Cache', 'enable-abilities-for-mcp' ),
+				'description'         => __( 'Purges the page cache for a single post/page (post_id) or the whole site (no post_id, requires manage_options). Detects the active cache plugin automatically: WP Rocket, LiteSpeed Cache, W3 Total Cache, WP Super Cache, or WP Fastest Cache. Call this after write abilities that modify post meta directly (update-seopress, update-post-meta, elementor-update-element, SEO fixes): those writes do not fire save_post, so cache plugins keep serving the OLD rendered HTML — audits and visitors see stale titles and meta descriptions until the cache is purged.', 'enable-abilities-for-mcp' ),
+				'category'            => 'site-information',
+				'input_schema'        => array(
+					'type'       => 'object',
+					'properties' => array(
+						'post_id' => array(
+							'type'        => 'integer',
+							'description' => 'Post or page ID to purge. Omit to purge the entire site cache (requires manage_options).',
+						),
+					),
+				),
+				'output_schema'       => array(
+					'type'       => 'object',
+					'properties' => array(
+						'cache_plugin' => array( 'type' => 'string' ),
+						'scope'        => array( 'type' => 'string' ),
+						'post_id'      => array( 'type' => 'integer' ),
+						'purged'       => array( 'type' => 'boolean' ),
+						'message'      => array( 'type' => 'string' ),
+					),
+				),
+				'permission_callback' => function ( $input ) {
+					$post_id = absint( $input['post_id'] ?? 0 );
+					if ( $post_id ) {
+						return ewpa_check_post_permission( $input, 'edit_post' );
+					}
+					if ( ! current_user_can( 'manage_options' ) ) {
+						return new WP_Error( 'forbidden', 'Purging the entire site cache requires the manage_options capability. Pass a post_id to purge a single post instead.' );
+					}
+					return true;
+				},
+				'execute_callback'    => function ( $input ) {
+					$post_id = absint( $input['post_id'] ?? 0 );
+					$scope   = $post_id ? 'post' : 'site';
+
+					if ( $post_id && ! get_post( $post_id ) ) {
+						return new WP_Error( 'not_found', sprintf( 'Invalid post ID: %d does not exist.', $post_id ) );
+					}
+
+					$plugin = ewpa_detect_cache_plugin();
+
+					switch ( $plugin ) {
+						case 'wp_rocket':
+							if ( $post_id && function_exists( 'rocket_clean_post' ) ) {
+								rocket_clean_post( $post_id );
+							} else {
+								rocket_clean_domain();
+							}
+							break;
+
+						case 'litespeed':
+							if ( $post_id ) {
+								do_action( 'litespeed_purge_post', $post_id );
+							} else {
+								do_action( 'litespeed_purge_all' );
+							}
+							break;
+
+						case 'w3_total_cache':
+							if ( $post_id && function_exists( 'w3tc_flush_post' ) ) {
+								w3tc_flush_post( $post_id );
+							} else {
+								w3tc_flush_all();
+							}
+							break;
+
+						case 'wp_super_cache':
+							if ( $post_id && function_exists( 'wp_cache_post_change' ) ) {
+								wp_cache_post_change( $post_id );
+							} else {
+								wp_cache_clear_cache();
+							}
+							break;
+
+						case 'wp_fastest_cache':
+							if ( $post_id ) {
+								do_action( 'wpfc_clear_post_cache_by_id', $post_id );
+							} else {
+								do_action( 'wpfc_clear_all_cache' );
+							}
+							break;
+
+						default:
+							// No page-cache plugin: clear the WordPress object cache
+							// so at least stale post/meta caches are dropped.
+							if ( $post_id ) {
+								clean_post_cache( $post_id );
+							} else {
+								wp_cache_flush();
+							}
+							break;
+					}
+
+					// Keep the object cache consistent for the target post too.
+					if ( $post_id && 'none' !== $plugin ) {
+						clean_post_cache( $post_id );
+					}
+
+					$message = 'none' === $plugin
+						? sprintf( 'No page-cache plugin detected; WordPress object cache cleared (%s scope). If a server-level cache (Varnish, CDN) is active it must be purged separately.', $scope )
+						: sprintf( 'Cache purged via %s (%s scope).', $plugin, $scope );
+
+					return array(
+						'cache_plugin' => $plugin,
+						'scope'        => $scope,
+						'post_id'      => $post_id,
+						'purged'       => true,
+						'message'      => $message,
+					);
+				},
+				'meta'                => array(
+					'show_in_rest' => true,
+					'annotations'  => array(
+						'readonly'    => false,
+						'destructive' => false,
+						'idempotent'  => true,
+					),
 					'mcp'          => array(
 						'public' => true,
 					),

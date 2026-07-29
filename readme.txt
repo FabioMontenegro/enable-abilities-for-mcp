@@ -5,7 +5,7 @@ Tags: mcp, ai, rest-api, content-management, woocommerce
 Requires at least: 6.9
 Tested up to: 7.0
 Requires PHP: 8.0
-Stable tag: 2.0.23
+Stable tag: 2.0.24
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -19,7 +19,7 @@ WordPress 6.9 introduced the Abilities API, allowing external tools to discover 
 
 = Features =
 
-* **70 abilities** organized in 16 categories: Core, Read, Write, SEO (Rank Math), SEO (SEOPress), SEO (Yoast), Utility, Multilanguage, Custom Post Types, WooCommerce, The Events Calendar, Code Snippets, JetEngine Options Pages, Elementor, LearnDash, and AI Agent Readiness (llms.txt)
+* **71 abilities** organized in 16 categories: Core, Read, Write, SEO (Rank Math), SEO (SEOPress), SEO (Yoast), Utility, Multilanguage, Custom Post Types, WooCommerce, The Events Calendar, Code Snippets, JetEngine Options Pages, Elementor, LearnDash, and AI Agent Readiness (llms.txt)
 * **WooCommerce integration** — dedicated abilities to manage products, orders, and customers using the native WooCommerce API (HPOS-compatible, formally declared)
 * **The Events Calendar integration** — list, get, create, and update events with venue, organizer, and date filters
 * **Admin dashboard** with toggle switches for each ability
@@ -137,6 +137,10 @@ This plugin registers abilities using the standard `wp_register_ability()` API. 
 1. Admin settings page showing all abilities organized by category with toggle switches.
 
 == Changelog ==
+
+= 2.0.24 =
+* New: `ewpa/clear-cache` (Utility) — purges the page cache for a single post (`post_id`, requires edit_post) or the whole site (no param, requires manage_options). Auto-detects WP Rocket, LiteSpeed Cache, W3 Total Cache, WP Super Cache, and WP Fastest Cache; falls back to the WordPress object cache when none is active. Fixes the stale-audit loop: write abilities that modify post meta directly (`update-seopress`, `update-post-meta`, `elementor-update-element`) do not fire `save_post`, so cache plugins kept serving the old rendered HTML — SEO audits and visitors saw stale titles and meta descriptions after AI fixes. Auto-enabled on upgrade. Reported from a production site running LiteSpeed.
+* Updated: Total abilities: 71 in 16 categories
 
 = 2.0.23 =
 * i18n: Regenerated the POT template (524 strings, was stuck at v2.0.13) and completed the Spanish (es_ES) translation — 101 new strings covering the JetEngine Options Pages, Elementor, LearnDash, SEOPress content analysis, and llms.txt sections. Recompiled .mo files.

@@ -2,7 +2,7 @@
 /**
  * Plugin Name:       Enable Abilities for MCP
  * Description:       Manage which WordPress Abilities are exposed to MCP servers. Enable or disable each ability individually from the dashboard.
- * Version:           2.0.23
+ * Version:           2.0.24
  * Requires at least: 6.9
  * Requires PHP:      8.0
  * Author:            Fabio Montenegro
@@ -18,7 +18,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'EWPA_VERSION', '2.0.23' );
+define( 'EWPA_VERSION', '2.0.24' );
 define( 'EWPA_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'EWPA_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 define( 'EWPA_OPTION_KEY', 'ewpa_enabled_abilities' );
@@ -116,6 +116,9 @@ add_action( 'plugins_loaded', 'ewpa_maybe_migrate_keys_v2021' );
 
 // Migration: add ewpa/get-llms-txt introduced in v2.0.22 to existing installs.
 add_action( 'plugins_loaded', 'ewpa_maybe_migrate_keys_v2022' );
+
+// Migration: add ewpa/clear-cache introduced in v2.0.24 to existing installs.
+add_action( 'plugins_loaded', 'ewpa_maybe_migrate_keys_v2024' );
 
 
 /*
@@ -427,6 +430,34 @@ function ewpa_maybe_migrate_keys_v2022(): void {
 }
 
 /**
+ * Adds the cache purge ability introduced in v2.0.24 to existing installs.
+ *
+ * Auto-enables ewpa/clear-cache: it closes the stale-cache loop after
+ * meta-only write abilities, and per-post purge still requires edit_post
+ * (site-wide requires manage_options).
+ *
+ * @return void
+ */
+function ewpa_maybe_migrate_keys_v2024(): void {
+	if ( get_option( 'ewpa_keys_migrated_v2024' ) ) {
+		return;
+	}
+
+	$enabled = get_option( EWPA_OPTION_KEY );
+	if ( ! is_array( $enabled ) ) {
+		update_option( 'ewpa_keys_migrated_v2024', true );
+		return;
+	}
+
+	if ( ! in_array( 'ewpa/clear-cache', $enabled, true ) ) {
+		$enabled[] = 'ewpa/clear-cache';
+		update_option( EWPA_OPTION_KEY, $enabled );
+	}
+
+	update_option( 'ewpa_keys_migrated_v2024', true );
+}
+
+/**
  * Returns the mapping from old Spanish keys to new English keys.
  *
  * @return array
@@ -668,6 +699,10 @@ function ewpa_get_abilities_registry() {
 				'ewpa/get-active-plugins' => array(
 					'label' => __( 'Get Active Plugins', 'enable-abilities-for-mcp' ),
 					'desc'  => __( 'Returns all active plugins with name, version, and detected capabilities (SEO, multilanguage, WooCommerce, etc.).', 'enable-abilities-for-mcp' ),
+				),
+				'ewpa/clear-cache'        => array(
+					'label' => __( 'Clear Cache', 'enable-abilities-for-mcp' ),
+					'desc'  => __( 'Purge the page cache for one post or the whole site. Auto-detects WP Rocket, LiteSpeed Cache, W3 Total Cache, WP Super Cache, and WP Fastest Cache. Essential after meta-only writes (SEO fixes, Elementor edits) that do not trigger the cache plugin\'s own purge.', 'enable-abilities-for-mcp' ),
 				),
 			),
 		),
