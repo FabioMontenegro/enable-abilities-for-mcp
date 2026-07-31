@@ -1,80 +1,125 @@
 # Enable Abilities for MCP
 
-Manage which WordPress Abilities are exposed to MCP (Model Context Protocol) servers. Enable or disable each ability individually from the dashboard.
+[![WordPress Plugin Version](https://img.shields.io/wordpress/plugin/v/enable-abilities-for-mcp)](https://wordpress.org/plugins/enable-abilities-for-mcp/)
+[![Active Installs](https://img.shields.io/wordpress/plugin/installs/enable-abilities-for-mcp)](https://wordpress.org/plugins/enable-abilities-for-mcp/advanced/)
+[![WordPress Tested](https://img.shields.io/wordpress/plugin/tested/enable-abilities-for-mcp)](https://wordpress.org/plugins/enable-abilities-for-mcp/)
+[![License: GPL v2](https://img.shields.io/badge/License-GPL%20v2-blue.svg)](https://www.gnu.org/licenses/gpl-2.0.html)
 
-## Description
+Let AI assistants like Claude manage your WordPress site through the [Model Context Protocol](https://modelcontextprotocol.io/) — with full control over exactly what they can and cannot do.
 
-WordPress 6.9 introduced the **Abilities API**, allowing external tools to discover and execute actions on your site. **Enable Abilities for MCP** extends that functionality by registering a comprehensive set of content management abilities and providing a simple admin interface to toggle each one on or off.
+**71 abilities in 16 categories**, each one individually toggleable from the dashboard: content, SEO (Rank Math / SEOPress / Yoast), WooCommerce, Elementor, LearnDash, JetEngine, multilanguage, `llms.txt`, cache purge, and more.
 
-### Features
+## How it works
 
-- **40 abilities** organized in 8 categories: Core, Read, Write, SEO, Utility, Custom Post Types, WooCommerce, and The Events Calendar
-- **WooCommerce integration** — manage products, orders, and customers via the native WooCommerce API (HPOS-compatible, formally declared)
-- **The Events Calendar integration** — list, get, create, and update events
-- **Admin dashboard** with toggle switches for each ability
-- **Per-ability control** — expose only what you need
-- **Secure by design** — proper capability checks, input sanitization, and per-post permission validation
-- **WPCS compliant** — fully passes WordPress Coding Standards (phpcs)
-- **MCP-ready** — all abilities include `show_in_rest` and `mcp.public` metadata
+WordPress 6.9 introduced the **Abilities API**: a standard way for external tools to discover and execute actions on your site. The official [MCP Adapter](https://github.com/WordPress/mcp-adapter) exposes those abilities to any MCP client.
 
-### Available Abilities
+This plugin completes the stack:
 
-**Read (safe, query-only):**
-- Get posts with filters (status, category, tag, search)
-- Get single post details (content, SEO meta, featured image)
-- Get categories, tags, pages, comments, media, and users
+```
+Claude / MCP client  ──►  MCP Adapter  ──►  Abilities API  ──►  Enable Abilities for MCP
+                                                                (71 abilities + per-ability toggles
+                                                                 + auth + activity log)
+```
 
-**Write (create & modify):**
-- Create, update, and delete posts
-- Create categories and tags
-- Create pages
-- Moderate comments
-- Reply to comments as the authenticated user
-- Upload images from external URLs to the media library (with optional auto-assign as featured image)
+1. It **registers 68 content-management abilities** (plus exposing the 3 native WordPress core ones to MCP).
+2. It gives you an **admin dashboard** to enable or disable each ability individually — expose only what you need.
+3. It provides **authentication** (single-admin Bearer token or Application Passwords) and an **activity log** of every ability executed.
 
-**SEO — Rank Math:**
-- Get full Rank Math metadata for any post/page (title, description, keywords, robots, Open Graph, SEO score)
-- Update Rank Math metadata: SEO title, description, focus keyword, canonical URL, robots, Open Graph, primary category, pillar content
+## Abilities by category
 
-**WooCommerce:**
-- Manage products, orders, and customers using the native WooCommerce API (HPOS-compatible)
+| Category | Abilities | Highlights |
+|---|---|---|
+| **WordPress Core** | 3 | Native site/user/environment info, exposed to MCP by this plugin |
+| **Read** | 9 | Posts, pages, categories, tags, comments, media, users — with filters |
+| **Write** | 10 | Create/update/delete posts and pages, moderate and reply to comments, upload images from URL |
+| **SEO — Rank Math** | 3 | Read/write all meta + write structured-data schema blocks (FAQPage, Article, Product…) as JSON-LD |
+| **SEO — SEOPress** | 3 | Read/write all meta + **content analysis**: every SEOPress check (headings, internal links, schemas…) with impact level and recommendation, optionally re-analyzing the rendered page first |
+| **SEO — Yoast SEO** | 3 | Read/write all meta + sitemap index |
+| **Utility** | 6 | Search & replace, site stats, raw post-meta read/write, active plugins with capability detection, **cache purge** (WP Rocket, LiteSpeed, W3TC, WP Super Cache, WP Fastest Cache) |
+| **Multilanguage** | 3 | Assign language and link translations via Polylang or WPML; `create-post` accepts `language` + `translation_of` |
+| **Custom Post Types** | 8 | Discover and CRUD any CPT with taxonomy and meta support |
+| **WooCommerce** | 7 | Products, orders, customers — native WC API, HPOS-compatible |
+| **The Events Calendar** | 4 | List/get/create/update events with venue and organizer |
+| **Code Snippets** | 1 | Create PHP snippets (always inactive, syntax-validated, dangerous functions blocked) |
+| **JetEngine — Options Pages** | 3 | Read/write Options Pages fields, including repeaters |
+| **Elementor** | 3 | Read the element tree, edit element settings by id (single or batch), bind widget settings to dynamic tags |
+| **LearnDash** | 6 | Courses, user progress, quiz results, enroll/unenroll |
+| **AI — Agent Readiness** | 2 | Read, validate, and write the site **llms.txt** (llmstxt.org spec, audited by Lighthouse "Agentic Browsing") — integrates with SEOPress Pro or serves the file itself |
 
-**The Events Calendar:**
-- List, get, create, and update events with venue, organizer, and date filters
+Write abilities validate per-post permissions (`edit_post`, `read_post`) and destructive or high-impact abilities are **opt-in** (disabled by default): Elementor edits, LearnDash enrollment, Options Pages writes, `llms.txt` writes, code snippets.
 
-**Utility:**
-- Search and replace text in post content
-- Site statistics overview
+## Quick start
 
-## Requirements
+### 1. Install
 
-- WordPress 6.9 or later (Abilities API)
-- [MCP Adapter](https://github.com/WordPress/mcp-adapter/releases) plugin installed and configured
-- PHP 8.0 or later
+- WordPress 6.9+ · PHP 8.0+
+- Install **[Enable Abilities for MCP](https://wordpress.org/plugins/enable-abilities-for-mcp/)** from the plugin directory
+- Install the **[MCP Adapter](https://github.com/WordPress/mcp-adapter/releases)** plugin
 
-## Installation
+### 2. Configure access
 
-1. In your WordPress dashboard, go to **Plugins > Add New** and search for **Enable Abilities for MCP**.
-2. Click **Install Now**, then **Activate**.
-3. Go to **Settings > WP Abilities** to manage which abilities are active.
-4. Install and configure the [MCP Adapter](https://github.com/WordPress/mcp-adapter/releases) plugin to connect with AI assistants.
+Go to **Settings → WP Abilities**:
+
+- **Connection tab** — copy your MCP endpoint URL and choose an auth method:
+  - **Single Admin Bearer Token**: generate an API key (stored as SHA-256 hash, shown once)
+  - **Application Passwords**: per-user access respecting each user's role
+- **Abilities tab** — toggle exactly what your AI assistant may do
+- **Activity Log tab** — audit every ability execution (user, ability, timestamp)
+
+### 3. Connect your MCP client
+
+Claude Desktop example (`claude_desktop_config.json`):
+
+```json
+{
+  "mcpServers": {
+    "my-wordpress": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "mcp-remote",
+        "https://example.com/wp-json/mcp/mcp-adapter-default-server",
+        "--header",
+        "Authorization: Bearer YOUR_API_KEY"
+      ]
+    }
+  }
+}
+```
+
+Then just talk to your site:
+
+> *"Audit the SEO of my latest posts, fix the meta descriptions with SEOPress, clear the cache, and re-run the content analysis."*
+
+## Security model
+
+- **Capability checks everywhere** — every ability declares a `permission_callback`; per-post abilities check `read_post`/`edit_post` on the specific target, not just site-wide caps
+- **Bearer token** stored as SHA-256 hash, tied to an admin account, revocable at any time
+- **Per-ability toggles** — anything disabled is simply never registered
+- **Activity log** for full auditability
+- **Opt-in destructive abilities** — disabled until you explicitly enable them
+- **WPCS compliant** (WordPress Coding Standards 3.x)
 
 ## Development
 
-### Code Quality
-
-This plugin follows the [WordPress Coding Standards](https://developer.wordpress.org/coding-standards/wordpress-coding-standards/) (WPCS 3.x).
-
 ```bash
-# Install dev dependencies
 composer install
 
-# Run code sniffer
+# Code sniffer
 vendor/bin/phpcs --standard=WordPress --extensions=php --exclude=WordPress.Files.FileName .
 
-# Auto-fix formatting issues
+# Auto-fix
 vendor/bin/phpcbf --standard=WordPress --extensions=php --exclude=WordPress.Files.FileName .
 ```
+
+Abilities are registered with the standard `wp_register_ability()` API on the `wp_abilities_api_init` hook — you can add your own alongside. Useful hooks: `ewpa_after_update_post_meta` (cache busting after raw meta writes), `ewpa_blocked_meta_keys` (extend the protected-keys blocklist).
+
+## Links
+
+- [Plugin on WordPress.org](https://wordpress.org/plugins/enable-abilities-for-mcp/)
+- [Support forum](https://wordpress.org/support/plugin/enable-abilities-for-mcp/)
+- [Changelog](https://wordpress.org/plugins/enable-abilities-for-mcp/#developers)
+- [WordPress Abilities API](https://make.wordpress.org/core/2025/07/17/abilities-api/) · [MCP Adapter](https://github.com/WordPress/mcp-adapter)
 
 ## License
 
