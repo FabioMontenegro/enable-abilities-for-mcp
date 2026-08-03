@@ -68,6 +68,14 @@ Go to **Settings → WP Abilities**:
 
 ### 3. Connect your MCP client
 
+The **Connection tab** includes ready-to-copy configuration for three clients:
+
+| Client | Config file | Transport |
+|---|---|---|
+| Claude Desktop / Claude Code | `claude_desktop_config.json` | `npx mcp-remote` (stdio) |
+| OpenAI Codex CLI | `~/.codex/config.toml` | `npx mcp-remote` (stdio) |
+| Google Antigravity | `mcp_config.json` (Agent panel → MCP Servers) | direct `serverUrl` + `headers` — no npx |
+
 Claude Desktop example (`claude_desktop_config.json`):
 
 ```json

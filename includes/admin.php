@@ -395,9 +395,10 @@ function ewpa_render_settings_page(): void {
 							<?php endif; ?>
 						</div>
 
-						<?php /* Claude Desktop example — Bearer */ ?>
+						<?php /* Client configuration examples — Bearer */ ?>
 						<div style="margin-top: 16px;">
-							<h4 style="margin: 0 0 6px; font-size: 13px;"><?php esc_html_e( 'Claude Desktop configuration', 'enable-abilities-for-mcp' ); ?></h4>
+							<h4 style="margin: 0 0 6px; font-size: 13px;"><?php esc_html_e( 'Connect your AI client', 'enable-abilities-for-mcp' ); ?></h4>
+
 							<?php
 							$ewpa_bearer_json  = "{\n";
 							$ewpa_bearer_json .= "  \"mcpServers\": {\n";
@@ -413,16 +414,89 @@ function ewpa_render_settings_page(): void {
 							$ewpa_bearer_json .= "    }\n";
 							$ewpa_bearer_json .= "  }\n";
 							$ewpa_bearer_json .= '}';
+
+							$ewpa_codex_toml  = "[mcp_servers.my-wordpress-site]\n";
+							$ewpa_codex_toml .= "command = \"npx\"\n";
+							$ewpa_codex_toml .= "args = [\n";
+							$ewpa_codex_toml .= "  \"-y\",\n";
+							$ewpa_codex_toml .= "  \"mcp-remote\",\n";
+							$ewpa_codex_toml .= '  "' . esc_url( $mcp_url ) . "\",\n";
+							$ewpa_codex_toml .= "  \"--header\",\n";
+							$ewpa_codex_toml .= "  \"Authorization: Bearer YOUR-API-KEY\"\n";
+							$ewpa_codex_toml .= ']';
+
+							$ewpa_antigravity_json  = "{\n";
+							$ewpa_antigravity_json .= "  \"mcpServers\": {\n";
+							$ewpa_antigravity_json .= "    \"my-wordpress-site\": {\n";
+							$ewpa_antigravity_json .= '      "serverUrl": "' . esc_url( $mcp_url ) . "\",\n";
+							$ewpa_antigravity_json .= "      \"headers\": {\n";
+							$ewpa_antigravity_json .= "        \"Authorization\": \"Bearer YOUR-API-KEY\"\n";
+							$ewpa_antigravity_json .= "      }\n";
+							$ewpa_antigravity_json .= "    }\n";
+							$ewpa_antigravity_json .= "  }\n";
+							$ewpa_antigravity_json .= '}';
 							?>
-							<div style="position: relative;">
-								<pre id="ewpa-bearer-config" style="background: #1e1e1e; color: #d4d4d4; padding: 14px 16px; border-radius: 4px; overflow-x: auto; font-size: 13px; line-height: 1.5; margin: 0;"><code style="color: inherit; background: none;"><?php echo esc_html( $ewpa_bearer_json ); ?></code></pre>
-								<button type="button" class="button ewpa-copy-btn" data-target="ewpa-bearer-config" style="position: absolute; top: 8px; right: 8px;">
-									<?php esc_html_e( 'Copy', 'enable-abilities-for-mcp' ); ?>
-								</button>
-							</div>
+
+							<details open style="margin-bottom: 10px; border: 1px solid #dcdcde; border-radius: 4px; padding: 10px 14px;">
+								<summary style="cursor: pointer; font-weight: 600; font-size: 13px;"><?php esc_html_e( 'Claude Desktop / Claude Code', 'enable-abilities-for-mcp' ); ?></summary>
+								<p class="description" style="margin: 8px 0 6px;">
+									<?php
+									printf(
+										/* translators: %s: config file name */
+										esc_html__( 'Add this block to %s (Claude Desktop → Settings → Developer → Edit Config). For Claude Code, the same server can be added with "claude mcp add-json".', 'enable-abilities-for-mcp' ),
+										'<code>claude_desktop_config.json</code>'
+									);
+									?>
+								</p>
+								<div style="position: relative;">
+									<pre id="ewpa-bearer-config" style="background: #1e1e1e; color: #d4d4d4; padding: 14px 16px; border-radius: 4px; overflow-x: auto; font-size: 13px; line-height: 1.5; margin: 0;"><code style="color: inherit; background: none;"><?php echo esc_html( $ewpa_bearer_json ); ?></code></pre>
+									<button type="button" class="button ewpa-copy-btn" data-target="ewpa-bearer-config" style="position: absolute; top: 8px; right: 8px;">
+										<?php esc_html_e( 'Copy', 'enable-abilities-for-mcp' ); ?>
+									</button>
+								</div>
+							</details>
+
+							<details style="margin-bottom: 10px; border: 1px solid #dcdcde; border-radius: 4px; padding: 10px 14px;">
+								<summary style="cursor: pointer; font-weight: 600; font-size: 13px;"><?php esc_html_e( 'OpenAI Codex CLI', 'enable-abilities-for-mcp' ); ?></summary>
+								<p class="description" style="margin: 8px 0 6px;">
+									<?php
+									printf(
+										/* translators: %s: config file path */
+										esc_html__( 'Add this block to %s (create the file if it does not exist):', 'enable-abilities-for-mcp' ),
+										'<code>~/.codex/config.toml</code>'
+									);
+									?>
+								</p>
+								<div style="position: relative;">
+									<pre id="ewpa-codex-config" style="background: #1e1e1e; color: #d4d4d4; padding: 14px 16px; border-radius: 4px; overflow-x: auto; font-size: 13px; line-height: 1.5; margin: 0;"><code style="color: inherit; background: none;"><?php echo esc_html( $ewpa_codex_toml ); ?></code></pre>
+									<button type="button" class="button ewpa-copy-btn" data-target="ewpa-codex-config" style="position: absolute; top: 8px; right: 8px;">
+										<?php esc_html_e( 'Copy', 'enable-abilities-for-mcp' ); ?>
+									</button>
+								</div>
+							</details>
+
+							<details style="margin-bottom: 10px; border: 1px solid #dcdcde; border-radius: 4px; padding: 10px 14px;">
+								<summary style="cursor: pointer; font-weight: 600; font-size: 13px;"><?php esc_html_e( 'Google Antigravity', 'enable-abilities-for-mcp' ); ?></summary>
+								<p class="description" style="margin: 8px 0 6px;">
+									<?php
+									printf(
+										/* translators: %s: config file name */
+										esc_html__( 'In the Agent side panel open “···” → MCP Servers → Manage MCP Servers → View raw config, and add this block to %s. Antigravity connects to the endpoint directly — no npx needed.', 'enable-abilities-for-mcp' ),
+										'<code>mcp_config.json</code>'
+									);
+									?>
+								</p>
+								<div style="position: relative;">
+									<pre id="ewpa-antigravity-config" style="background: #1e1e1e; color: #d4d4d4; padding: 14px 16px; border-radius: 4px; overflow-x: auto; font-size: 13px; line-height: 1.5; margin: 0;"><code style="color: inherit; background: none;"><?php echo esc_html( $ewpa_antigravity_json ); ?></code></pre>
+									<button type="button" class="button ewpa-copy-btn" data-target="ewpa-antigravity-config" style="position: absolute; top: 8px; right: 8px;">
+										<?php esc_html_e( 'Copy', 'enable-abilities-for-mcp' ); ?>
+									</button>
+								</div>
+							</details>
+
 							<p class="description" style="margin-top: 6px;">
 								<?php esc_html_e( 'Replace YOUR-API-KEY with the key generated above.', 'enable-abilities-for-mcp' ); ?>
-								<?php esc_html_e( 'The name "my-wordpress-site" is just an identifier — use it to invoke this MCP server from Claude or any other AI client (e.g. "use my-wordpress-site to…").', 'enable-abilities-for-mcp' ); ?>
+								<?php esc_html_e( 'The name "my-wordpress-site" is just an identifier — use it to invoke this MCP server from your AI client (e.g. "use my-wordpress-site to…").', 'enable-abilities-for-mcp' ); ?>
 							</p>
 						</div>
 					</div>
@@ -827,5 +901,184 @@ function ewpa_render_activity_log_section(): void {
 
 		</div>
 	</div>
+	<?php
+}
+
+/*
+ * ==========================================================================
+ * REVIEW REQUEST NOTICE
+ * ==========================================================================
+ * Invites admins to review the plugin on WordPress.org once their AI
+ * assistant has actually used it (25+ logged ability executions). Three
+ * states: later (snoozed 30 days), dismissed (never again), done.
+ * ==========================================================================
+ */
+
+/**
+ * Returns the review-notice state option.
+ *
+ * @return array { status: pending|later|dismissed|done, later_until: int }
+ */
+function ewpa_review_notice_state(): array {
+	$state = get_option( 'ewpa_review_notice', array() );
+	return wp_parse_args(
+		is_array( $state ) ? $state : array(),
+		array(
+			'status'      => 'pending',
+			'later_until' => 0,
+		)
+	);
+}
+
+/**
+ * Counts logged ability executions (cached for an hour).
+ *
+ * @return int
+ */
+function ewpa_review_notice_activity_count(): int {
+	$count = get_transient( 'ewpa_review_activity_count' );
+	if ( false !== $count ) {
+		return (int) $count;
+	}
+
+	global $wpdb;
+	$table = ewpa_log_table();
+	$count = (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$table}" ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.DirectDatabaseQuery -- internal table name, count only.
+
+	set_transient( 'ewpa_review_activity_count', $count, HOUR_IN_SECONDS );
+
+	return $count;
+}
+
+/**
+ * Decides whether the review notice should render on the current screen.
+ *
+ * @return bool
+ */
+function ewpa_review_notice_should_show(): bool {
+	if ( ! current_user_can( 'manage_options' ) ) {
+		return false;
+	}
+
+	$screen = function_exists( 'get_current_screen' ) ? get_current_screen() : null;
+	if ( ! $screen || ! in_array( $screen->id, array( 'dashboard', 'plugins', 'settings_page_ewpa-settings' ), true ) ) {
+		return false;
+	}
+
+	$state = ewpa_review_notice_state();
+
+	if ( in_array( $state['status'], array( 'dismissed', 'done' ), true ) ) {
+		return false;
+	}
+
+	if ( 'later' === $state['status'] && time() < (int) $state['later_until'] ) {
+		return false;
+	}
+
+	/**
+	 * Filters the minimum number of logged ability executions before the
+	 * review notice appears.
+	 *
+	 * @param int $threshold Default 25.
+	 */
+	$threshold = (int) apply_filters( 'ewpa_review_notice_threshold', 25 );
+
+	return ewpa_review_notice_activity_count() >= $threshold;
+}
+
+// AJAX: persist the review-notice action (later | dismiss | done).
+add_action( 'wp_ajax_ewpa_review_notice', 'ewpa_ajax_review_notice' );
+
+/**
+ * AJAX handler for the review notice actions.
+ */
+function ewpa_ajax_review_notice(): void {
+	check_ajax_referer( 'ewpa_review_nonce', 'nonce' );
+
+	if ( ! current_user_can( 'manage_options' ) ) {
+		wp_send_json_error();
+	}
+
+	$review_action = isset( $_POST['review_action'] ) ? sanitize_key( wp_unslash( $_POST['review_action'] ) ) : '';
+	if ( ! in_array( $review_action, array( 'later', 'dismiss', 'done' ), true ) ) {
+		wp_send_json_error();
+	}
+
+	$state = array(
+		'status'      => 'later' === $review_action ? 'later' : ( 'dismiss' === $review_action ? 'dismissed' : 'done' ),
+		'later_until' => 'later' === $review_action ? time() + ( 30 * DAY_IN_SECONDS ) : 0,
+	);
+	update_option( 'ewpa_review_notice', $state, false );
+
+	wp_send_json_success();
+}
+
+add_action( 'admin_notices', 'ewpa_render_review_notice' );
+
+/**
+ * Renders the review request notice.
+ */
+function ewpa_render_review_notice(): void {
+	if ( ! ewpa_review_notice_should_show() ) {
+		return;
+	}
+
+	$count      = ewpa_review_notice_activity_count();
+	$review_url = 'https://wordpress.org/support/plugin/enable-abilities-for-mcp/reviews/#new-post';
+	$nonce      = wp_create_nonce( 'ewpa_review_nonce' );
+	?>
+	<div class="notice notice-info" id="ewpa-review-notice" style="border-left-color:#7c3aed;padding:14px 16px;">
+		<p style="margin:0 0 4px;font-size:14px;">
+			<strong>
+				<?php
+				printf(
+					/* translators: %s: number of ability executions logged. */
+					esc_html__( 'Your AI assistant has already run %s actions on this site through Enable Abilities for MCP. 🚀', 'enable-abilities-for-mcp' ),
+					esc_html( number_format_i18n( $count ) )
+				);
+				?>
+			</strong>
+		</p>
+		<p style="margin:0 0 10px;">
+			<?php esc_html_e( 'If the plugin is making your workflow easier, a 5-star review helps other WordPress + AI users find it — and keeps this free, open-source project moving.', 'enable-abilities-for-mcp' ); ?>
+			<em>— Fabio Montenegro</em>
+		</p>
+		<p style="margin:0;">
+			<a href="<?php echo esc_url( $review_url ); ?>" target="_blank" rel="noopener" class="button button-primary" data-ewpa-review="done">
+				<?php esc_html_e( 'Leave a review ★', 'enable-abilities-for-mcp' ); ?>
+			</a>
+			<a href="#" class="button" data-ewpa-review="later" style="margin-left:6px;">
+				<?php esc_html_e( 'Maybe later', 'enable-abilities-for-mcp' ); ?>
+			</a>
+			<a href="#" data-ewpa-review="dismiss" style="margin-left:10px;text-decoration:none;">
+				<?php esc_html_e( 'Already reviewed / don&#8217;t show again', 'enable-abilities-for-mcp' ); ?>
+			</a>
+		</p>
+	</div>
+	<script>
+	( function () {
+		var notice = document.getElementById( 'ewpa-review-notice' );
+		if ( ! notice ) {
+			return;
+		}
+		notice.addEventListener( 'click', function ( e ) {
+			var el = e.target.closest( '[data-ewpa-review]' );
+			if ( ! el ) {
+				return;
+			}
+			if ( '#' === el.getAttribute( 'href' ) ) {
+				e.preventDefault();
+			}
+			var body = new URLSearchParams();
+			body.append( 'action', 'ewpa_review_notice' );
+			body.append( 'nonce', '<?php echo esc_js( $nonce ); ?>' );
+			body.append( 'review_action', el.getAttribute( 'data-ewpa-review' ) );
+			fetch( ajaxurl, { method: 'POST', credentials: 'same-origin', body: body } );
+			notice.style.transition = 'opacity .3s';
+			notice.style.opacity = '0';
+			setTimeout( function () { notice.remove(); }, 300 );
+		} );
+	} )();
+	</script>
 	<?php
 }

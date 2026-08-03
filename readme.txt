@@ -5,7 +5,7 @@ Tags: mcp, ai, rest-api, content-management, woocommerce
 Requires at least: 6.9
 Tested up to: 7.0
 Requires PHP: 8.0
-Stable tag: 2.0.24
+Stable tag: 2.0.25
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -137,6 +137,11 @@ This plugin registers abilities using the standard `wp_register_ability()` API. 
 1. Admin settings page showing all abilities organized by category with toggle switches.
 
 == Changelog ==
+
+= 2.0.25 =
+* New: Connection tab now includes ready-to-copy configuration for three AI clients — Claude Desktop / Claude Code (`claude_desktop_config.json`), OpenAI Codex CLI (`~/.codex/config.toml`, TOML `[mcp_servers.*]`), and Google Antigravity (`mcp_config.json`, direct `serverUrl` + `headers` connection with no npx required).
+* New: Review request notice — appears only for administrators, only after 25+ logged ability executions (threshold filterable via `ewpa_review_notice_threshold`), and only on the Dashboard, Plugins, and plugin settings screens. Snoozable for 30 days or permanently dismissible; the shown count comes from the real activity log.
+* i18n: POT and Spanish (es_ES) translation updated with the new strings.
 
 = 2.0.24 =
 * New: `ewpa/clear-cache` (Utility) — purges the page cache for a single post (`post_id`, requires edit_post) or the whole site (no param, requires manage_options). Auto-detects WP Rocket, LiteSpeed Cache, W3 Total Cache, WP Super Cache, and WP Fastest Cache; falls back to the WordPress object cache when none is active. Fixes the stale-audit loop: write abilities that modify post meta directly (`update-seopress`, `update-post-meta`, `elementor-update-element`) do not fire `save_post`, so cache plugins kept serving the old rendered HTML — SEO audits and visitors saw stale titles and meta descriptions after AI fixes. Auto-enabled on upgrade. Reported from a production site running LiteSpeed.
