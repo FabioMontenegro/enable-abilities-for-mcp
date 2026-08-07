@@ -8,6 +8,8 @@
 .codegraph
 .atl
 .mcp.json
+banner.png
+logo.png
 node_modules
 vendor
 composer.json
