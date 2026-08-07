@@ -23,7 +23,7 @@ Claude / MCP client  ──►  MCP Adapter  ──►  Abilities API  ──►
 
 1. It **registers 68 content-management abilities** (plus exposing the 3 native WordPress core ones to MCP).
 2. It gives you an **admin dashboard** to enable or disable each ability individually — expose only what you need.
-3. It provides **authentication** (single-admin Bearer token or Application Passwords) and an **activity log** of every ability executed.
+3. It provides **authentication** (claude.ai OAuth custom connector, Application Passwords, or single-admin Bearer token) and an **activity log** of every ability executed.
 
 ## Abilities by category
 
@@ -60,18 +60,21 @@ Write abilities validate per-post permissions (`edit_post`, `read_post`) and des
 
 Go to **Settings → WP Abilities**:
 
-- **Connection tab** — copy your MCP endpoint URL and choose an auth method:
-  - **Single Admin Bearer Token**: generate an API key (stored as SHA-256 hash, shown once)
+- **Connection tab** — choose an auth method:
+  - **claude.ai OAuth Custom Connector**: add your site to claude.ai (web, mobile, or desktop) with just a URL — an embedded OAuth 2.1 server (CIMD) lets each user log in with their own WordPress account and approve a consent screen. No Client ID, no tokens to copy.
   - **Application Passwords**: per-user access respecting each user's role
+  - **Single Admin Bearer Token**: generate an API key (stored as SHA-256 hash, shown once)
+- **Connect your AI client** — shared section with the MCP endpoint URL and ready-to-copy config for every client; generating Application Password credentials auto-fills the snippets
 - **Abilities tab** — toggle exactly what your AI assistant may do
 - **Activity Log tab** — audit every ability execution (user, ability, timestamp)
 
 ### 3. Connect your MCP client
 
-The **Connection tab** includes ready-to-copy configuration for three clients:
+The **Connection tab** includes ready-to-copy configuration for every client:
 
-| Client | Config file | Transport |
+| Client | Config | Transport |
 |---|---|---|
+| claude.ai (web / mobile / desktop) | Settings → Connectors → add the OAuth URL | remote MCP over HTTPS (OAuth 2.1 + CIMD) |
 | Claude Desktop / Claude Code | `claude_desktop_config.json` | `npx mcp-remote` (stdio) |
 | OpenAI Codex CLI | `~/.codex/config.toml` | `npx mcp-remote` (stdio) |
 | Google Antigravity | `mcp_config.json` (Agent panel → MCP Servers) | direct `serverUrl` + `headers` — no npx |
@@ -102,11 +105,28 @@ Then just talk to your site:
 ## Security model
 
 - **Capability checks everywhere** — every ability declares a `permission_callback`; per-post abilities check `read_post`/`edit_post` on the specific target, not just site-wide caps
+- **OAuth 2.1 connector** — opt-in, PKCE S256, Client ID Metadata Documents restricted to trusted publishers (Claude bundled), per-user consent screen, JWT-authenticated transport
 - **Bearer token** stored as SHA-256 hash, tied to an admin account, revocable at any time
 - **Per-ability toggles** — anything disabled is simply never registered
 - **Activity log** for full auditability
 - **Opt-in destructive abilities** — disabled until you explicitly enable them
 - **WPCS compliant** (WordPress Coding Standards 3.x)
+
+## Troubleshooting the claude.ai connector
+
+If adding the custom connector fails with *"Couldn't register with the sign-in service"*, in almost every reported case the request never reaches WordPress — a security layer is blocking Anthropic's backend, which connects with a non-browser User-Agent (`python-httpx`):
+
+- **Hosting WAFs** (cPGuard, Imunify360, ModSecurity "generic HTTP client" rules) — ask your host to allow that User-Agent or Anthropic's IP range `160.79.104.0/23` for `/.well-known/oauth-*`, `/oauth/*`, and `/wp-json/mcp/*`
+- **Cloudflare** — disable Bot Fight Mode and allow Anthropic's crawlers (`Claude-User`) in AI Crawl Control, or add a WAF skip rule for those paths
+
+Diagnose from an external machine:
+
+```bash
+curl -A "python-httpx/0.28.1" https://your-site.com/.well-known/oauth-authorization-server
+# 200 + JSON → OK · 403 → something in front of WordPress is blocking Anthropic
+```
+
+The plugin already handles the WordPress-side gotchas: it prevents the trailing-slash 301 canonical redirect on the discovery documents and serves the RFC 9728 path-suffixed variants. A Site Health check (**Tools → Site Health**) flags hosts that intercept `.well-known/` before WordPress runs.
 
 ## Development
 

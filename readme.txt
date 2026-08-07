@@ -5,7 +5,7 @@ Tags: mcp, ai, rest-api, content-management, woocommerce
 Requires at least: 6.9
 Tested up to: 7.0
 Requires PHP: 8.0
-Stable tag: 2.0.25
+Stable tag: 2.1.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -22,6 +22,7 @@ WordPress 6.9 introduced the Abilities API, allowing external tools to discover 
 * **71 abilities** organized in 16 categories: Core, Read, Write, SEO (Rank Math), SEO (SEOPress), SEO (Yoast), Utility, Multilanguage, Custom Post Types, WooCommerce, The Events Calendar, Code Snippets, JetEngine Options Pages, Elementor, LearnDash, and AI Agent Readiness (llms.txt)
 * **WooCommerce integration** — dedicated abilities to manage products, orders, and customers using the native WooCommerce API (HPOS-compatible, formally declared)
 * **The Events Calendar integration** — list, get, create, and update events with venue, organizer, and date filters
+* **claude.ai OAuth custom connector** — connect from claude.ai (web, mobile, or desktop) with zero local setup: an embedded OAuth 2.1 server with Client ID Metadata Document (CIMD) support lets each user log in with their own WordPress account and role
 * **Admin dashboard** with toggle switches for each ability
 * **Per-ability control** — expose only what you need
 * **Secure by design** — proper capability checks, input sanitization, and per-post permission validation
@@ -132,11 +133,28 @@ Yes. The Custom Post Types section automatically detects WooCommerce products, o
 
 This plugin registers abilities using the standard `wp_register_ability()` API. You can register additional abilities in your own plugin using the `wp_abilities_api_init` hook.
 
+= The claude.ai custom connector fails with "Couldn't register with the sign-in service" — why? =
+
+In almost every reported case the OAuth flow is fine and the request never reaches WordPress: a security layer in front of your site is blocking Anthropic's backend, which connects with a non-browser User-Agent (`python-httpx`). Common culprits are hosting WAFs (cPGuard, Imunify360, ModSecurity rules like "generic HTTP client User-Agent") and Cloudflare's Bot Fight Mode or AI-crawler blocking. To diagnose, run `curl -A "python-httpx/0.28.1" https://your-site.com/.well-known/oauth-authorization-server` from an external machine — a 403 confirms the block. Ask your host to allow that User-Agent (or Anthropic's IP range 160.79.104.0/23) for `/.well-known/oauth-*`, `/oauth/*`, and `/wp-json/mcp/*`, or disable the relevant bot protection for the site.
+
+= The OAuth discovery documents return a 301 redirect or 404 — is that a problem? =
+
+Yes — strict OAuth clients require a direct `200` on `/.well-known/oauth-authorization-server` and `/.well-known/oauth-protected-resource`. This plugin already prevents WordPress's trailing-slash canonical redirect on those paths and serves the RFC 9728 path-suffixed variants. If they still return 404, your web server is intercepting `.well-known/` before WordPress runs (common with Let's Encrypt auto-SSL configs) — see **Tools → Site Health** for the "MCP OAuth discovery documents" check and ask your host to route those two paths to WordPress.
+
 == Screenshots ==
 
 1. Admin settings page showing all abilities organized by category with toggle switches.
 
 == Changelog ==
+
+= 2.1.0 =
+* New: claude.ai OAuth Custom Connector — embedded OAuth 2.1 server (wp-media/mcp-oauth) with Client ID Metadata Document (CIMD) support. Add your site as a custom connector in claude.ai (web, mobile, or desktop) with just a URL — no Client ID, no Application Password: each user logs in with their own WordPress account and approves a consent screen. Opt-in from Settings > WP Abilities > Connection.
+* New: Connection tab redesigned — authentication methods now read top-down as options (claude.ai OAuth, Application Passwords, Single Admin Bearer Token) and the client configuration examples (Claude Desktop / Claude Code, OpenAI Codex CLI, Google Antigravity) moved to a shared, highlighted "Connect your AI client" section with the MCP endpoint URL, since they apply to both token methods.
+* New: generating Application Password credentials now auto-fills every client example with your real `Basic` authorization header — copy-paste ready, no manual editing.
+* Fix: OAuth discovery documents (`/.well-known/oauth-*`) and `/oauth/*` endpoints no longer receive WordPress's trailing-slash 301 canonical redirect, which strict OAuth clients (claude.ai) reject as a failed metadata fetch.
+* Fix: RFC 9728 path-suffixed discovery URLs (`/.well-known/oauth-protected-resource/<mcp-path>`) are now served, matching the lookup order of Anthropic's OAuth client.
+* Docs: FAQ entries on diagnosing hosting WAFs (cPGuard/Imunify/ModSecurity) and Cloudflare bot protections that block Anthropic's `python-httpx` client.
+* i18n: POT and Spanish (es_ES) translation updated with the new strings.
 
 = 2.0.25 =
 * New: Connection tab now includes ready-to-copy configuration for three AI clients — Claude Desktop / Claude Code (`claude_desktop_config.json`), OpenAI Codex CLI (`~/.codex/config.toml`, TOML `[mcp_servers.*]`), and Google Antigravity (`mcp_config.json`, direct `serverUrl` + `headers` connection with no npx required).
