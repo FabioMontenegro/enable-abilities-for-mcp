@@ -2,7 +2,7 @@
 /**
  * Plugin Name:       Enable Abilities for MCP
  * Description:       Manage which WordPress Abilities are exposed to MCP servers. Enable or disable each ability individually from the dashboard.
- * Version:           2.0.25
+ * Version:           2.1.0
  * Requires at least: 6.9
  * Requires PHP:      8.0
  * Author:            Fabio Montenegro
@@ -18,7 +18,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'EWPA_VERSION', '2.0.25' );
+define( 'EWPA_VERSION', '2.1.0' );
 define( 'EWPA_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'EWPA_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 define( 'EWPA_OPTION_KEY', 'ewpa_enabled_abilities' );
@@ -43,6 +43,77 @@ require_once EWPA_PLUGIN_DIR . 'includes/activity-log.php';
 require_once EWPA_PLUGIN_DIR . 'includes/auth.php';
 require_once EWPA_PLUGIN_DIR . 'includes/admin.php';
 require_once EWPA_PLUGIN_DIR . 'includes/abilities.php';
+
+// Composer autoloader — runtime dependency wp-media/mcp-oauth (claude.ai custom connectors).
+if ( file_exists( EWPA_PLUGIN_DIR . 'vendor/autoload.php' ) ) {
+	require_once EWPA_PLUGIN_DIR . 'vendor/autoload.php';
+}
+
+// OAuth 2.1 layer for claude.ai custom connectors. Opt-in: Settings › WP Abilities › Connection.
+add_action( 'plugins_loaded', 'ewpa_maybe_boot_oauth', 5 );
+
+/**
+ * Boots the embedded OAuth 2.1 layer (wp-media/mcp-oauth) when enabled.
+ *
+ * Registers /oauth/* endpoints, .well-known discovery documents, and the
+ * JWT-authenticated MCP server at /wp-json/mcp/mcp-oauth-server. When the
+ * option is off, nothing is wired and every OAuth surface 404s.
+ *
+ * @return void
+ */
+function ewpa_maybe_boot_oauth(): void {
+	if ( ! get_option( 'ewpa_oauth_enabled' ) ) {
+		return;
+	}
+
+	if ( ! class_exists( '\WPMedia\MCP\OAuth\Bootstrap' ) ) {
+		return;
+	}
+
+	\WPMedia\MCP\OAuth\Bootstrap::instance();
+
+	add_filter( 'redirect_canonical', 'ewpa_oauth_wellknown_no_canonical' );
+	add_action( 'init', 'ewpa_oauth_wellknown_path_suffix_compat', 0 );
+}
+
+/**
+ * Serves RFC 9728 path-suffixed discovery URLs from the root documents.
+ *
+ * Some OAuth clients (e.g. the claude.ai connector backend) request
+ * /.well-known/oauth-protected-resource/<mcp-server-path> per RFC 9728 §3.1.
+ * The embedded library only registers the root variants, so those requests
+ * 404. Rewriting the URI before WP parses the request lets the library's
+ * rewrite rule match and serve the same document.
+ *
+ * @return void
+ */
+function ewpa_oauth_wellknown_path_suffix_compat(): void {
+	$uri = isset( $_SERVER['REQUEST_URI'] ) ? sanitize_text_field( wp_unslash( $_SERVER['REQUEST_URI'] ) ) : '';
+
+	if ( preg_match( '#^/(\.well-known/oauth-(?:protected-resource|authorization-server))/.+#', $uri, $m ) ) {
+		$_SERVER['REQUEST_URI'] = '/' . $m[1];
+	}
+}
+
+/**
+ * Prevents the canonical trailing-slash redirect on OAuth discovery documents.
+ *
+ * RFC 8414 metadata URLs have no trailing slash; WordPress's canonical
+ * redirect 301s them to the slashed variant, which strict OAuth clients
+ * (e.g. the claude.ai connector backend) reject as a failed metadata fetch.
+ *
+ * @param string|false $redirect_url Canonical redirect target.
+ * @return string|false
+ */
+function ewpa_oauth_wellknown_no_canonical( $redirect_url ) {
+	$path = isset( $_SERVER['REQUEST_URI'] ) ? (string) wp_parse_url( sanitize_text_field( wp_unslash( $_SERVER['REQUEST_URI'] ) ), PHP_URL_PATH ) : '';
+
+	if ( preg_match( '#^/(\.well-known/oauth-(protected-resource|authorization-server)|oauth/[a-z-]+)/?$#', $path ) ) {
+		return false;
+	}
+
+	return $redirect_url;
+}
 
 // Activation: set all abilities enabled by default.
 register_activation_hook( __FILE__, 'ewpa_activate' );

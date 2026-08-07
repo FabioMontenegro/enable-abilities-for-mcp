@@ -195,15 +195,19 @@
 				credsValueEl.textContent  = encoded;
 				credsOutput.style.display = 'block';
 
-				// Also update the config snippet if it exists on the page.
-				var configPre = document.getElementById( 'ewpa-apppass-config' );
-				if ( configPre ) {
-					configPre.querySelector( 'code' ).textContent =
-						configPre.querySelector( 'code' ).textContent.replace(
-							'YOUR_BASE64_CREDENTIALS',
-							encoded
-						);
-				}
+				// Update the shared client examples so they become copy-paste
+				// ready with the generated credentials (Step 3).
+				[ 'ewpa-bearer-config', 'ewpa-codex-config', 'ewpa-antigravity-config', 'ewpa-apppass-config' ].forEach( function ( id ) {
+					var configPre = document.getElementById( id );
+					if ( ! configPre ) {
+						return;
+					}
+					var codeEl = configPre.querySelector( 'code' );
+					codeEl.textContent = codeEl.textContent.replace(
+						/Bearer YOUR-API-KEY|Basic (?:YOUR_BASE64_CREDENTIALS|[A-Za-z0-9+\/=]+)/,
+						'Basic ' + encoded
+					);
+				} );
 			} catch ( err ) {
 				alert( ewpaAdmin.i18n.credError );
 			}

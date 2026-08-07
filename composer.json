@@ -7,5 +7,8 @@
         "allow-plugins": {
             "dealerdirect/phpcodesniffer-composer-installer": true
         }
+    },
+    "require": {
+        "wp-media/mcp-oauth": "1.0.3"
     }
 }

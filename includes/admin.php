@@ -211,6 +211,31 @@ function ewpa_ajax_toggle_bearer(): void {
 	wp_send_json_success( array( 'enabled' => $enabled ) );
 }
 
+// ─── AJAX: Toggle OAuth (claude.ai custom connectors) ────────────────────────
+add_action( 'wp_ajax_ewpa_oauth_toggle', 'ewpa_ajax_oauth_toggle' );
+
+/**
+ * AJAX handler to enable/disable the embedded OAuth 2.1 layer.
+ */
+function ewpa_ajax_oauth_toggle(): void {
+	check_ajax_referer( 'ewpa_oauth_nonce', 'nonce' );
+
+	if ( ! current_user_can( 'manage_options' ) ) {
+		wp_send_json_error( array( 'message' => __( 'You do not have sufficient permissions.', 'enable-abilities-for-mcp' ) ) );
+	}
+
+	$enabled = ! empty( $_POST['enabled'] ) && 'true' === sanitize_text_field( wp_unslash( $_POST['enabled'] ) );
+	update_option( 'ewpa_oauth_enabled', $enabled );
+
+	// Re-flush rewrite rules so /oauth/* and /.well-known/* routes appear (or vanish)
+	// on the next request, as required by the mcp-oauth library when toggled at runtime.
+	if ( class_exists( '\WPMedia\MCP\OAuth\Bootstrap' ) && method_exists( '\WPMedia\MCP\OAuth\Bootstrap', 'schedule_rewrite_flush' ) ) {
+		\WPMedia\MCP\OAuth\Bootstrap::schedule_rewrite_flush();
+	}
+
+	wp_send_json_success( array( 'enabled' => $enabled ) );
+}
+
 // ─── AJAX: Generate API Key ──────────────────────────────────────────────────
 add_action( 'wp_ajax_ewpa_generate_api_key', 'ewpa_ajax_generate_api_key' );
 
@@ -308,7 +333,160 @@ function ewpa_render_settings_page(): void {
 			</div>
 			<div class="ewpa-section-body" style="padding: 0;">
 
-				<?php /* ── Panel 1: Bearer token ─────────────────────────── */ ?>
+				<?php /* ── Panel 1: claude.ai OAuth custom connector ───── */ ?>
+				<?php
+				$ewpa_oauth_on  = (bool) get_option( 'ewpa_oauth_enabled', false );
+				$ewpa_oauth_url = site_url( '/wp-json/mcp/mcp-oauth-server' );
+				?>
+				<div class="ewpa-auth-panel" style="padding: 20px; border-bottom: 1px solid #dcdcde;">
+					<div style="display: flex; align-items: flex-start; gap: 16px;">
+						<div style="flex: 1;">
+							<h3 style="margin: 0 0 4px; font-size: 14px;">
+								<?php esc_html_e( 'claude.ai OAuth Custom Connector', 'enable-abilities-for-mcp' ); ?>
+							</h3>
+							<p class="description" style="margin: 0;">
+								<?php esc_html_e( 'Connect from claude.ai on the web, mobile or desktop without any local setup: Claude discovers the OAuth 2.1 server (/oauth/* endpoints and .well-known discovery documents), you log in with your WordPress user and approve a consent screen. Each user authenticates with their own role. Requires a public HTTPS site and a paid Claude plan (custom connectors).', 'enable-abilities-for-mcp' ); ?>
+							</p>
+						</div>
+						<div style="flex-shrink: 0; display: flex; align-items: center; gap: 10px; padding-top: 2px;">
+							<span class="description" style="font-size: 12px;" id="ewpa-oauth-status">
+								<?php echo $ewpa_oauth_on ? esc_html__( 'Enabled', 'enable-abilities-for-mcp' ) : esc_html__( 'Disabled', 'enable-abilities-for-mcp' ); ?>
+							</span>
+							<label class="ewpa-switch" style="margin: 0;">
+								<input type="checkbox" id="ewpa-oauth-toggle" <?php checked( $ewpa_oauth_on ); ?>>
+								<span class="ewpa-slider"></span>
+							</label>
+						</div>
+					</div>
+					<div id="ewpa-oauth-body" style="margin-top: 16px; <?php echo $ewpa_oauth_on ? '' : 'display:none;'; ?>">
+						<p class="description" style="margin: 0 0 6px;">
+							<?php esc_html_e( 'Add a custom connector in claude.ai → Settings → Connectors with this URL (no Client ID or Secret needed):', 'enable-abilities-for-mcp' ); ?>
+						</p>
+						<div style="display: flex; align-items: center; gap: 8px;">
+							<code id="ewpa-oauth-url" style="display: block; flex: 1; padding: 8px 12px; background: #f6f7f7; border: 1px solid #dcdcde; word-break: break-all;"><?php echo esc_url( $ewpa_oauth_url ); ?></code>
+							<button type="button" class="button ewpa-copy-btn" data-target="ewpa-oauth-url">
+								<?php esc_html_e( 'Copy', 'enable-abilities-for-mcp' ); ?>
+							</button>
+						</div>
+					</div>
+					<script>
+					( function () {
+						var toggle = document.getElementById( 'ewpa-oauth-toggle' );
+						if ( ! toggle ) {
+							return;
+						}
+						toggle.addEventListener( 'change', function () {
+							var body = new URLSearchParams();
+							body.append( 'action', 'ewpa_oauth_toggle' );
+							body.append( 'nonce', '<?php echo esc_js( wp_create_nonce( 'ewpa_oauth_nonce' ) ); ?>' );
+							body.append( 'enabled', toggle.checked ? 'true' : 'false' );
+							fetch( ajaxurl, { method: 'POST', credentials: 'same-origin', body: body } ).then( function () {
+								var status = document.getElementById( 'ewpa-oauth-status' );
+								if ( status ) {
+									status.textContent = toggle.checked ? '<?php echo esc_js( __( 'Enabled', 'enable-abilities-for-mcp' ) ); ?>' : '<?php echo esc_js( __( 'Disabled', 'enable-abilities-for-mcp' ) ); ?>';
+								}
+								var panelBody = document.getElementById( 'ewpa-oauth-body' );
+								if ( panelBody ) {
+									panelBody.style.display = toggle.checked ? '' : 'none';
+								}
+							} );
+						} );
+					} )();
+					</script>
+				</div>
+
+				<?php /* ── Panel 2: Application Passwords ──────────────────── */ ?>
+				<div class="ewpa-auth-panel" style="padding: 20px; border-bottom: 1px solid #dcdcde;">
+					<div style="display: flex; align-items: flex-start; gap: 16px; margin-bottom: 16px;">
+						<div style="flex: 1;">
+							<h3 style="margin: 0 0 4px; font-size: 14px;">
+								<?php esc_html_e( 'WordPress Application Passwords', 'enable-abilities-for-mcp' ); ?>
+								<span style="background: #00a32a; color: #fff; font-size: 10px; font-weight: 600; padding: 2px 7px; border-radius: 3px; vertical-align: middle; margin-left: 6px; letter-spacing: .5px;">
+									<?php esc_html_e( 'RECOMMENDED FOR TEAMS', 'enable-abilities-for-mcp' ); ?>
+								</span>
+							</h3>
+							<p class="description" style="margin: 0;">
+								<?php
+								esc_html_e(
+									'Each user creates their own token from their WordPress profile. Removing or deactivating a user immediately revokes their MCP access — no shared secrets, full audit trail.',
+									'enable-abilities-for-mcp'
+								);
+								?>
+							</p>
+						</div>
+					</div>
+
+					<?php /* Step 1: create the password */ ?>
+					<div style="display: flex; align-items: center; gap: 12px; margin-bottom: 16px; flex-wrap: wrap;">
+						<div style="flex: 1; min-width: 200px;">
+							<p class="description" style="margin: 0;">
+								<strong><?php esc_html_e( 'Step 1 —', 'enable-abilities-for-mcp' ); ?></strong>
+								<?php esc_html_e( 'Create an Application Password in your profile. Copy it — shown only once.', 'enable-abilities-for-mcp' ); ?>
+							</p>
+						</div>
+						<a href="<?php echo esc_url( $profile_url ); ?>" class="button button-primary" target="_blank" rel="noopener noreferrer" style="flex-shrink: 0;">
+							<span class="dashicons dashicons-external" style="margin-top: 3px; margin-right: 4px; font-size: 16px;"></span>
+							<?php
+							printf(
+								/* translators: %s: current WordPress username */
+								esc_html__( 'Open profile for %s', 'enable-abilities-for-mcp' ),
+								'<strong>' . esc_html( $current_user->user_login ) . '</strong>'
+							);
+							?>
+						</a>
+					</div>
+
+					<?php /* Step 2: in-browser credential generator */ ?>
+					<p class="description" style="margin: 0 0 8px;">
+						<strong><?php esc_html_e( 'Step 2 —', 'enable-abilities-for-mcp' ); ?></strong>
+						<?php esc_html_e( 'Generate your connection credentials right here — your password never leaves this page.', 'enable-abilities-for-mcp' ); ?>
+					</p>
+					<div class="ewpa-cred-generator">
+						<div class="ewpa-cred-field">
+							<label for="ewpa-cred-username"><?php esc_html_e( 'WordPress username', 'enable-abilities-for-mcp' ); ?></label>
+							<input type="text" id="ewpa-cred-username" value="<?php echo esc_attr( $current_user->user_login ); ?>" readonly style="background:#f6f7f7; max-width: 280px;">
+						</div>
+						<div class="ewpa-cred-field">
+							<label for="ewpa-cred-apppass"><?php esc_html_e( 'Application Password', 'enable-abilities-for-mcp' ); ?></label>
+							<div style="display: flex; gap: 8px; align-items: center; max-width: 360px;">
+								<input type="password" id="ewpa-cred-apppass" placeholder="xxxx xxxx xxxx xxxx xxxx xxxx" style="flex: 1;" autocomplete="off">
+								<button type="button" class="button" id="ewpa-toggle-pass" style="white-space: nowrap;">
+									<?php esc_html_e( 'Show', 'enable-abilities-for-mcp' ); ?>
+								</button>
+							</div>
+							<p class="description" style="margin-top: 4px; font-size: 12px;">
+								<?php esc_html_e( 'Paste the Application Password you just copied from your profile (spaces are OK).', 'enable-abilities-for-mcp' ); ?>
+							</p>
+						</div>
+						<button type="button" class="button button-primary" id="ewpa-gen-creds">
+							<span class="dashicons dashicons-lock" style="margin-top: 3px; margin-right: 4px; font-size: 16px;"></span>
+							<?php esc_html_e( 'Generate Credentials', 'enable-abilities-for-mcp' ); ?>
+						</button>
+
+						<div id="ewpa-creds-output" class="ewpa-cred-output" style="display: none;">
+							<p style="margin: 0 0 4px; font-size: 12px; color: #00a32a; font-weight: 600;">
+								<span class="dashicons dashicons-yes-alt" style="font-size: 14px; vertical-align: middle;"></span>
+								<?php esc_html_e( 'Generated locally — your password was never sent to the server.', 'enable-abilities-for-mcp' ); ?>
+							</p>
+							<p class="description" style="margin: 0 0 6px; font-size: 12px;">
+								<?php esc_html_e( 'Copy and use this as YOUR_BASE64_CREDENTIALS in the config below:', 'enable-abilities-for-mcp' ); ?>
+							</p>
+							<code id="ewpa-creds-value" style="display: block; word-break: break-all; padding: 8px 10px; background: #f0f0f1; border: 1px solid #c3c4c7; border-radius: 3px; font-size: 13px; margin-bottom: 8px;"></code>
+							<button type="button" class="button ewpa-copy-btn" data-target="ewpa-creds-value">
+								<?php esc_html_e( 'Copy credentials', 'enable-abilities-for-mcp' ); ?>
+							</button>
+						</div>
+					</div>
+
+					<?php /* Step 3: connect the client */ ?>
+					<p class="description" style="margin: 12px 0 0;">
+						<strong><?php esc_html_e( 'Step 3 —', 'enable-abilities-for-mcp' ); ?></strong>
+						<?php esc_html_e( 'Connect your client with any example from the “Connect your AI client” section below — after Step 2 the snippets are updated automatically with your credentials.', 'enable-abilities-for-mcp' ); ?>
+					</p>
+
+				</div>
+
+				<?php /* ── Panel 3: Bearer token ─────────────────────────── */ ?>
 				<div class="ewpa-auth-panel" style="padding: 20px; border-bottom: 1px solid #dcdcde;">
 					<div style="display: flex; align-items: flex-start; gap: 16px;">
 						<div style="flex: 1;">
@@ -395,10 +573,18 @@ function ewpa_render_settings_page(): void {
 							<?php endif; ?>
 						</div>
 
-						<?php /* Client configuration examples — Bearer */ ?>
-						<div style="margin-top: 16px;">
-							<h4 style="margin: 0 0 6px; font-size: 13px;"><?php esc_html_e( 'Connect your AI client', 'enable-abilities-for-mcp' ); ?></h4>
+					</div>
+				</div>
 
+				<?php /* ── Panel 4: Connect your AI client (shared examples) ─ */ ?>
+				<div class="ewpa-auth-panel" style="padding: 20px; background: #f0f6fc; border-top: 3px solid #2271b1;">
+					<h3 style="margin: 0 0 4px; font-size: 15px; display: flex; align-items: center; gap: 8px;">
+						<span class="dashicons dashicons-rest-api" style="color: #2271b1;"></span>
+						<?php esc_html_e( 'Connect your AI client', 'enable-abilities-for-mcp' ); ?>
+					</h3>
+					<p class="description" style="margin: 0 0 14px;">
+						<?php esc_html_e( 'These examples work with both token methods — with Single Admin Bearer Token keep “Authorization: Bearer YOUR-API-KEY”; with Application Passwords replace it with “Authorization: Basic YOUR_BASE64_CREDENTIALS” (generated in Step 2 above). The claude.ai OAuth connector needs no manual config — just its URL.', 'enable-abilities-for-mcp' ); ?>
+					</p>
 							<?php
 							$ewpa_bearer_json  = "{\n";
 							$ewpa_bearer_json .= "  \"mcpServers\": {\n";
@@ -494,135 +680,7 @@ function ewpa_render_settings_page(): void {
 								</div>
 							</details>
 
-							<p class="description" style="margin-top: 6px;">
-								<?php esc_html_e( 'Replace YOUR-API-KEY with the key generated above.', 'enable-abilities-for-mcp' ); ?>
-								<?php esc_html_e( 'The name "my-wordpress-site" is just an identifier — use it to invoke this MCP server from your AI client (e.g. "use my-wordpress-site to…").', 'enable-abilities-for-mcp' ); ?>
-							</p>
-						</div>
-					</div>
-				</div>
-
-				<?php /* ── Panel 2: Application Passwords ──────────────────── */ ?>
-				<div class="ewpa-auth-panel" style="padding: 20px;">
-					<div style="display: flex; align-items: flex-start; gap: 16px; margin-bottom: 16px;">
-						<div style="flex: 1;">
-							<h3 style="margin: 0 0 4px; font-size: 14px;">
-								<?php esc_html_e( 'WordPress Application Passwords', 'enable-abilities-for-mcp' ); ?>
-								<span style="background: #00a32a; color: #fff; font-size: 10px; font-weight: 600; padding: 2px 7px; border-radius: 3px; vertical-align: middle; margin-left: 6px; letter-spacing: .5px;">
-									<?php esc_html_e( 'RECOMMENDED FOR TEAMS', 'enable-abilities-for-mcp' ); ?>
-								</span>
-							</h3>
-							<p class="description" style="margin: 0;">
-								<?php
-								esc_html_e(
-									'Each user creates their own token from their WordPress profile. Removing or deactivating a user immediately revokes their MCP access — no shared secrets, full audit trail.',
-									'enable-abilities-for-mcp'
-								);
-								?>
-							</p>
-						</div>
-					</div>
-
-					<?php /* Step 1: create the password */ ?>
-					<div style="display: flex; align-items: center; gap: 12px; margin-bottom: 16px; flex-wrap: wrap;">
-						<div style="flex: 1; min-width: 200px;">
-							<p class="description" style="margin: 0;">
-								<strong><?php esc_html_e( 'Step 1 —', 'enable-abilities-for-mcp' ); ?></strong>
-								<?php esc_html_e( 'Create an Application Password in your profile. Copy it — shown only once.', 'enable-abilities-for-mcp' ); ?>
-							</p>
-						</div>
-						<a href="<?php echo esc_url( $profile_url ); ?>" class="button button-primary" target="_blank" rel="noopener noreferrer" style="flex-shrink: 0;">
-							<span class="dashicons dashicons-external" style="margin-top: 3px; margin-right: 4px; font-size: 16px;"></span>
-							<?php
-							printf(
-								/* translators: %s: current WordPress username */
-								esc_html__( 'Open profile for %s', 'enable-abilities-for-mcp' ),
-								'<strong>' . esc_html( $current_user->user_login ) . '</strong>'
-							);
-							?>
-						</a>
-					</div>
-
-					<?php /* Step 2: in-browser credential generator */ ?>
-					<p class="description" style="margin: 0 0 8px;">
-						<strong><?php esc_html_e( 'Step 2 —', 'enable-abilities-for-mcp' ); ?></strong>
-						<?php esc_html_e( 'Generate your connection credentials right here — your password never leaves this page.', 'enable-abilities-for-mcp' ); ?>
-					</p>
-					<div class="ewpa-cred-generator">
-						<div class="ewpa-cred-field">
-							<label for="ewpa-cred-username"><?php esc_html_e( 'WordPress username', 'enable-abilities-for-mcp' ); ?></label>
-							<input type="text" id="ewpa-cred-username" value="<?php echo esc_attr( $current_user->user_login ); ?>" readonly style="background:#f6f7f7; max-width: 280px;">
-						</div>
-						<div class="ewpa-cred-field">
-							<label for="ewpa-cred-apppass"><?php esc_html_e( 'Application Password', 'enable-abilities-for-mcp' ); ?></label>
-							<div style="display: flex; gap: 8px; align-items: center; max-width: 360px;">
-								<input type="password" id="ewpa-cred-apppass" placeholder="xxxx xxxx xxxx xxxx xxxx xxxx" style="flex: 1;" autocomplete="off">
-								<button type="button" class="button" id="ewpa-toggle-pass" style="white-space: nowrap;">
-									<?php esc_html_e( 'Show', 'enable-abilities-for-mcp' ); ?>
-								</button>
-							</div>
-							<p class="description" style="margin-top: 4px; font-size: 12px;">
-								<?php esc_html_e( 'Paste the Application Password you just copied from your profile (spaces are OK).', 'enable-abilities-for-mcp' ); ?>
-							</p>
-						</div>
-						<button type="button" class="button button-primary" id="ewpa-gen-creds">
-							<span class="dashicons dashicons-lock" style="margin-top: 3px; margin-right: 4px; font-size: 16px;"></span>
-							<?php esc_html_e( 'Generate Credentials', 'enable-abilities-for-mcp' ); ?>
-						</button>
-
-						<div id="ewpa-creds-output" class="ewpa-cred-output" style="display: none;">
-							<p style="margin: 0 0 4px; font-size: 12px; color: #00a32a; font-weight: 600;">
-								<span class="dashicons dashicons-yes-alt" style="font-size: 14px; vertical-align: middle;"></span>
-								<?php esc_html_e( 'Generated locally — your password was never sent to the server.', 'enable-abilities-for-mcp' ); ?>
-							</p>
-							<p class="description" style="margin: 0 0 6px; font-size: 12px;">
-								<?php esc_html_e( 'Copy and use this as YOUR_BASE64_CREDENTIALS in the config below:', 'enable-abilities-for-mcp' ); ?>
-							</p>
-							<code id="ewpa-creds-value" style="display: block; word-break: break-all; padding: 8px 10px; background: #f0f0f1; border: 1px solid #c3c4c7; border-radius: 3px; font-size: 13px; margin-bottom: 8px;"></code>
-							<button type="button" class="button ewpa-copy-btn" data-target="ewpa-creds-value">
-								<?php esc_html_e( 'Copy credentials', 'enable-abilities-for-mcp' ); ?>
-							</button>
-						</div>
-					</div>
-
-					<?php /* Step 3: Claude Desktop config */ ?>
-					<p class="description" style="margin: 12px 0 6px;">
-						<strong><?php esc_html_e( 'Step 3 —', 'enable-abilities-for-mcp' ); ?></strong>
-						<?php
-						printf(
-							/* translators: %s: config file name */
-							esc_html__( 'Add this block to your %s using the credentials from Step 2:', 'enable-abilities-for-mcp' ),
-							'<code>claude_desktop_config.json</code>'
-						);
-						?>
-					</p>
-					<?php
-					$ewpa_apppass_json  = "{\n";
-					$ewpa_apppass_json .= "  \"mcpServers\": {\n";
-					$ewpa_apppass_json .= "    \"my-wordpress-site\": {\n";
-					$ewpa_apppass_json .= "      \"command\": \"npx\",\n";
-					$ewpa_apppass_json .= "      \"args\": [\n";
-					$ewpa_apppass_json .= "        \"-y\",\n";
-					$ewpa_apppass_json .= "        \"mcp-remote\",\n";
-					$ewpa_apppass_json .= '        "' . esc_url( $mcp_url ) . "\",\n";
-					$ewpa_apppass_json .= "        \"--header\",\n";
-					$ewpa_apppass_json .= "        \"Authorization: Basic YOUR_BASE64_CREDENTIALS\"\n";
-					$ewpa_apppass_json .= "      ]\n";
-					$ewpa_apppass_json .= "    }\n";
-					$ewpa_apppass_json .= "  }\n";
-					$ewpa_apppass_json .= '}';
-					?>
-					<div style="position: relative; margin-bottom: 8px;">
-						<pre id="ewpa-apppass-config" style="background: #1e1e1e; color: #d4d4d4; padding: 14px 16px; border-radius: 4px; overflow-x: auto; font-size: 13px; line-height: 1.5; margin: 0;"><code style="color: inherit; background: none;"><?php echo esc_html( $ewpa_apppass_json ); ?></code></pre>
-						<button type="button" class="button ewpa-copy-btn" data-target="ewpa-apppass-config" style="position: absolute; top: 8px; right: 8px;">
-							<?php esc_html_e( 'Copy', 'enable-abilities-for-mcp' ); ?>
-						</button>
-					</div>
-					<p class="description" style="margin-bottom: 12px;">
-						<?php esc_html_e( 'The name "my-wordpress-site" is just an identifier — use it to invoke this MCP server from Claude or any other AI client (e.g. "use my-wordpress-site to…"). You can rename it to anything meaningful.', 'enable-abilities-for-mcp' ); ?>
-					</p>
-
-					<?php /* MCP endpoint */ ?>
+					<?php /* MCP endpoint — shared by every client */ ?>
 					<h4 style="margin: 12px 0 6px; font-size: 13px;"><?php esc_html_e( 'MCP Endpoint URL', 'enable-abilities-for-mcp' ); ?></h4>
 					<div style="display: flex; align-items: center; gap: 8px;">
 						<code id="ewpa-mcp-url" style="display: block; flex: 1; padding: 8px 12px; background: #f6f7f7; border: 1px solid #dcdcde; word-break: break-all;">
@@ -632,6 +690,9 @@ function ewpa_render_settings_page(): void {
 							<?php esc_html_e( 'Copy', 'enable-abilities-for-mcp' ); ?>
 						</button>
 					</div>
+					<p class="description" style="margin-top: 10px;">
+						<?php esc_html_e( 'The name “my-wordpress-site” is just an identifier — rename it to anything meaningful and use it to invoke this MCP server from your AI client (e.g. “use my-wordpress-site to…”).', 'enable-abilities-for-mcp' ); ?>
+					</p>
 				</div>
 
 			</div>
