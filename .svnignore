@@ -6,6 +6,8 @@
 .claude
 .sdd
 .codegraph
+.atl
+.mcp.json
 node_modules
 vendor
 composer.json
