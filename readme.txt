@@ -5,7 +5,7 @@ Tags: mcp, ai, rest-api, content-management, woocommerce
 Requires at least: 6.9
 Tested up to: 7.0
 Requires PHP: 8.0
-Stable tag: 2.1.0
+Stable tag: 2.1.1
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -123,7 +123,9 @@ Write abilities respect WordPress capabilities. For example, creating a post req
 
 = Does it work on Multisite? =
 
-Yes. The plugin can be network-activated. Each site in the network has its own ability configuration.
+Yes. The plugin can be network-activated. Each site in the network has its own ability configuration, its own OAuth toggle, and its own connector URL — enabling MCP on one subsite never exposes the others.
+
+For **subdirectory networks** (site.com/blog-a, site.com/blog-b) the claude.ai OAuth connector needs the plugin network-activated (or active on the main site): OAuth clients resolve discovery documents against the domain root, which belongs to the main site, so the plugin bridges those requests to the owning subsite automatically.
 
 = Does it work with WooCommerce? =
 
@@ -146,6 +148,11 @@ Yes — strict OAuth clients require a direct `200` on `/.well-known/oauth-autho
 1. Admin settings page showing all abilities organized by category with toggle switches.
 
 == Changelog ==
+
+= 2.1.1 =
+* Fix: OAuth discovery-document handling (canonical-redirect prevention and RFC 9728 path-suffixed URLs) now works for sites installed in a subdirectory — the matchers derive the site's base path from `home_url()` instead of assuming a root install.
+* New: multisite discovery bridge — on subdirectory networks, OAuth clients resolve `/.well-known/oauth-*` against the domain root, which belongs to the main site. With the plugin network-activated, the main site now resolves those requests to the owning subsite and relays its discovery document, making the claude.ai connector work for every subsite (validated against claude.ai on a production-style subdirectory multisite).
+* Docs: Multisite FAQ updated with the subdirectory-network requirements.
 
 = 2.1.0 =
 * New: claude.ai OAuth Custom Connector — embedded OAuth 2.1 server (wp-media/mcp-oauth) with Client ID Metadata Document (CIMD) support. Add your site as a custom connector in claude.ai (web, mobile, or desktop) with just a URL — no Client ID, no Application Password: each user logs in with their own WordPress account and approves a consent screen. Opt-in from Settings > WP Abilities > Connection.

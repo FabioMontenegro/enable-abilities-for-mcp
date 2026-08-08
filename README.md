@@ -128,6 +128,8 @@ curl -A "python-httpx/0.28.1" https://your-site.com/.well-known/oauth-authorizat
 
 The plugin already handles the WordPress-side gotchas: it prevents the trailing-slash 301 canonical redirect on the discovery documents and serves the RFC 9728 path-suffixed variants. A Site Health check (**Tools → Site Health**) flags hosts that intercept `.well-known/` before WordPress runs.
 
+**Subdirectory multisite** (site.com/blog-a): network-activate the plugin. OAuth clients resolve discovery documents against the domain root — which belongs to the main site — so the plugin bridges `/.well-known/oauth-*/<subsite-path>` requests from the main site to the owning subsite automatically. Each subsite keeps its own OAuth toggle, ability configuration, and connector URL.
+
 ## Development
 
 ```bash
