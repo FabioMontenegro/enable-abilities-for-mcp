@@ -2,7 +2,7 @@
 /**
  * Plugin Name:       Enable Abilities for MCP
  * Description:       Manage which WordPress Abilities are exposed to MCP servers. Enable or disable each ability individually from the dashboard.
- * Version:           2.1.0
+ * Version:           2.1.1
  * Requires at least: 6.9
  * Requires PHP:      8.0
  * Author:            Fabio Montenegro
@@ -18,7 +18,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'EWPA_VERSION', '2.1.0' );
+define( 'EWPA_VERSION', '2.1.1' );
 define( 'EWPA_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'EWPA_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 define( 'EWPA_OPTION_KEY', 'ewpa_enabled_abilities' );
@@ -76,6 +76,79 @@ function ewpa_maybe_boot_oauth(): void {
 	add_action( 'init', 'ewpa_oauth_wellknown_path_suffix_compat', 0 );
 }
 
+// Multisite: the domain root belongs to the main site, but OAuth clients
+// resolve RFC 8414/9728 discovery URLs against it. Bridge root requests
+// to the owning subsite. Runs regardless of the main site's own OAuth state.
+add_action( 'init', 'ewpa_oauth_multisite_discovery_bridge', 0 );
+
+/**
+ * Serves root-level discovery documents for subdirectory subsites.
+ *
+ * For a subsite at https://host/colombia, clients fetch
+ * /.well-known/oauth-authorization-server/colombia and
+ * /.well-known/oauth-protected-resource/colombia/wp-json/... at the domain
+ * root — which the subsite can never serve. When this plugin is active on
+ * the main site, resolve the suffix to the subsite and relay its own
+ * discovery document (loopback, cached briefly).
+ *
+ * @return void
+ */
+function ewpa_oauth_multisite_discovery_bridge(): void {
+	if ( ! is_multisite() || ! is_main_site() ) {
+		return;
+	}
+
+	$uri  = isset( $_SERVER['REQUEST_URI'] ) ? sanitize_text_field( wp_unslash( $_SERVER['REQUEST_URI'] ) ) : '';
+	$path = (string) wp_parse_url( $uri, PHP_URL_PATH );
+
+	if ( ! preg_match( '#^/\.well-known/(oauth-(?:protected-resource|authorization-server))/(.+)$#', $path, $m ) ) {
+		return;
+	}
+
+	$doc   = $m[1];
+	$first = explode( '/', trim( $m[2], '/' ) )[0];
+	$host  = isset( $_SERVER['HTTP_HOST'] ) ? sanitize_text_field( wp_unslash( $_SERVER['HTTP_HOST'] ) ) : '';
+
+	$blog_id = get_blog_id_from_url( $host, '/' . $first . '/' );
+	if ( ! $blog_id || (int) get_main_site_id() === $blog_id ) {
+		return; // Not a subsite path — main-site suffixes are handled by the compat rewrite.
+	}
+
+	$target    = trailingslashit( get_home_url( $blog_id ) ) . '.well-known/' . $doc;
+	$cache_key = 'ewpa_oauth_bridge_' . md5( $target );
+	$body      = get_transient( $cache_key );
+
+	if ( false === $body ) {
+		$response = wp_remote_get( $target, array( 'timeout' => 10 ) );
+
+		if ( is_wp_error( $response ) || 200 !== wp_remote_retrieve_response_code( $response ) ) {
+			return; // Subsite has OAuth disabled (or unreachable) — fall through to a normal 404.
+		}
+
+		$body = wp_remote_retrieve_body( $response );
+		set_transient( $cache_key, $body, 5 * MINUTE_IN_SECONDS );
+	}
+
+	header( 'Content-Type: application/json; charset=UTF-8' );
+	echo $body; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- JSON relayed verbatim from the subsite's own discovery endpoint.
+	exit;
+}
+
+/**
+ * Returns the site's base path (without trailing slash) for OAuth URL matching.
+ *
+ * Empty string for root installs; e.g. "/colombia" for subdirectory or
+ * multisite-subdirectory installs, where every OAuth surface lives under
+ * the subsite path.
+ *
+ * @return string
+ */
+function ewpa_oauth_home_path(): string {
+	$path = (string) wp_parse_url( home_url( '/' ), PHP_URL_PATH );
+
+	return '/' === $path ? '' : rtrim( $path, '/' );
+}
+
 /**
  * Serves RFC 9728 path-suffixed discovery URLs from the root documents.
  *
@@ -83,15 +156,17 @@ function ewpa_maybe_boot_oauth(): void {
  * /.well-known/oauth-protected-resource/<mcp-server-path> per RFC 9728 §3.1.
  * The embedded library only registers the root variants, so those requests
  * 404. Rewriting the URI before WP parses the request lets the library's
- * rewrite rule match and serve the same document.
+ * rewrite rule match and serve the same document. Subdirectory installs are
+ * matched under their base path (e.g. /colombia/.well-known/...).
  *
  * @return void
  */
 function ewpa_oauth_wellknown_path_suffix_compat(): void {
-	$uri = isset( $_SERVER['REQUEST_URI'] ) ? sanitize_text_field( wp_unslash( $_SERVER['REQUEST_URI'] ) ) : '';
+	$uri  = isset( $_SERVER['REQUEST_URI'] ) ? sanitize_text_field( wp_unslash( $_SERVER['REQUEST_URI'] ) ) : '';
+	$base = preg_quote( ewpa_oauth_home_path(), '#' );
 
-	if ( preg_match( '#^/(\.well-known/oauth-(?:protected-resource|authorization-server))/.+#', $uri, $m ) ) {
-		$_SERVER['REQUEST_URI'] = '/' . $m[1];
+	if ( preg_match( '#^(' . $base . '/\.well-known/oauth-(?:protected-resource|authorization-server))/.+#', $uri, $m ) ) {
+		$_SERVER['REQUEST_URI'] = $m[1];
 	}
 }
 
@@ -101,14 +176,16 @@ function ewpa_oauth_wellknown_path_suffix_compat(): void {
  * RFC 8414 metadata URLs have no trailing slash; WordPress's canonical
  * redirect 301s them to the slashed variant, which strict OAuth clients
  * (e.g. the claude.ai connector backend) reject as a failed metadata fetch.
+ * Matches under the site's base path so subdirectory installs are covered.
  *
  * @param string|false $redirect_url Canonical redirect target.
  * @return string|false
  */
 function ewpa_oauth_wellknown_no_canonical( $redirect_url ) {
 	$path = isset( $_SERVER['REQUEST_URI'] ) ? (string) wp_parse_url( sanitize_text_field( wp_unslash( $_SERVER['REQUEST_URI'] ) ), PHP_URL_PATH ) : '';
+	$base = preg_quote( ewpa_oauth_home_path(), '#' );
 
-	if ( preg_match( '#^/(\.well-known/oauth-(protected-resource|authorization-server)|oauth/[a-z-]+)/?$#', $path ) ) {
+	if ( preg_match( '#^' . $base . '/(\.well-known/oauth-(protected-resource|authorization-server)|oauth/[a-z-]+)/?$#', $path ) ) {
 		return false;
 	}
 
