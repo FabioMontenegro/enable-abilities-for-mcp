@@ -17,6 +17,17 @@ Manage which WordPress Abilities are exposed to MCP servers. Supports WooCommerc
 
 WordPress 6.9 introduced the Abilities API, allowing external tools to discover and execute actions on your site. This plugin extends that functionality by registering a comprehensive set of content management abilities and providing a simple admin interface to toggle each one on or off.
 
+= Connect from claude.ai with just a URL =
+
+Since version 2.1 the plugin ships an embedded OAuth 2.1 server built for claude.ai custom connectors. Add your site in claude.ai → Settings → Connectors, log in with your WordPress user, approve the consent screen — connected. No Client ID, no Application Password, no local configuration.
+
+* Works from the claude.ai web app, mobile apps, and Claude Desktop
+* Each team member authenticates with their **own WordPress account and role** — a subscriber can never do what only an editor should
+* Every ability execution lands in the activity log under the real user's name
+* Works on single sites, subdirectory installs, and multisite networks (network-activate so the main site serves the OAuth discovery documents for every subsite)
+
+Prefer tokens? Application Passwords (per-user) and a single-admin Bearer token connect Claude Desktop / Claude Code, OpenAI Codex CLI, and Google Antigravity — the Connection tab generates ready-to-paste configuration for each client, and fills in your credentials automatically.
+
 = Features =
 
 * **71 abilities** organized in 16 categories: Core, Read, Write, SEO (Rank Math), SEO (SEOPress), SEO (Yoast), Utility, Multilanguage, Custom Post Types, WooCommerce, The Events Calendar, Code Snippets, JetEngine Options Pages, Elementor, LearnDash, and AI Agent Readiness (llms.txt)
