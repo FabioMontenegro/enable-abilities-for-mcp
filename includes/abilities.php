@@ -4551,12 +4551,19 @@ function ewpa_register_custom_abilities(): void {
 					}
 
 					$args = array(
-						'post_type'        => $cpt_obj->name,
-						'numberposts'      => $numberposts,
-						'post_status'      => $post_status,
-						'orderby'          => $orderby,
-						'order'            => $order,
-						'suppress_filters' => false,
+						'post_type'   => $cpt_obj->name,
+						'numberposts' => $numberposts,
+						'post_status' => $post_status,
+						'orderby'     => $orderby,
+						'order'       => $order,
+						// suppress_filters defaults to true in get_posts(). Do not
+						// set it to false: with third-party pre_get_posts filters
+						// left running, some search-scoping plugins rewrite
+						// post_type once 's' is present (e.g. Tutor LMS excludes
+						// 'lesson' from search, and a search-integration plugin
+						// falls back to a searchable type), silently returning
+						// items from the wrong post type. Reported against a
+						// Tutor LMS site.
 					);
 
 					if ( ! empty( $input['s'] ) ) {

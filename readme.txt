@@ -5,7 +5,7 @@ Tags: mcp, ai, rest-api, content-management, woocommerce
 Requires at least: 6.9
 Tested up to: 7.0
 Requires PHP: 8.0
-Stable tag: 2.2.0
+Stable tag: 2.2.1
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -164,6 +164,9 @@ Yes — strict OAuth clients require a direct `200` on `/.well-known/oauth-autho
 1. Admin settings page showing all abilities organized by category with toggle switches.
 
 == Changelog ==
+
+= 2.2.1 =
+* Fix: `ewpa/get-cpt-items` ignored the requested `post_type` when the `s` (search) parameter was set, silently returning items from a different post type. Caused by `suppress_filters => false` on the internal `get_posts()` call, which left third-party `pre_get_posts` hooks free to rewrite the query once a search term was present (observed on a Tutor LMS site, where `lesson` is excluded from search and a search-integration plugin fell back to `courses`). Removed the override so the ability uses `get_posts()`'s own safe default (`suppress_filters => true`), matching every other CPT-listing ability in the plugin. Reported by a user testing the MCP connector against a live Tutor LMS site.
 
 = 2.2.0 =
 * New: third-party ability management — abilities registered by other MCP-ready plugins (e.g. Fluent Forms 6.2.12+) now appear in the Abilities tab under a "Third-party" section per plugin namespace, with the same per-ability toggles. Disabling one unregisters it at the end of `wp_abilities_api_init`, removing it from every MCP server on the site (this plugin's claude.ai OAuth connector, the default adapter server, and the third-party plugin's own MCP endpoint). New third-party abilities start enabled, and disabled ones stay listed for re-enabling — validated end-to-end against Fluent Forms' MCP tools.
