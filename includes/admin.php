@@ -183,6 +183,16 @@ add_action(
 
 		update_option( EWPA_OPTION_KEY, $enabled );
 
+		// Third-party abilities: denylist = seen snapshot minus the posted (checked) ones.
+		$ewpa_tp_seen = array_keys( ewpa_tp_get_seen() );
+		if ( $ewpa_tp_seen ) {
+			$ewpa_tp_posted = array();
+			if ( isset( $_POST['ewpa_tp_abilities'] ) && is_array( $_POST['ewpa_tp_abilities'] ) ) {
+				$ewpa_tp_posted = array_map( 'sanitize_text_field', wp_unslash( $_POST['ewpa_tp_abilities'] ) );
+			}
+			update_option( 'ewpa_thirdparty_disabled', array_values( array_diff( $ewpa_tp_seen, $ewpa_tp_posted ) ) );
+		}
+
 		add_settings_error(
 			'ewpa_settings',
 			'ewpa_saved',
@@ -775,6 +785,67 @@ function ewpa_render_settings_page(): void {
 									<strong><?php echo esc_html( $ability['label'] ); ?></strong>
 									<code class="ewpa-ability-key"><?php echo esc_html( $ability_key ); ?></code>
 									<p><?php echo esc_html( $ability['desc'] ); ?></p>
+								</div>
+							</div>
+						<?php endforeach; ?>
+					</div>
+				</div>
+			<?php endforeach; ?>
+
+			<?php /* ── Third-party abilities (registered by other plugins) ── */ ?>
+			<?php
+			if ( function_exists( 'wp_get_abilities' ) ) {
+				wp_get_abilities(); // Initializes the registry so the snapshot below is fresh.
+			}
+			$ewpa_tp_sections = ewpa_tp_get_sections();
+			$ewpa_tp_disabled = ewpa_tp_get_disabled();
+			?>
+			<?php foreach ( $ewpa_tp_sections as $tp_ns => $tp_abilities ) : ?>
+				<div class="ewpa-section" data-section="tp-<?php echo esc_attr( $tp_ns ); ?>">
+					<div class="ewpa-section-header">
+						<div class="ewpa-section-title">
+							<span class="dashicons dashicons-admin-plugins"></span>
+							<div>
+								<h2>
+									<?php echo esc_html( ucfirst( $tp_ns ) ); ?>
+									<span class="ewpa-badge" style="background: #2271b1; color: #fff;">
+										<?php esc_html_e( 'Third-party', 'enable-abilities-for-mcp' ); ?>
+									</span>
+								</h2>
+								<p class="ewpa-section-desc">
+									<?php
+									printf(
+										/* translators: %s: ability namespace */
+										esc_html__( 'Abilities registered by another plugin (namespace "%s"). Disabling one removes it from every MCP server on this site.', 'enable-abilities-for-mcp' ),
+										esc_html( $tp_ns )
+									);
+									?>
+								</p>
+							</div>
+						</div>
+						<label class="ewpa-section-toggle">
+							<input type="checkbox" class="ewpa-section-check" data-section="tp-<?php echo esc_attr( $tp_ns ); ?>">
+							<span><?php esc_html_e( 'All', 'enable-abilities-for-mcp' ); ?></span>
+						</label>
+					</div>
+					<div class="ewpa-section-body">
+						<?php foreach ( $tp_abilities as $tp_key => $tp_info ) : ?>
+							<div class="ewpa-ability">
+								<label class="ewpa-switch">
+									<input
+										type="checkbox"
+										name="ewpa_tp_abilities[]"
+										value="<?php echo esc_attr( $tp_key ); ?>"
+										class="ewpa-ability-check"
+										data-section="tp-<?php echo esc_attr( $tp_ns ); ?>"
+										<?php checked( ! in_array( $tp_key, $ewpa_tp_disabled, true ) ); ?>
+									>
+									<span class="ewpa-slider"></span>
+								</label>
+								<div class="ewpa-ability-info">
+									<strong><?php echo esc_html( $tp_info['label'] ); ?></strong>
+									<code class="ewpa-ability-key"><?php echo esc_html( $tp_key ); ?></code>
+									<p><?php echo esc_html( $tp_info['desc'] ); ?></p>
 								</div>
 							</div>
 						<?php endforeach; ?>
