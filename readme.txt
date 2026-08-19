@@ -1,11 +1,11 @@
 === Enable Abilities for MCP ===
 Contributors: fabiomontenegro1987
-Donate link: https://paypal.me/fabiomontenegroz
+Donate link: https://ko-fi.com/fabiomontenegro
 Tags: mcp, ai, rest-api, content-management, woocommerce
 Requires at least: 6.9
 Tested up to: 7.0
 Requires PHP: 8.0
-Stable tag: 2.1.1
+Stable tag: 2.2.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -36,6 +36,7 @@ Prefer tokens? Application Passwords (per-user) and a single-admin Bearer token 
 * **claude.ai OAuth custom connector** — connect from claude.ai (web, mobile, or desktop) with zero local setup: an embedded OAuth 2.1 server with Client ID Metadata Document (CIMD) support lets each user log in with their own WordPress account and role
 * **Admin dashboard** with toggle switches for each ability
 * **Per-ability control** — expose only what you need
+* **Third-party ability control** — abilities registered by other MCP-ready plugins (e.g. Fluent Forms) appear in the same dashboard, grouped by plugin, with the same per-ability toggles; disabling one removes it from every MCP server on the site
 * **Secure by design** — proper capability checks, input sanitization, and per-post permission validation
 * **WPCS compliant** — fully passes WordPress Coding Standards (phpcs)
 * **MCP-ready** — all abilities include `show_in_rest` and `mcp.public` metadata
@@ -146,6 +147,10 @@ Yes. The Custom Post Types section automatically detects WooCommerce products, o
 
 This plugin registers abilities using the standard `wp_register_ability()` API. You can register additional abilities in your own plugin using the `wp_abilities_api_init` hook.
 
+= Another plugin (Fluent Forms, etc.) registers its own MCP abilities — can I control those too? =
+
+Yes. Since 2.2, abilities registered by other plugins appear in the Abilities tab under their own "Third-party" section, grouped by plugin namespace, with the same toggles as this plugin's abilities. New third-party abilities start enabled; disabling one unregisters it before any MCP server can expose it — including this plugin's claude.ai OAuth connector and the other plugin's own MCP endpoint. Disabled abilities stay listed so you can re-enable them at any time.
+
 = The claude.ai custom connector fails with "Couldn't register with the sign-in service" — why? =
 
 In almost every reported case the OAuth flow is fine and the request never reaches WordPress: a security layer in front of your site is blocking Anthropic's backend, which connects with a non-browser User-Agent (`python-httpx`). Common culprits are hosting WAFs (cPGuard, Imunify360, ModSecurity rules like "generic HTTP client User-Agent") and Cloudflare's Bot Fight Mode or AI-crawler blocking. To diagnose, run `curl -A "python-httpx/0.28.1" https://your-site.com/.well-known/oauth-authorization-server` from an external machine — a 403 confirms the block. Ask your host to allow that User-Agent (or Anthropic's IP range 160.79.104.0/23) for `/.well-known/oauth-*`, `/oauth/*`, and `/wp-json/mcp/*`, or disable the relevant bot protection for the site.
@@ -159,6 +164,11 @@ Yes — strict OAuth clients require a direct `200` on `/.well-known/oauth-autho
 1. Admin settings page showing all abilities organized by category with toggle switches.
 
 == Changelog ==
+
+= 2.2.0 =
+* New: third-party ability management — abilities registered by other MCP-ready plugins (e.g. Fluent Forms 6.2.12+) now appear in the Abilities tab under a "Third-party" section per plugin namespace, with the same per-ability toggles. Disabling one unregisters it at the end of `wp_abilities_api_init`, removing it from every MCP server on the site (this plugin's claude.ai OAuth connector, the default adapter server, and the third-party plugin's own MCP endpoint). New third-party abilities start enabled, and disabled ones stay listed for re-enabling — validated end-to-end against Fluent Forms' MCP tools.
+* New: plugin homepage at https://mcp.fabiomontenegro.com/ (Plugin URI); donations moved to Ko-fi.
+* i18n: POT and Spanish (es_ES) translation updated.
 
 = 2.1.1 =
 * Fix: OAuth discovery-document handling (canonical-redirect prevention and RFC 9728 path-suffixed URLs) now works for sites installed in a subdirectory — the matchers derive the site's base path from `home_url()` instead of assuming a root install.

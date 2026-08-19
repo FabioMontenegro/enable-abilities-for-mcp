@@ -24,6 +24,7 @@ Claude / MCP client  ──►  MCP Adapter  ──►  Abilities API  ──►
 1. It **registers 68 content-management abilities** (plus exposing the 3 native WordPress core ones to MCP).
 2. It gives you an **admin dashboard** to enable or disable each ability individually — expose only what you need.
 3. It provides **authentication** (claude.ai OAuth custom connector, Application Passwords, or single-admin Bearer token) and an **activity log** of every ability executed.
+4. It also governs **third-party abilities**: anything other MCP-ready plugins (Fluent Forms, …) register shows up in the same dashboard, grouped by plugin, with the same toggles — disabling one removes it from every MCP server on the site.
 
 ## Abilities by category
 
@@ -146,10 +147,12 @@ Abilities are registered with the standard `wp_register_ability()` API on the `w
 
 ## Links
 
+- [Plugin homepage](https://mcp.fabiomontenegro.com/)
 - [Plugin on WordPress.org](https://wordpress.org/plugins/enable-abilities-for-mcp/)
 - [Support forum](https://wordpress.org/support/plugin/enable-abilities-for-mcp/)
 - [Changelog](https://wordpress.org/plugins/enable-abilities-for-mcp/#developers)
 - [WordPress Abilities API](https://make.wordpress.org/core/2025/07/17/abilities-api/) · [MCP Adapter](https://github.com/WordPress/mcp-adapter)
+- Author: [Fabio Montenegro](https://fabiomontenegro.com) · [LinkedIn](https://www.linkedin.com/in/fabio-montenegro/) · [Support on Ko-fi](https://ko-fi.com/fabiomontenegro)
 
 ## License
 
