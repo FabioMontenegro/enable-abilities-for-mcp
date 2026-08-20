@@ -3,7 +3,7 @@
  * Plugin Name:       Enable Abilities for MCP
  * Plugin URI:        https://mcp.fabiomontenegro.com/
  * Description:       Manage which WordPress Abilities are exposed to MCP servers. Enable or disable each ability individually from the dashboard.
- * Version:           2.3.0
+ * Version:           2.4.0
  * Requires at least: 6.9
  * Requires PHP:      8.0
  * Author:            Fabio Montenegro
@@ -19,7 +19,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'EWPA_VERSION', '2.3.0' );
+define( 'EWPA_VERSION', '2.4.0' );
 define( 'EWPA_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'EWPA_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 define( 'EWPA_OPTION_KEY', 'ewpa_enabled_abilities' );
@@ -272,6 +272,9 @@ add_action( 'plugins_loaded', 'ewpa_maybe_migrate_keys_v2024' );
 
 // Adds the v2.3.0 Navigation Menus abilities (read + additive) to existing installs.
 add_action( 'plugins_loaded', 'ewpa_maybe_migrate_keys_v230' );
+
+// Adds the v2.4.0 Tutor LMS abilities to existing installs.
+add_action( 'plugins_loaded', 'ewpa_maybe_migrate_keys_v240' );
 
 
 /*
@@ -651,6 +654,47 @@ function ewpa_maybe_migrate_keys_v230() {
 	}
 
 	update_option( 'ewpa_keys_migrated_v230', true );
+}
+
+/**
+ * Adds the Tutor LMS abilities introduced in v2.4.0 to existing installs.
+ *
+ * Both abilities are enabled by default (not opt-in): they read or overwrite
+ * a single known meta field on a specific lesson, the same class of
+ * operation as ewpa/update-post-meta and ewpa/update-post, which are also
+ * enabled by default.
+ *
+ * @return void
+ */
+function ewpa_maybe_migrate_keys_v240() {
+	if ( get_option( 'ewpa_keys_migrated_v240' ) ) {
+		return;
+	}
+
+	$enabled = get_option( EWPA_OPTION_KEY );
+	if ( ! is_array( $enabled ) ) {
+		update_option( 'ewpa_keys_migrated_v240', true );
+		return;
+	}
+
+	$new_abilities = array(
+		'ewpa/tutor-get-lesson-video',
+		'ewpa/tutor-update-lesson-video',
+	);
+
+	$changed = false;
+	foreach ( $new_abilities as $key ) {
+		if ( ! in_array( $key, $enabled, true ) ) {
+			$enabled[] = $key;
+			$changed   = true;
+		}
+	}
+
+	if ( $changed ) {
+		update_option( EWPA_OPTION_KEY, $enabled );
+	}
+
+	update_option( 'ewpa_keys_migrated_v240', true );
 }
 
 /**
@@ -1163,6 +1207,24 @@ function ewpa_get_abilities_registry() {
 				),
 			),
 		),
+		'tutor'                   => array(
+			'section_label'  => __( 'Tutor LMS', 'enable-abilities-for-mcp' ),
+			'section_desc'   => __( 'Read and update a Tutor LMS lesson\'s video source. Requires Tutor LMS (tutor_utils()).', 'enable-abilities-for-mcp' ),
+			'section_icon'   => 'dashicons-video-alt3',
+			'section_notice' => 'ewpa_section_notice_tutor',
+			'abilities'      => array(
+				'ewpa/tutor-get-lesson-video'    => array(
+					'label'   => __( 'Get Lesson Video', 'enable-abilities-for-mcp' ),
+					'desc'    => __( 'Reads a Tutor LMS lesson\'s video source configuration (source type, value, and runtime).', 'enable-abilities-for-mcp' ),
+					'default' => true,
+				),
+				'ewpa/tutor-update-lesson-video' => array(
+					'label'   => __( 'Update Lesson Video', 'enable-abilities-for-mcp' ),
+					'desc'    => __( 'Sets a Tutor LMS lesson\'s video source using Tutor\'s own storage function, avoiding the string-only limitation of the generic Update Post Meta ability.', 'enable-abilities-for-mcp' ),
+					'default' => true,
+				),
+			),
+		),
 		'agent-readiness'         => array(
 			'section_label' => __( 'AI — Agent Readiness (llms.txt)', 'enable-abilities-for-mcp' ),
 			'section_desc'  => __( 'Read, validate, and manage the site llms.txt file — the AI-crawler guidance file audited by Lighthouse "Agentic Browsing". Integrates with SEOPress Pro when active; otherwise serves a virtual /llms.txt directly.', 'enable-abilities-for-mcp' ),
@@ -1484,5 +1546,21 @@ function ewpa_section_notice_learndash(): string {
 	return '<div class="ewpa-section-notice ewpa-section-notice-info">'
 		. '<span class="dashicons dashicons-info"></span> '
 		. esc_html__( 'LearnDash is not active. These abilities require LearnDash (SFWD_LMS) to function.', 'enable-abilities-for-mcp' )
+		. '</div>';
+}
+
+/**
+ * Dashboard notice shown for the Tutor LMS section when the plugin is inactive.
+ *
+ * @return string
+ */
+function ewpa_section_notice_tutor(): string {
+	if ( function_exists( 'tutor_utils' ) ) {
+		return '';
+	}
+
+	return '<div class="ewpa-section-notice ewpa-section-notice-info">'
+		. '<span class="dashicons dashicons-info"></span> '
+		. esc_html__( 'Tutor LMS is not active. These abilities require Tutor LMS to function.', 'enable-abilities-for-mcp' )
 		. '</div>';
 }

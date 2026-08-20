@@ -458,6 +458,14 @@ function ewpa_register_ability_categories(): void {
 			'description' => __( 'Abilities to manage LearnDash courses, lessons, quizzes, and user enrollments.', 'enable-abilities-for-mcp' ),
 		)
 	);
+
+	wp_register_ability_category(
+		'tutor',
+		array(
+			'label'       => __( 'Tutor LMS', 'enable-abilities-for-mcp' ),
+			'description' => __( 'Abilities to read and update the video source of Tutor LMS lessons.', 'enable-abilities-for-mcp' ),
+		)
+	);
 }
 
 /*
@@ -7958,6 +7966,165 @@ function ewpa_register_custom_abilities(): void {
 		}
 
 	} // end if class_exists( 'SFWD_LMS' )
+
+	// ── SECTION K: TUTOR LMS ──────────────────────────────────────────────
+	if ( function_exists( 'tutor_utils' ) ) {
+
+		// ── K1: Get Lesson Video ──────────────────────────────────────────────
+		if ( ewpa_is_ability_enabled( 'ewpa/tutor-get-lesson-video' ) ) {
+			ewpa_register_ability_with_log(
+				'ewpa/tutor-get-lesson-video',
+				array(
+					'label'               => __( 'Tutor LMS: Get Lesson Video', 'enable-abilities-for-mcp' ),
+					'category'            => 'tutor',
+					'description'         => __( 'Reads the video source configuration of a Tutor LMS lesson (source type, source value, and runtime), via tutor_utils()->get_video(). Requires edit_post capability on the lesson.', 'enable-abilities-for-mcp' ),
+					'input_schema'        => array(
+						'type'       => 'object',
+						'required'   => array( 'post_id' ),
+						'properties' => array(
+							'post_id' => array(
+								'type'        => 'integer',
+								'description' => __( 'Lesson post ID.', 'enable-abilities-for-mcp' ),
+							),
+						),
+					),
+					'output_schema'       => array(
+						'type'       => 'object',
+						'properties' => array(
+							'post_id' => array( 'type' => 'integer' ),
+							'video'   => array(
+								'type'        => array( 'object', 'null' ),
+								'description' => 'The lesson\'s _video meta as Tutor stores it (shape varies by source), or null if no video has been set.',
+							),
+						),
+					),
+					'permission_callback' => function ( $input ) {
+						return ewpa_check_post_permission( $input, 'edit_post' );
+					},
+					'execute_callback'    => function ( $input ) {
+						$post_id = absint( $input['post_id'] ?? 0 );
+						if ( ! get_post( $post_id ) ) {
+							return new WP_Error( 'not_found', 'Post not found.' );
+						}
+
+						$video = tutor_utils()->get_video( $post_id );
+
+						return array(
+							'post_id' => $post_id,
+							'video'   => is_array( $video ) ? $video : null,
+						);
+					},
+					'meta'                => array(
+						'show_in_rest' => true,
+						'annotations'  => array(
+							'readonly'    => true,
+							'destructive' => false,
+						),
+						'mcp'          => array(
+							'public' => true,
+						),
+					),
+				)
+			);
+		}
+
+		// ── K2: Update Lesson Video ───────────────────────────────────────────
+		if ( ewpa_is_ability_enabled( 'ewpa/tutor-update-lesson-video' ) ) {
+			ewpa_register_ability_with_log(
+				'ewpa/tutor-update-lesson-video',
+				array(
+					'label'               => __( 'Tutor LMS: Update Lesson Video', 'enable-abilities-for-mcp' ),
+					'category'            => 'tutor',
+					'description'         => __( "Sets a Tutor LMS lesson's video source (external URL, YouTube, Vimeo, HTML5, or a third-party source such as Bunny.net) via tutor_utils()->update_video(), the same function Tutor's own editor uses. Always writes the video meta as a native PHP array, avoiding the string-only storage of ewpa/update-post-meta that Tutor cannot read back. Requires edit_post capability on the lesson.", 'enable-abilities-for-mcp' ),
+					'input_schema'        => array(
+						'type'       => 'object',
+						'required'   => array( 'post_id', 'source', 'source_value' ),
+						'properties' => array(
+							'post_id'      => array(
+								'type'        => 'integer',
+								'description' => __( 'Lesson post ID.', 'enable-abilities-for-mcp' ),
+							),
+							'source'       => array(
+								'type'        => 'string',
+								'description' => __( 'Video source type (e.g. html5, external_url, youtube, vimeo, embedded, shortcode, or a third-party source registered via the tutor_preferred_video_sources filter, such as bunnynet).', 'enable-abilities-for-mcp' ),
+							),
+							'source_value' => array(
+								'type'        => 'string',
+								'description' => __( 'The value for that source — e.g. the playable URL for external_url/bunnynet, or the video ID for youtube/vimeo.', 'enable-abilities-for-mcp' ),
+							),
+							'hours'        => array(
+								'type'        => 'string',
+								'description' => __( 'Video runtime — hours. Default "0".', 'enable-abilities-for-mcp' ),
+							),
+							'minutes'      => array(
+								'type'        => 'string',
+								'description' => __( 'Video runtime — minutes. Default "0".', 'enable-abilities-for-mcp' ),
+							),
+							'seconds'      => array(
+								'type'        => 'string',
+								'description' => __( 'Video runtime — seconds. Default "0".', 'enable-abilities-for-mcp' ),
+							),
+						),
+					),
+					'output_schema'       => array(
+						'type'       => 'object',
+						'properties' => array(
+							'post_id' => array( 'type' => 'integer' ),
+							'video'   => array(
+								'type'        => 'object',
+								'description' => 'The _video meta as saved and re-read from the database, for verification.',
+							),
+							'message' => array( 'type' => 'string' ),
+						),
+					),
+					'permission_callback' => function ( $input ) {
+						return ewpa_check_post_permission( $input, 'edit_post' );
+					},
+					'execute_callback'    => function ( $input ) {
+						$post_id = absint( $input['post_id'] ?? 0 );
+						if ( ! get_post( $post_id ) ) {
+							return new WP_Error( 'not_found', 'Post not found.' );
+						}
+
+						$source       = sanitize_key( $input['source'] ?? '' );
+						$source_value = esc_url_raw( $input['source_value'] ?? '' );
+
+						if ( '' === $source || '' === $source_value ) {
+							return new WP_Error( 'missing_parameter', 'Both "source" and "source_value" are required.' );
+						}
+
+						$video_data = array(
+							'source'            => $source,
+							'source_' . $source => $source_value,
+							'runtime'           => array(
+								'hours'   => sanitize_text_field( $input['hours'] ?? '0' ),
+								'minutes' => sanitize_text_field( $input['minutes'] ?? '0' ),
+								'seconds' => sanitize_text_field( $input['seconds'] ?? '0' ),
+							),
+						);
+
+						tutor_utils()->update_video( $post_id, $video_data );
+
+						return array(
+							'post_id' => $post_id,
+							'video'   => tutor_utils()->get_video( $post_id ),
+							'message' => 'Tutor LMS lesson video updated successfully.',
+						);
+					},
+					'meta'                => array(
+						'show_in_rest' => true,
+						'annotations'  => array(
+							'readonly'    => false,
+							'destructive' => false,
+						),
+						'mcp'          => array(
+							'public' => true,
+						),
+					),
+				)
+			);
+		}
+	} // end if function_exists( 'tutor_utils' )
 
 	/*
 	 * ======================================================================
