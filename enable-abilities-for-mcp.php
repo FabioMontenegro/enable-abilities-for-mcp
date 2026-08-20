@@ -3,7 +3,7 @@
  * Plugin Name:       Enable Abilities for MCP
  * Plugin URI:        https://mcp.fabiomontenegro.com/
  * Description:       Manage which WordPress Abilities are exposed to MCP servers. Enable or disable each ability individually from the dashboard.
- * Version:           2.2.1
+ * Version:           2.3.0
  * Requires at least: 6.9
  * Requires PHP:      8.0
  * Author:            Fabio Montenegro
@@ -19,7 +19,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'EWPA_VERSION', '2.2.1' );
+define( 'EWPA_VERSION', '2.3.0' );
 define( 'EWPA_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'EWPA_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 define( 'EWPA_OPTION_KEY', 'ewpa_enabled_abilities' );
@@ -269,6 +269,9 @@ add_action( 'plugins_loaded', 'ewpa_maybe_migrate_keys_v2022' );
 
 // Migration: add ewpa/clear-cache introduced in v2.0.24 to existing installs.
 add_action( 'plugins_loaded', 'ewpa_maybe_migrate_keys_v2024' );
+
+// Adds the v2.3.0 Navigation Menus abilities (read + additive) to existing installs.
+add_action( 'plugins_loaded', 'ewpa_maybe_migrate_keys_v230' );
 
 
 /*
@@ -608,6 +611,49 @@ function ewpa_maybe_migrate_keys_v2024(): void {
 }
 
 /**
+ * Adds the Navigation Menus abilities introduced in v2.3.0 to existing installs.
+ *
+ * Read and additive abilities are enabled by default; ewpa/remove-menu-item
+ * and ewpa/assign-menu-location are opt-in and stay disabled until the site
+ * owner enables them.
+ *
+ * @return void
+ */
+function ewpa_maybe_migrate_keys_v230() {
+	if ( get_option( 'ewpa_keys_migrated_v230' ) ) {
+		return;
+	}
+
+	$enabled = get_option( EWPA_OPTION_KEY );
+	if ( ! is_array( $enabled ) ) {
+		update_option( 'ewpa_keys_migrated_v230', true );
+		return;
+	}
+
+	$new_abilities = array(
+		'ewpa/create-menu',
+		'ewpa/list-menus',
+		'ewpa/get-menu',
+		'ewpa/add-menu-item',
+		'ewpa/update-menu-item',
+	);
+
+	$changed = false;
+	foreach ( $new_abilities as $key ) {
+		if ( ! in_array( $key, $enabled, true ) ) {
+			$enabled[] = $key;
+			$changed   = true;
+		}
+	}
+
+	if ( $changed ) {
+		update_option( EWPA_OPTION_KEY, $enabled );
+	}
+
+	update_option( 'ewpa_keys_migrated_v230', true );
+}
+
+/**
  * Returns the mapping from old Spanish keys to new English keys.
  *
  * @return array
@@ -822,6 +868,45 @@ function ewpa_get_abilities_registry() {
 				'ewpa/yoast-get-sitemap-index' => array(
 					'label' => __( 'Get Yoast Sitemap Index', 'enable-abilities-for-mcp' ),
 					'desc'  => __( 'Fetch and parse the Yoast SEO sitemap index, returning the list of all sitemap URLs registered on the site.', 'enable-abilities-for-mcp' ),
+				),
+			),
+		),
+		'menus'       => array(
+			'section_label' => __( 'Navigation Menus', 'enable-abilities-for-mcp' ),
+			'section_desc'  => __( 'Inspect and manage navigation menus, their items, and theme locations.', 'enable-abilities-for-mcp' ),
+			'section_icon'  => 'dashicons-menu-alt',
+			'abilities'     => array(
+				'ewpa/create-menu'          => array(
+					'label' => __( 'Create Menu', 'enable-abilities-for-mcp' ),
+					'desc'  => __( 'Creates a new, empty navigation menu with the given name.', 'enable-abilities-for-mcp' ),
+				),
+				'ewpa/list-menus'           => array(
+					'label' => __( 'List Menus', 'enable-abilities-for-mcp' ),
+					'desc'  => __( 'Lists every menu with its id, slug, and item count, plus the theme locations and which menu each one displays.', 'enable-abilities-for-mcp' ),
+				),
+				'ewpa/get-menu'             => array(
+					'label' => __( 'Get Menu', 'enable-abilities-for-mcp' ),
+					'desc'  => __( 'Returns every item of one menu with hierarchy, destination, and position.', 'enable-abilities-for-mcp' ),
+				),
+				'ewpa/add-menu-item'        => array(
+					'label' => __( 'Add Menu Item', 'enable-abilities-for-mcp' ),
+					'desc'  => __( 'Adds a page, post, category, tag, or custom URL to a menu, with optional parent and position.', 'enable-abilities-for-mcp' ),
+				),
+				'ewpa/update-menu-item'     => array(
+					'label' => __( 'Update Menu Item', 'enable-abilities-for-mcp' ),
+					'desc'  => __( 'Updates the title, custom URL, parent, or position of one menu item.', 'enable-abilities-for-mcp' ),
+				),
+				'ewpa/remove-menu-item'     => array(
+					'label' => __( 'Remove Menu Item', 'enable-abilities-for-mcp' ),
+					'desc'  => __( 'Permanently removes one item from a menu. Destructive — opt-in required.', 'enable-abilities-for-mcp' ),
+				),
+				'ewpa/assign-menu-location' => array(
+					'label' => __( 'Assign Menu Location', 'enable-abilities-for-mcp' ),
+					'desc'  => __( 'Assigns a menu to a theme location. Changes site-wide navigation — opt-in required.', 'enable-abilities-for-mcp' ),
+				),
+				'ewpa/delete-menu'          => array(
+					'label' => __( 'Delete Menu', 'enable-abilities-for-mcp' ),
+					'desc'  => __( 'Permanently deletes a menu and all of its items. Destructive — opt-in required.', 'enable-abilities-for-mcp' ),
 				),
 			),
 		),

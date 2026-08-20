@@ -404,6 +404,14 @@ function ewpa_register_ability_categories(): void {
 	);
 
 	wp_register_ability_category(
+		'menu-management',
+		array(
+			'label'       => __( 'Navigation Menus', 'enable-abilities-for-mcp' ),
+			'description' => __( 'Abilities to inspect and manage navigation menus, their items, and theme locations.', 'enable-abilities-for-mcp' ),
+		)
+	);
+
+	wp_register_ability_category(
 		'woocommerce',
 		array(
 			'label'       => __( 'WooCommerce', 'enable-abilities-for-mcp' ),
@@ -8174,6 +8182,573 @@ function ewpa_register_custom_abilities(): void {
 					'mcp'          => array(
 						'public' => true,
 					),
+				),
+			)
+		);
+	}
+}
+
+// ── Navigation Menus ─────────────────────────────────────────────────────
+add_action( 'wp_abilities_api_init', 'ewpa_register_menu_abilities' );
+
+/**
+ * Resolves a menu identifier (term_id, slug, or name) to a WP_Term.
+ *
+ * @param int|string $menu Menu id, slug, or name.
+ * @return WP_Term|null
+ */
+function ewpa_resolve_nav_menu( $menu ) {
+	$obj = wp_get_nav_menu_object( is_numeric( $menu ) ? (int) $menu : $menu );
+
+	return $obj instanceof WP_Term ? $obj : null;
+}
+
+/**
+ * Registers the Navigation Menus abilities (M0–M7).
+ *
+ * All abilities require edit_theme_options — the same capability WordPress
+ * demands for Appearance → Menus. remove-menu-item, assign-menu-location, and
+ * delete-menu are opt-in (not auto-enabled on upgrade).
+ *
+ * @return void
+ */
+function ewpa_register_menu_abilities(): void {
+	// ── M0: Create Menu ──────────────────────────────────────────────────
+	if ( ewpa_is_ability_enabled( 'ewpa/create-menu' ) ) {
+		ewpa_register_ability_with_log(
+			'ewpa/create-menu',
+			array(
+				'label'               => __( 'Create Menu', 'enable-abilities-for-mcp' ),
+				'description'         => __( 'Creates a new, empty navigation menu with the given name. Use ewpa/add-menu-item to populate it and ewpa/assign-menu-location to display it.', 'enable-abilities-for-mcp' ),
+				'category'            => 'menu-management',
+				'input_schema'        => array(
+					'type'       => 'object',
+					'properties' => array(
+						'name' => array( 'type' => 'string' ),
+					),
+					'required'   => array( 'name' ),
+				),
+				'output_schema'       => array(
+					'type'       => 'object',
+					'properties' => array(
+						'id'   => array( 'type' => 'integer' ),
+						'name' => array( 'type' => 'string' ),
+						'slug' => array( 'type' => 'string' ),
+					),
+				),
+				'permission_callback' => function () {
+					return current_user_can( 'edit_theme_options' );
+				},
+				'execute_callback'    => function ( $input ) {
+					$name = sanitize_text_field( $input['name'] ?? '' );
+					if ( '' === $name ) {
+						return new WP_Error( 'missing_name', 'A menu name is required.' );
+					}
+
+					if ( ewpa_resolve_nav_menu( $name ) ) {
+						return new WP_Error( 'menu_exists', 'A menu with that name already exists.' );
+					}
+
+					$menu_id = wp_create_nav_menu( $name );
+					if ( is_wp_error( $menu_id ) ) {
+						return $menu_id;
+					}
+
+					$menu = ewpa_resolve_nav_menu( $menu_id );
+
+					return array(
+						'id'   => (int) $menu_id,
+						'name' => $menu ? $menu->name : $name,
+						'slug' => $menu ? $menu->slug : '',
+					);
+				},
+				'meta'                => array(
+					'show_in_rest' => true,
+					'annotations'  => array( 'readonly' => false ),
+					'mcp'          => array( 'public' => true ),
+				),
+			)
+		);
+	}
+
+	// ── M1: List Menus ──────────────────────────────────────────────────
+	if ( ewpa_is_ability_enabled( 'ewpa/list-menus' ) ) {
+		ewpa_register_ability_with_log(
+			'ewpa/list-menus',
+			array(
+				'label'               => __( 'List Menus', 'enable-abilities-for-mcp' ),
+				'description'         => __( 'Lists every navigation menu with its id, slug, and item count, plus the theme menu locations and which menu each one displays.', 'enable-abilities-for-mcp' ),
+				'category'            => 'menu-management',
+				'output_schema'       => array(
+					'type'       => 'object',
+					'properties' => array(
+						'menus'     => array( 'type' => 'array' ),
+						'locations' => array( 'type' => 'array' ),
+					),
+				),
+				'permission_callback' => function () {
+					return current_user_can( 'edit_theme_options' );
+				},
+				'execute_callback'    => function () {
+					$menus = array();
+					foreach ( wp_get_nav_menus() as $menu ) {
+						$menus[] = array(
+							'id'    => (int) $menu->term_id,
+							'name'  => $menu->name,
+							'slug'  => $menu->slug,
+							'items' => (int) $menu->count,
+						);
+					}
+
+					$registered = get_registered_nav_menus();
+					$assigned   = get_nav_menu_locations();
+					$locations  = array();
+					foreach ( $registered as $slug => $label ) {
+						$locations[] = array(
+							'location' => $slug,
+							'label'    => $label,
+							'menu_id'  => isset( $assigned[ $slug ] ) ? (int) $assigned[ $slug ] : 0,
+						);
+					}
+
+					return array(
+						'menus'     => $menus,
+						'locations' => $locations,
+					);
+				},
+				'meta'                => array(
+					'show_in_rest' => true,
+					'annotations'  => array( 'readonly' => true ),
+					'mcp'          => array( 'public' => true ),
+				),
+			)
+		);
+	}
+
+	// ── M2: Get Menu ────────────────────────────────────────────────────
+	if ( ewpa_is_ability_enabled( 'ewpa/get-menu' ) ) {
+		ewpa_register_ability_with_log(
+			'ewpa/get-menu',
+			array(
+				'label'               => __( 'Get Menu', 'enable-abilities-for-mcp' ),
+				'description'         => __( 'Returns every item of one menu with its hierarchy: id, title, url, target type (post_type, taxonomy, or custom), linked object, parent item, and position.', 'enable-abilities-for-mcp' ),
+				'category'            => 'menu-management',
+				'input_schema'        => array(
+					'type'       => 'object',
+					'properties' => array(
+						'menu' => array(
+							'type'        => array( 'integer', 'string' ),
+							'description' => 'Menu id, slug, or name.',
+						),
+					),
+					'required'   => array( 'menu' ),
+				),
+				'output_schema'       => array(
+					'type'       => 'object',
+					'properties' => array(
+						'id'    => array( 'type' => 'integer' ),
+						'name'  => array( 'type' => 'string' ),
+						'items' => array( 'type' => 'array' ),
+					),
+				),
+				'permission_callback' => function () {
+					return current_user_can( 'edit_theme_options' );
+				},
+				'execute_callback'    => function ( $input ) {
+					$menu = ewpa_resolve_nav_menu( $input['menu'] ?? '' );
+					if ( ! $menu ) {
+						return new WP_Error( 'menu_not_found', 'Menu not found. Use ewpa/list-menus to see the available menus.' );
+					}
+
+					$items = array();
+					foreach ( wp_get_nav_menu_items( $menu->term_id ) ?: array() as $item ) {
+						$items[] = array(
+							'id'        => (int) $item->ID,
+							'title'     => $item->title,
+							'url'       => $item->url,
+							'type'      => $item->type,
+							'object'    => $item->object,
+							'object_id' => (int) $item->object_id,
+							'parent_id' => (int) $item->menu_item_parent,
+							'position'  => (int) $item->menu_order,
+						);
+					}
+
+					return array(
+						'id'    => (int) $menu->term_id,
+						'name'  => $menu->name,
+						'items' => $items,
+					);
+				},
+				'meta'                => array(
+					'show_in_rest' => true,
+					'annotations'  => array( 'readonly' => true ),
+					'mcp'          => array( 'public' => true ),
+				),
+			)
+		);
+	}
+
+	// ── M3: Add Menu Item ───────────────────────────────────────────────
+	if ( ewpa_is_ability_enabled( 'ewpa/add-menu-item' ) ) {
+		ewpa_register_ability_with_log(
+			'ewpa/add-menu-item',
+			array(
+				'label'               => __( 'Add Menu Item', 'enable-abilities-for-mcp' ),
+				'description'         => __( 'Adds an item to a menu: a page, post, or CPT item (object_id), a category or tag (taxonomy + object_id), or a custom URL. Supports parent item and position.', 'enable-abilities-for-mcp' ),
+				'category'            => 'menu-management',
+				'input_schema'        => array(
+					'type'       => 'object',
+					'properties' => array(
+						'menu'      => array(
+							'type'        => array( 'integer', 'string' ),
+							'description' => 'Menu id, slug, or name.',
+						),
+						'title'     => array( 'type' => 'string' ),
+						'object'    => array(
+							'type'        => 'string',
+							'description' => 'What the item links to: a post type slug (page, post, product…), a taxonomy slug (category, post_tag…), or "custom".',
+						),
+						'object_id' => array(
+							'type'        => 'integer',
+							'description' => 'Post id or term id being linked. Not used for custom URLs.',
+						),
+						'url'       => array(
+							'type'        => 'string',
+							'description' => 'Destination for custom items.',
+						),
+						'parent_id' => array( 'type' => 'integer' ),
+						'position'  => array( 'type' => 'integer' ),
+					),
+					'required'   => array( 'menu', 'object' ),
+				),
+				'output_schema'       => array(
+					'type'       => 'object',
+					'properties' => array(
+						'item_id' => array( 'type' => 'integer' ),
+						'title'   => array( 'type' => 'string' ),
+					),
+				),
+				'permission_callback' => function () {
+					return current_user_can( 'edit_theme_options' );
+				},
+				'execute_callback'    => function ( $input ) {
+					$menu = ewpa_resolve_nav_menu( $input['menu'] ?? '' );
+					if ( ! $menu ) {
+						return new WP_Error( 'menu_not_found', 'Menu not found. Use ewpa/list-menus to see the available menus.' );
+					}
+
+					$object = sanitize_key( $input['object'] ?? '' );
+					$args   = array(
+						'menu-item-status'   => 'publish',
+						'menu-item-title'    => sanitize_text_field( $input['title'] ?? '' ),
+						'menu-item-position' => isset( $input['position'] ) ? (int) $input['position'] : 0,
+					);
+					if ( ! empty( $input['parent_id'] ) ) {
+						$args['menu-item-parent-id'] = (int) $input['parent_id'];
+					}
+
+					if ( 'custom' === $object ) {
+						$url = esc_url_raw( $input['url'] ?? '' );
+						if ( ! $url ) {
+							return new WP_Error( 'missing_url', 'Custom menu items require a url.' );
+						}
+						$args['menu-item-type'] = 'custom';
+						$args['menu-item-url']  = $url;
+						if ( '' === $args['menu-item-title'] ) {
+							$args['menu-item-title'] = $url;
+						}
+					} elseif ( taxonomy_exists( $object ) ) {
+						$term = get_term( (int) ( $input['object_id'] ?? 0 ), $object );
+						if ( ! $term || is_wp_error( $term ) ) {
+							return new WP_Error( 'term_not_found', 'No term with that object_id in that taxonomy.' );
+						}
+						$args['menu-item-type']      = 'taxonomy';
+						$args['menu-item-object']    = $object;
+						$args['menu-item-object-id'] = (int) $term->term_id;
+					} elseif ( post_type_exists( $object ) ) {
+						$post = get_post( (int) ( $input['object_id'] ?? 0 ) );
+						if ( ! $post || $post->post_type !== $object ) {
+							return new WP_Error( 'post_not_found', 'No published item of that post type with that object_id.' );
+						}
+						$args['menu-item-type']      = 'post_type';
+						$args['menu-item-object']    = $object;
+						$args['menu-item-object-id'] = (int) $post->ID;
+					} else {
+						return new WP_Error( 'invalid_object', 'object must be a post type slug, a taxonomy slug, or "custom".' );
+					}
+
+					$item_id = wp_update_nav_menu_item( $menu->term_id, 0, $args );
+					if ( is_wp_error( $item_id ) ) {
+						return $item_id;
+					}
+
+					$saved = wp_setup_nav_menu_item( get_post( $item_id ) );
+
+					return array(
+						'item_id' => (int) $item_id,
+						'title'   => $saved ? $saved->title : $args['menu-item-title'],
+					);
+				},
+				'meta'                => array(
+					'show_in_rest' => true,
+					'annotations'  => array( 'readonly' => false ),
+					'mcp'          => array( 'public' => true ),
+				),
+			)
+		);
+	}
+
+	// ── M4: Update Menu Item ────────────────────────────────────────────
+	if ( ewpa_is_ability_enabled( 'ewpa/update-menu-item' ) ) {
+		ewpa_register_ability_with_log(
+			'ewpa/update-menu-item',
+			array(
+				'label'               => __( 'Update Menu Item', 'enable-abilities-for-mcp' ),
+				'description'         => __( 'Updates one menu item: title, custom URL, parent item, or position. Fields not provided keep their current value.', 'enable-abilities-for-mcp' ),
+				'category'            => 'menu-management',
+				'input_schema'        => array(
+					'type'       => 'object',
+					'properties' => array(
+						'menu'      => array(
+							'type'        => array( 'integer', 'string' ),
+							'description' => 'Menu id, slug, or name the item belongs to.',
+						),
+						'item_id'   => array( 'type' => 'integer' ),
+						'title'     => array( 'type' => 'string' ),
+						'url'       => array(
+							'type'        => 'string',
+							'description' => 'Only for custom items.',
+						),
+						'parent_id' => array( 'type' => 'integer' ),
+						'position'  => array( 'type' => 'integer' ),
+					),
+					'required'   => array( 'menu', 'item_id' ),
+				),
+				'output_schema'       => array(
+					'type'       => 'object',
+					'properties' => array(
+						'item_id' => array( 'type' => 'integer' ),
+						'updated' => array( 'type' => 'boolean' ),
+					),
+				),
+				'permission_callback' => function () {
+					return current_user_can( 'edit_theme_options' );
+				},
+				'execute_callback'    => function ( $input ) {
+					$menu = ewpa_resolve_nav_menu( $input['menu'] ?? '' );
+					if ( ! $menu ) {
+						return new WP_Error( 'menu_not_found', 'Menu not found.' );
+					}
+
+					$post = get_post( (int) ( $input['item_id'] ?? 0 ) );
+					if ( ! $post || 'nav_menu_item' !== $post->post_type ) {
+						return new WP_Error( 'item_not_found', 'No menu item with that item_id.' );
+					}
+
+					$current = wp_setup_nav_menu_item( $post );
+					$args    = array(
+						'menu-item-status'    => 'publish',
+						'menu-item-type'      => $current->type,
+						'menu-item-object'    => $current->object,
+						'menu-item-object-id' => (int) $current->object_id,
+						'menu-item-title'     => isset( $input['title'] ) ? sanitize_text_field( $input['title'] ) : $current->title,
+						'menu-item-parent-id' => isset( $input['parent_id'] ) ? (int) $input['parent_id'] : (int) $current->menu_item_parent,
+						'menu-item-position'  => isset( $input['position'] ) ? (int) $input['position'] : (int) $post->menu_order,
+					);
+					if ( 'custom' === $current->type ) {
+						$args['menu-item-url'] = isset( $input['url'] ) ? esc_url_raw( $input['url'] ) : $current->url;
+					}
+
+					$result = wp_update_nav_menu_item( $menu->term_id, $post->ID, $args );
+					if ( is_wp_error( $result ) ) {
+						return $result;
+					}
+
+					return array(
+						'item_id' => (int) $post->ID,
+						'updated' => true,
+					);
+				},
+				'meta'                => array(
+					'show_in_rest' => true,
+					'annotations'  => array( 'readonly' => false ),
+					'mcp'          => array( 'public' => true ),
+				),
+			)
+		);
+	}
+
+	// ── M5: Remove Menu Item (opt-in) ───────────────────────────────────
+	if ( ewpa_is_ability_enabled( 'ewpa/remove-menu-item' ) ) {
+		ewpa_register_ability_with_log(
+			'ewpa/remove-menu-item',
+			array(
+				'label'               => __( 'Remove Menu Item', 'enable-abilities-for-mcp' ),
+				'description'         => __( 'Permanently removes one item from a menu. Children of the removed item are kept and become top-level. Destructive — opt-in required.', 'enable-abilities-for-mcp' ),
+				'category'            => 'menu-management',
+				'input_schema'        => array(
+					'type'       => 'object',
+					'properties' => array(
+						'item_id' => array( 'type' => 'integer' ),
+					),
+					'required'   => array( 'item_id' ),
+				),
+				'output_schema'       => array(
+					'type'       => 'object',
+					'properties' => array(
+						'item_id' => array( 'type' => 'integer' ),
+						'removed' => array( 'type' => 'boolean' ),
+					),
+				),
+				'permission_callback' => function () {
+					return current_user_can( 'edit_theme_options' );
+				},
+				'execute_callback'    => function ( $input ) {
+					$post = get_post( (int) ( $input['item_id'] ?? 0 ) );
+					if ( ! $post || 'nav_menu_item' !== $post->post_type ) {
+						return new WP_Error( 'item_not_found', 'No menu item with that item_id.' );
+					}
+
+					$deleted = wp_delete_post( $post->ID, true );
+
+					return array(
+						'item_id' => (int) $post->ID,
+						'removed' => (bool) $deleted,
+					);
+				},
+				'meta'                => array(
+					'show_in_rest' => true,
+					'annotations'  => array(
+						'readonly'    => false,
+						'destructive' => true,
+					),
+					'mcp'          => array( 'public' => true ),
+				),
+			)
+		);
+	}
+
+	// ── M6: Assign Menu Location (opt-in) ───────────────────────────────
+	if ( ewpa_is_ability_enabled( 'ewpa/assign-menu-location' ) ) {
+		ewpa_register_ability_with_log(
+			'ewpa/assign-menu-location',
+			array(
+				'label'               => __( 'Assign Menu Location', 'enable-abilities-for-mcp' ),
+				'description'         => __( 'Assigns a menu to a theme location (or clears the location with menu_id 0). Changes site-wide navigation. Opt-in required.', 'enable-abilities-for-mcp' ),
+				'category'            => 'menu-management',
+				'input_schema'        => array(
+					'type'       => 'object',
+					'properties' => array(
+						'location' => array(
+							'type'        => 'string',
+							'description' => 'Theme location slug (see ewpa/list-menus).',
+						),
+						'menu_id'  => array(
+							'type'        => 'integer',
+							'description' => 'Menu term id, or 0 to clear the location.',
+						),
+					),
+					'required'   => array( 'location', 'menu_id' ),
+				),
+				'output_schema'       => array(
+					'type'       => 'object',
+					'properties' => array(
+						'location' => array( 'type' => 'string' ),
+						'menu_id'  => array( 'type' => 'integer' ),
+					),
+				),
+				'permission_callback' => function () {
+					return current_user_can( 'edit_theme_options' );
+				},
+				'execute_callback'    => function ( $input ) {
+					$location   = sanitize_key( $input['location'] ?? '' );
+					$registered = get_registered_nav_menus();
+					if ( ! isset( $registered[ $location ] ) ) {
+						return new WP_Error( 'location_not_found', 'Unknown theme location. Use ewpa/list-menus to see the registered locations.' );
+					}
+
+					$menu_id = (int) ( $input['menu_id'] ?? 0 );
+					if ( $menu_id && ! ewpa_resolve_nav_menu( $menu_id ) ) {
+						return new WP_Error( 'menu_not_found', 'No menu with that menu_id.' );
+					}
+
+					$locations              = get_nav_menu_locations();
+					$locations[ $location ] = $menu_id;
+					set_theme_mod( 'nav_menu_locations', $locations );
+
+					return array(
+						'location' => $location,
+						'menu_id'  => $menu_id,
+					);
+				},
+				'meta'                => array(
+					'show_in_rest' => true,
+					'annotations'  => array(
+						'readonly'    => false,
+						'destructive' => true,
+					),
+					'mcp'          => array( 'public' => true ),
+				),
+			)
+		);
+	}
+
+	// ── M7: Delete Menu (opt-in) ─────────────────────────────────────────
+	if ( ewpa_is_ability_enabled( 'ewpa/delete-menu' ) ) {
+		ewpa_register_ability_with_log(
+			'ewpa/delete-menu',
+			array(
+				'label'               => __( 'Delete Menu', 'enable-abilities-for-mcp' ),
+				'description'         => __( 'Permanently deletes a menu and all of its items, and clears it from any theme location it was assigned to. Destructive — opt-in required.', 'enable-abilities-for-mcp' ),
+				'category'            => 'menu-management',
+				'input_schema'        => array(
+					'type'       => 'object',
+					'properties' => array(
+						'menu' => array(
+							'type'        => array( 'integer', 'string' ),
+							'description' => 'Menu id, slug, or name.',
+						),
+					),
+					'required'   => array( 'menu' ),
+				),
+				'output_schema'       => array(
+					'type'       => 'object',
+					'properties' => array(
+						'id'      => array( 'type' => 'integer' ),
+						'deleted' => array( 'type' => 'boolean' ),
+					),
+				),
+				'permission_callback' => function () {
+					return current_user_can( 'edit_theme_options' );
+				},
+				'execute_callback'    => function ( $input ) {
+					$menu = ewpa_resolve_nav_menu( $input['menu'] ?? '' );
+					if ( ! $menu ) {
+						return new WP_Error( 'menu_not_found', 'Menu not found. Use ewpa/list-menus to see the available menus.' );
+					}
+
+					$menu_id = (int) $menu->term_id;
+					$result  = wp_delete_nav_menu( $menu_id );
+					if ( is_wp_error( $result ) ) {
+						return $result;
+					}
+					if ( ! $result ) {
+						return new WP_Error( 'delete_failed', 'The menu could not be deleted.' );
+					}
+
+					return array(
+						'id'      => $menu_id,
+						'deleted' => true,
+					);
+				},
+				'meta'                => array(
+					'show_in_rest' => true,
+					'annotations'  => array(
+						'readonly'    => false,
+						'destructive' => true,
+					),
+					'mcp'          => array( 'public' => true ),
 				),
 			)
 		);
