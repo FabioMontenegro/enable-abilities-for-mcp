@@ -7,7 +7,7 @@
 
 Let AI assistants like Claude manage your WordPress site through the [Model Context Protocol](https://modelcontextprotocol.io/) — with full control over exactly what they can and cannot do.
 
-**71 abilities in 16 categories**, each one individually toggleable from the dashboard: content, SEO (Rank Math / SEOPress / Yoast), WooCommerce, Elementor, LearnDash, JetEngine, multilanguage, `llms.txt`, cache purge, and more.
+**82 abilities in 17 categories**, each one individually toggleable from the dashboard: content, SEO (Rank Math / SEOPress / Yoast), navigation menus, WooCommerce, Elementor, LearnDash, JetEngine, multilanguage, `llms.txt`, cache purge, and more.
 
 ## How it works
 
@@ -17,11 +17,11 @@ This plugin completes the stack:
 
 ```
 Claude / MCP client  ──►  MCP Adapter  ──►  Abilities API  ──►  Enable Abilities for MCP
-                                                                (71 abilities + per-ability toggles
+                                                                (82 abilities + per-ability toggles
                                                                  + auth + activity log)
 ```
 
-1. It **registers 68 content-management abilities** (plus exposing the 3 native WordPress core ones to MCP).
+1. It **registers 79 content-management abilities** (plus exposing the 3 native WordPress core ones to MCP).
 2. It gives you an **admin dashboard** to enable or disable each ability individually — expose only what you need.
 3. It provides **authentication** (claude.ai OAuth custom connector, Application Passwords, or single-admin Bearer token) and an **activity log** of every ability executed.
 4. It also governs **third-party abilities**: anything other MCP-ready plugins (Fluent Forms, …) register shows up in the same dashboard, grouped by plugin, with the same toggles — disabling one removes it from every MCP server on the site.
@@ -38,6 +38,7 @@ Claude / MCP client  ──►  MCP Adapter  ──►  Abilities API  ──►
 | **SEO — Yoast SEO** | 3 | Read/write all meta + sitemap index |
 | **Utility** | 6 | Search & replace, site stats, raw post-meta read/write, active plugins with capability detection, **cache purge** (WP Rocket, LiteSpeed, W3TC, WP Super Cache, WP Fastest Cache) |
 | **Multilanguage** | 3 | Assign language and link translations via Polylang or WPML; `create-post` accepts `language` + `translation_of` |
+| **Navigation Menus** | 8 | Create menus, list/get with full item hierarchy, add/update items (pages, posts, terms, custom URLs), remove items, assign theme locations, delete menus (destructive ones opt-in) |
 | **Custom Post Types** | 8 | Discover and CRUD any CPT with taxonomy and meta support |
 | **WooCommerce** | 7 | Products, orders, customers — native WC API, HPOS-compatible |
 | **The Events Calendar** | 4 | List/get/create/update events with venue and organizer |
@@ -47,7 +48,7 @@ Claude / MCP client  ──►  MCP Adapter  ──►  Abilities API  ──►
 | **LearnDash** | 6 | Courses, user progress, quiz results, enroll/unenroll |
 | **AI — Agent Readiness** | 2 | Read, validate, and write the site **llms.txt** (llmstxt.org spec, audited by Lighthouse "Agentic Browsing") — integrates with SEOPress Pro or serves the file itself |
 
-Write abilities validate per-post permissions (`edit_post`, `read_post`) and destructive or high-impact abilities are **opt-in** (disabled by default): Elementor edits, LearnDash enrollment, Options Pages writes, `llms.txt` writes, code snippets.
+Write abilities validate per-post permissions (`edit_post`, `read_post`) and destructive or high-impact abilities are **opt-in** (disabled by default): Elementor edits, LearnDash enrollment, Options Pages writes, `llms.txt` writes, code snippets, and removing/deleting menu items or menus.
 
 ## Quick start
 

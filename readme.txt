@@ -5,7 +5,7 @@ Tags: mcp, ai, rest-api, content-management, woocommerce
 Requires at least: 6.9
 Tested up to: 7.0
 Requires PHP: 8.0
-Stable tag: 2.2.1
+Stable tag: 2.3.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -30,7 +30,7 @@ Prefer tokens? Application Passwords (per-user) and a single-admin Bearer token 
 
 = Features =
 
-* **71 abilities** organized in 16 categories: Core, Read, Write, SEO (Rank Math), SEO (SEOPress), SEO (Yoast), Utility, Multilanguage, Custom Post Types, WooCommerce, The Events Calendar, Code Snippets, JetEngine Options Pages, Elementor, LearnDash, and AI Agent Readiness (llms.txt)
+* **82 abilities** organized in 17 categories: Core, Read, Write, SEO (Rank Math), SEO (SEOPress), SEO (Yoast), Navigation Menus, Utility, Multilanguage, Custom Post Types, WooCommerce, The Events Calendar, Code Snippets, JetEngine Options Pages, Elementor, LearnDash, and AI Agent Readiness (llms.txt)
 * **WooCommerce integration** — dedicated abilities to manage products, orders, and customers using the native WooCommerce API (HPOS-compatible, formally declared)
 * **The Events Calendar integration** — list, get, create, and update events with venue, organizer, and date filters
 * **claude.ai OAuth custom connector** — connect from claude.ai (web, mobile, or desktop) with zero local setup: an embedded OAuth 2.1 server with Client ID Metadata Document (CIMD) support lets each user log in with their own WordPress account and role
@@ -100,6 +100,13 @@ Prefer tokens? Application Passwords (per-user) and a single-admin Bearer token 
 * Create new events with title, description, dates, venue, and organizer
 * Update existing events
 
+**Navigation Menus:**
+
+* List menus with item counts and theme locations, and get one menu's full item hierarchy
+* Create a new menu, and add pages, posts, categories, tags, or custom URLs as items (with parent and position)
+* Update an item's title, URL, parent, or position
+* Remove an item, assign a menu to a theme location, or delete a menu entirely (opt-in — destructive)
+
 **Utility:**
 
 * Search and replace text in post content
@@ -164,6 +171,11 @@ Yes — strict OAuth clients require a direct `200` on `/.well-known/oauth-autho
 1. Admin settings page showing all abilities organized by category with toggle switches.
 
 == Changelog ==
+
+= 2.3.0 =
+* New: Navigation Menus section — 8 new abilities to create and manage a site's navigation menus entirely through MCP: `create-menu`, `list-menus`, `get-menu`, `add-menu-item` (pages, posts, categories, tags, or custom URLs, with parent/position), and `update-menu-item` are enabled by default; `remove-menu-item`, `assign-menu-location`, and `delete-menu` are opt-in (destructive). All require `edit_theme_options`, the same capability WordPress demands for Appearance → Menus.
+* Updated: Total abilities: 82 in 17 categories.
+* i18n: POT and Spanish (es_ES) translation updated.
 
 = 2.2.1 =
 * Fix: `ewpa/get-cpt-items` ignored the requested `post_type` when the `s` (search) parameter was set, silently returning items from a different post type. Caused by `suppress_filters => false` on the internal `get_posts()` call, which left third-party `pre_get_posts` hooks free to rewrite the query once a search term was present (observed on a Tutor LMS site, where `lesson` is excluded from search and a search-integration plugin fell back to `courses`). Removed the override so the ability uses `get_posts()`'s own safe default (`suppress_filters => true`), matching every other CPT-listing ability in the plugin. Reported by a user testing the MCP connector against a live Tutor LMS site.
