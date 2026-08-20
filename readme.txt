@@ -5,7 +5,7 @@ Tags: mcp, ai, rest-api, content-management, woocommerce
 Requires at least: 6.9
 Tested up to: 7.0
 Requires PHP: 8.0
-Stable tag: 2.3.0
+Stable tag: 2.4.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -30,7 +30,7 @@ Prefer tokens? Application Passwords (per-user) and a single-admin Bearer token 
 
 = Features =
 
-* **82 abilities** organized in 17 categories: Core, Read, Write, SEO (Rank Math), SEO (SEOPress), SEO (Yoast), Navigation Menus, Utility, Multilanguage, Custom Post Types, WooCommerce, The Events Calendar, Code Snippets, JetEngine Options Pages, Elementor, LearnDash, and AI Agent Readiness (llms.txt)
+* **84 abilities** organized in 18 categories: Core, Read, Write, SEO (Rank Math), SEO (SEOPress), SEO (Yoast), Navigation Menus, Utility, Multilanguage, Custom Post Types, WooCommerce, The Events Calendar, Code Snippets, JetEngine Options Pages, Elementor, LearnDash, Tutor LMS, and AI Agent Readiness (llms.txt)
 * **WooCommerce integration** — dedicated abilities to manage products, orders, and customers using the native WooCommerce API (HPOS-compatible, formally declared)
 * **The Events Calendar integration** — list, get, create, and update events with venue, organizer, and date filters
 * **claude.ai OAuth custom connector** — connect from claude.ai (web, mobile, or desktop) with zero local setup: an embedded OAuth 2.1 server with Client ID Metadata Document (CIMD) support lets each user log in with their own WordPress account and role
@@ -107,6 +107,11 @@ Prefer tokens? Application Passwords (per-user) and a single-admin Bearer token 
 * Update an item's title, URL, parent, or position
 * Remove an item, assign a menu to a theme location, or delete a menu entirely (opt-in — destructive)
 
+**Tutor LMS:**
+
+* Read a lesson's video source configuration (type, value, and runtime)
+* Set a lesson's video source (external URL, YouTube, Vimeo, HTML5, or a third-party source such as Bunny.net) using Tutor's own storage function — avoids the string-only limitation of the generic Update Post Meta ability, which Tutor cannot read back
+
 **Utility:**
 
 * Search and replace text in post content
@@ -171,6 +176,12 @@ Yes — strict OAuth clients require a direct `200` on `/.well-known/oauth-autho
 1. Admin settings page showing all abilities organized by category with toggle switches.
 
 == Changelog ==
+
+= 2.4.0 =
+* New: Tutor LMS section — 2 abilities to read and set a lesson's video source: `ewpa/tutor-get-lesson-video` and `ewpa/tutor-update-lesson-video`, both enabled by default. Requires Tutor LMS (`tutor_utils()`).
+* Fix: writing a lesson's video through the generic `ewpa/update-post-meta` ability silently broke video playback — Tutor stores `_video` as a native PHP array, but `update-post-meta` always writes strings, and WordPress's own serialization safeguards (`is_serialized()`) prevent a plain or hand-serialized string from ever being reinterpreted as that array. `ewpa/tutor-update-lesson-video` calls `tutor_utils()->update_video()` directly — the same function Tutor's own editor uses — so the value is always stored correctly, including third-party sources registered via the `tutor_preferred_video_sources` filter (e.g. Bunny.net). Validated on a live Tutor LMS site with a Bunny.net-hosted lesson video.
+* Updated: Total abilities: 84 in 18 categories.
+* i18n: POT and Spanish (es_ES) translation updated.
 
 = 2.3.0 =
 * New: Navigation Menus section — 8 new abilities to create and manage a site's navigation menus entirely through MCP: `create-menu`, `list-menus`, `get-menu`, `add-menu-item` (pages, posts, categories, tags, or custom URLs, with parent/position), and `update-menu-item` are enabled by default; `remove-menu-item`, `assign-menu-location`, and `delete-menu` are opt-in (destructive). All require `edit_theme_options`, the same capability WordPress demands for Appearance → Menus.
