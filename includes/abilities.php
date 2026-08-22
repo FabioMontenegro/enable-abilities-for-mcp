@@ -348,6 +348,16 @@ function ewpa_filter_core_abilities( array $args, string $ability_name ): array 
 	if ( ! empty( $args['execute_callback'] ) && is_callable( $args['execute_callback'] ) ) {
 		$original                 = $args['execute_callback'];
 		$args['execute_callback'] = static function ( $input = null ) use ( $ability_name, $original ) {
+			if ( ! ewpa_is_ability_enabled( $ability_name ) ) {
+				return new WP_Error(
+					'ability_disabled',
+					sprintf(
+						/* translators: %s: ability name */
+						__( 'The ability "%s" has been disabled. Enable it in the plugin settings before calling it.', 'enable-abilities-for-mcp' ),
+						$ability_name
+					)
+				);
+			}
 			$result = ( null === $input ) ? $original() : $original( $input );
 			ewpa_log_activity( get_current_user_id(), $ability_name );
 			return $result;
@@ -463,7 +473,7 @@ function ewpa_register_ability_categories(): void {
 		'tutor',
 		array(
 			'label'       => __( 'Tutor LMS', 'enable-abilities-for-mcp' ),
-			'description' => __( 'Abilities to read and update the video source of Tutor LMS lessons.', 'enable-abilities-for-mcp' ),
+			'description' => __( 'Abilities to manage Tutor LMS courses, lesson videos, user progress, quiz results, and enrollments.', 'enable-abilities-for-mcp' ),
 		)
 	);
 }
@@ -2343,6 +2353,119 @@ function ewpa_register_custom_abilities(): void {
 						'message'          => $set_thumbnail
 							? 'Image uploaded and set as featured image successfully.'
 							: 'Image uploaded to the media library successfully.',
+					);
+				},
+				'meta'                => array(
+					'show_in_rest' => true,
+					'mcp'          => array(
+						'public' => true,
+					),
+				),
+			)
+		);
+	}
+
+	// ── B11: Duplicate Post / Page / CPT ────────────────────────────────
+	if ( ewpa_is_ability_enabled( 'ewpa/duplicate-post' ) ) {
+		ewpa_register_ability_with_log(
+			'ewpa/duplicate-post',
+			array(
+				'label'               => __( 'Duplicate Post / Page / CPT', 'enable-abilities-for-mcp' ),
+				'description'         => __( 'Creates an exact copy of any post, page, or custom post type item — including all post meta (ACF, SEO, featured image) and taxonomy terms. The duplicate is saved as draft by default. Returns the new post ID and edit URL.', 'enable-abilities-for-mcp' ),
+				'category'            => 'content-management',
+				'input_schema'        => array(
+					'type'       => 'object',
+					'required'   => array( 'post_id' ),
+					'properties' => array(
+						'post_id'    => array(
+							'type'        => 'integer',
+							'description' => 'ID of the post, page, or CPT item to duplicate.',
+						),
+						'title'      => array(
+							'type'        => 'string',
+							'description' => 'Title for the duplicate. Defaults to the original title with " (Copy)" appended.',
+						),
+						'status'     => array(
+							'type'        => 'string',
+							'enum'        => array( 'draft', 'publish', 'pending', 'private' ),
+							'description' => 'Status of the duplicate. Defaults to draft.',
+						),
+						'copy_meta'  => array(
+							'type'        => 'boolean',
+							'description' => 'Copy all post meta (ACF fields, SEO data, featured image, etc.). Defaults to true.',
+						),
+						'copy_terms' => array(
+							'type'        => 'boolean',
+							'description' => 'Copy taxonomy terms (categories, tags, custom taxonomies). Defaults to true.',
+						),
+					),
+				),
+				'auth_callback'       => function () {
+					return current_user_can( 'edit_posts' );
+				},
+				'execute_callback'    => function ( $input ) {
+					$post_id = absint( $input['post_id'] );
+					$post    = get_post( $post_id );
+
+					if ( ! $post || 'revision' === $post->post_type || 'attachment' === $post->post_type ) {
+						return new WP_Error( 'not_found', __( 'Post not found or type cannot be duplicated.', 'enable-abilities-for-mcp' ) );
+					}
+
+					$title      = isset( $input['title'] ) ? sanitize_text_field( $input['title'] ) : $post->post_title . ' (Copy)';
+					$status     = isset( $input['status'] ) ? sanitize_text_field( $input['status'] ) : 'draft';
+					$copy_meta  = ! isset( $input['copy_meta'] ) || (bool) $input['copy_meta'];
+					$copy_terms = ! isset( $input['copy_terms'] ) || (bool) $input['copy_terms'];
+
+					$new_id = wp_insert_post(
+						wp_slash(
+							array(
+								'post_title'     => $title,
+								'post_content'   => $post->post_content,
+								'post_excerpt'   => $post->post_excerpt,
+								'post_status'    => $status,
+								'post_type'      => $post->post_type,
+								'post_author'    => $post->post_author,
+								'post_parent'    => $post->post_parent,
+								'menu_order'     => $post->menu_order,
+								'comment_status' => $post->comment_status,
+								'ping_status'    => $post->ping_status,
+							)
+						),
+						true
+					);
+
+					if ( is_wp_error( $new_id ) ) {
+						return $new_id;
+					}
+
+					if ( $copy_meta ) {
+						$skip = array( '_edit_lock', '_edit_last', '_wp_old_slug', '_wp_old_date' );
+						foreach ( get_post_meta( $post_id ) as $key => $values ) {
+							if ( in_array( $key, $skip, true ) ) {
+								continue;
+							}
+							foreach ( $values as $value ) {
+								add_post_meta( $new_id, $key, $value );
+							}
+						}
+					}
+
+					if ( $copy_terms ) {
+						foreach ( get_object_taxonomies( $post->post_type ) as $taxonomy ) {
+							$terms = wp_get_object_terms( $post_id, $taxonomy, array( 'fields' => 'ids' ) );
+							if ( ! is_wp_error( $terms ) && ! empty( $terms ) ) {
+								wp_set_object_terms( $new_id, $terms, $taxonomy );
+							}
+						}
+					}
+
+					return array(
+						'new_post_id' => $new_id,
+						'title'       => $title,
+						'status'      => $status,
+						'post_type'   => $post->post_type,
+						'edit_url'    => get_edit_post_link( $new_id, 'raw' ),
+						'source_id'   => $post_id,
 					);
 				},
 				'meta'                => array(
@@ -8116,6 +8239,427 @@ function ewpa_register_custom_abilities(): void {
 						'annotations'  => array(
 							'readonly'    => false,
 							'destructive' => false,
+						),
+						'mcp'          => array(
+							'public' => true,
+						),
+					),
+				)
+			);
+		}
+
+		// ── K3: Get Courses ────────────────────────────────────────────────────
+		if ( ewpa_is_ability_enabled( 'ewpa/tutor-get-courses' ) ) {
+			ewpa_register_ability_with_log(
+				'ewpa/tutor-get-courses',
+				array(
+					'label'               => __( 'Tutor LMS: List Courses', 'enable-abilities-for-mcp' ),
+					'category'            => 'tutor',
+					'description'         => __( 'Returns a paginated list of published Tutor LMS courses with title, slug, permalink, and enrolled user count.', 'enable-abilities-for-mcp' ),
+					'input_schema'        => array(
+						'type'       => 'object',
+						'properties' => array(
+							'per_page' => array(
+								'type'        => 'integer',
+								'description' => __( 'Number of courses to return (1–100). Default: 20.', 'enable-abilities-for-mcp' ),
+							),
+							'page'     => array(
+								'type'        => 'integer',
+								'description' => __( 'Page number. Default: 1.', 'enable-abilities-for-mcp' ),
+							),
+							'search'   => array(
+								'type'        => 'string',
+								'description' => __( 'Filter by course title.', 'enable-abilities-for-mcp' ),
+							),
+						),
+					),
+					'permission_callback' => function () {
+						return current_user_can( 'edit_posts' );
+					},
+					'execute_callback'    => function ( $input ) {
+						$args = array(
+							'post_type'        => tutor()->course_post_type,
+							'post_status'      => 'publish',
+							'posts_per_page'   => min( (int) ( $input['per_page'] ?? 20 ), 100 ),
+							'paged'            => max( 1, (int) ( $input['page'] ?? 1 ) ),
+							'suppress_filters' => true,
+						);
+						if ( ! empty( $input['search'] ) ) {
+							$args['s'] = sanitize_text_field( $input['search'] );
+						}
+						$courses = get_posts( $args );
+						$result  = array();
+						foreach ( $courses as $course ) {
+							$result[] = array(
+								'id'             => $course->ID,
+								'title'          => $course->post_title,
+								'slug'           => $course->post_name,
+								'permalink'      => get_permalink( $course->ID ),
+								'enrolled_count' => (int) tutor_utils()->count_enrolled_users_by_course( $course->ID ),
+							);
+						}
+						return array(
+							'courses' => $result,
+							'total'   => count( $result ),
+						);
+					},
+					'meta'                => array(
+						'show_in_rest' => true,
+						'annotations'  => array(
+							'readonly'    => true,
+							'destructive' => false,
+						),
+						'mcp'          => array(
+							'public' => true,
+						),
+					),
+				)
+			);
+		}
+
+		// ── K4: Get Course ─────────────────────────────────────────────────────
+		if ( ewpa_is_ability_enabled( 'ewpa/tutor-get-course' ) ) {
+			ewpa_register_ability_with_log(
+				'ewpa/tutor-get-course',
+				array(
+					'label'               => __( 'Tutor LMS: Get Course', 'enable-abilities-for-mcp' ),
+					'category'            => 'tutor',
+					'description'         => __( 'Returns full detail for a single Tutor LMS course: title, description, permalink, and its topics with ordered lessons, quizzes, and assignments.', 'enable-abilities-for-mcp' ),
+					'input_schema'        => array(
+						'type'       => 'object',
+						'required'   => array( 'course_id' ),
+						'properties' => array(
+							'course_id' => array(
+								'type'        => 'integer',
+								'description' => __( 'Course post ID.', 'enable-abilities-for-mcp' ),
+							),
+						),
+					),
+					'permission_callback' => function ( $input ) {
+						return ewpa_check_post_permission( $input, 'read_post', 'course_id' );
+					},
+					'execute_callback'    => function ( $input ) {
+						$course_id = absint( $input['course_id'] ?? 0 );
+						$course    = get_post( $course_id );
+
+						if ( ! $course || tutor()->course_post_type !== $course->post_type ) {
+							return new WP_Error( 'not_found', 'Course not found.' );
+						}
+
+						$topics_query = tutor_utils()->get_topics( $course_id );
+						$topics       = array();
+
+						if ( $topics_query && $topics_query->have_posts() ) {
+							foreach ( $topics_query->get_posts() as $topic ) {
+								$contents      = array();
+								$content_query = tutor_utils()->get_course_contents_by_topic( $topic->ID, -1 );
+
+								if ( $content_query && $content_query->have_posts() ) {
+									foreach ( $content_query->get_posts() as $content ) {
+										$contents[] = array(
+											'id'    => $content->ID,
+											'title' => $content->post_title,
+											'type'  => $content->post_type,
+										);
+									}
+								}
+
+								$topics[] = array(
+									'id'       => $topic->ID,
+									'title'    => $topic->post_title,
+									'contents' => $contents,
+								);
+							}
+						}
+
+						return array(
+							'id'          => $course->ID,
+							'title'       => $course->post_title,
+							'description' => $course->post_content,
+							'permalink'   => get_permalink( $course->ID ),
+							'topics'      => $topics,
+						);
+					},
+					'meta'                => array(
+						'show_in_rest' => true,
+						'annotations'  => array(
+							'readonly'    => true,
+							'destructive' => false,
+						),
+						'mcp'          => array(
+							'public' => true,
+						),
+					),
+				)
+			);
+		}
+
+		// ── K5: Get User Progress ──────────────────────────────────────────────
+		if ( ewpa_is_ability_enabled( 'ewpa/tutor-get-user-progress' ) ) {
+			ewpa_register_ability_with_log(
+				'ewpa/tutor-get-user-progress',
+				array(
+					'label'               => __( 'Tutor LMS: Get User Progress', 'enable-abilities-for-mcp' ),
+					'category'            => 'tutor',
+					'description'         => __( "A user's progress in a specific Tutor LMS course: enrollment status and date, steps completed/total, and completion percentage.", 'enable-abilities-for-mcp' ),
+					'input_schema'        => array(
+						'type'       => 'object',
+						'required'   => array( 'user_id', 'course_id' ),
+						'properties' => array(
+							'user_id'   => array(
+								'type'        => 'integer',
+								'description' => __( 'WordPress user ID.', 'enable-abilities-for-mcp' ),
+							),
+							'course_id' => array(
+								'type'        => 'integer',
+								'description' => __( 'Course post ID.', 'enable-abilities-for-mcp' ),
+							),
+						),
+					),
+					'permission_callback' => function () {
+						return current_user_can( 'edit_posts' );
+					},
+					'execute_callback'    => function ( $input ) {
+						$user_id   = absint( $input['user_id'] ?? 0 );
+						$course_id = absint( $input['course_id'] ?? 0 );
+
+						if ( ! get_userdata( $user_id ) ) {
+							return new WP_Error( 'not_found', 'User not found.' );
+						}
+						$course = get_post( $course_id );
+						if ( ! $course || tutor()->course_post_type !== $course->post_type ) {
+							return new WP_Error( 'not_found', 'Course not found.' );
+						}
+
+						$enrollment = \Tutor\Models\EnrollmentModel::is_enrolled( $course_id, $user_id, false );
+						$stats      = tutor_utils()->get_course_completed_percent( $course_id, $user_id, true );
+
+						return array(
+							'enrolled'          => (bool) $enrollment,
+							'enrollment_status' => $enrollment ? $enrollment->post_status : null,
+							'enrolled_at'       => $enrollment ? $enrollment->post_date : null,
+							'completed_percent' => (int) ( $stats['completed_percent'] ?? 0 ),
+							'completed_count'   => (int) ( $stats['completed_count'] ?? 0 ),
+							'total_count'       => (int) ( $stats['total_count'] ?? 0 ),
+						);
+					},
+					'meta'                => array(
+						'show_in_rest' => true,
+						'annotations'  => array(
+							'readonly'    => true,
+							'destructive' => false,
+						),
+						'mcp'          => array(
+							'public' => true,
+						),
+					),
+				)
+			);
+		}
+
+		// ── K6: Get Quiz Results ───────────────────────────────────────────────
+		if ( ewpa_is_ability_enabled( 'ewpa/tutor-get-quiz-results' ) ) {
+			ewpa_register_ability_with_log(
+				'ewpa/tutor-get-quiz-results',
+				array(
+					'label'               => __( 'Tutor LMS: Get Quiz Results', 'enable-abilities-for-mcp' ),
+					'category'            => 'tutor',
+					'description'         => __( 'Quiz attempt history for a user (optionally filtered by quiz ID): score, total marks, pass/fail result, and timestamps. Sorted newest first.', 'enable-abilities-for-mcp' ),
+					'input_schema'        => array(
+						'type'       => 'object',
+						'required'   => array( 'user_id' ),
+						'properties' => array(
+							'user_id' => array(
+								'type'        => 'integer',
+								'description' => __( 'WordPress user ID.', 'enable-abilities-for-mcp' ),
+							),
+							'quiz_id' => array(
+								'type'        => 'integer',
+								'description' => __( 'Optional. Restrict results to a single quiz.', 'enable-abilities-for-mcp' ),
+							),
+						),
+					),
+					'permission_callback' => function () {
+						return current_user_can( 'edit_posts' );
+					},
+					'execute_callback'    => function ( $input ) {
+						$user_id = absint( $input['user_id'] ?? 0 );
+						if ( ! get_userdata( $user_id ) ) {
+							return new WP_Error( 'not_found', 'User not found.' );
+						}
+
+						$quiz_id = absint( $input['quiz_id'] ?? 0 );
+						if ( $quiz_id ) {
+							$attempts = ( new \Tutor\Models\QuizModel() )->quiz_attempts( $quiz_id, $user_id );
+						} else {
+							$attempts = tutor_utils()->get_all_quiz_attempts_by_user( $user_id );
+						}
+
+						$result = array();
+						foreach ( (array) $attempts as $attempt ) {
+							$result[] = array(
+								'attempt_id'      => (int) $attempt->attempt_id,
+								'quiz_id'         => (int) $attempt->quiz_id,
+								'course_id'       => (int) $attempt->course_id,
+								'total_questions' => (int) $attempt->total_questions,
+								'earned_marks'    => (float) $attempt->earned_marks,
+								'total_marks'     => (float) $attempt->total_marks,
+								'result'          => $attempt->result,
+								'status'          => $attempt->attempt_status,
+								'started_at'      => $attempt->attempt_started_at,
+								'ended_at'        => $attempt->attempt_ended_at,
+							);
+						}
+
+						return array(
+							'attempts' => $result,
+							'total'    => count( $result ),
+						);
+					},
+					'meta'                => array(
+						'show_in_rest' => true,
+						'annotations'  => array(
+							'readonly'    => true,
+							'destructive' => false,
+						),
+						'mcp'          => array(
+							'public' => true,
+						),
+					),
+				)
+			);
+		}
+
+		// ── K7: Enroll User (disabled by default) ─────────────────────────────
+		if ( ewpa_is_ability_enabled( 'ewpa/tutor-enroll-user' ) ) {
+			ewpa_register_ability_with_log(
+				'ewpa/tutor-enroll-user',
+				array(
+					'label'               => __( 'Tutor LMS: Enroll User', 'enable-abilities-for-mcp' ),
+					'category'            => 'tutor',
+					'description'         => __( 'Enrolls a user in a Tutor LMS course. Requires manage_options. Opt-in required — disabled by default.', 'enable-abilities-for-mcp' ),
+					'input_schema'        => array(
+						'type'       => 'object',
+						'required'   => array( 'user_id', 'course_id' ),
+						'properties' => array(
+							'user_id'   => array(
+								'type'        => 'integer',
+								'description' => __( 'WordPress user ID.', 'enable-abilities-for-mcp' ),
+							),
+							'course_id' => array(
+								'type'        => 'integer',
+								'description' => __( 'Course post ID.', 'enable-abilities-for-mcp' ),
+							),
+						),
+					),
+					'permission_callback' => function () {
+						return current_user_can( 'manage_options' );
+					},
+					'execute_callback'    => function ( $input ) {
+						$user_id   = absint( $input['user_id'] ?? 0 );
+						$course_id = absint( $input['course_id'] ?? 0 );
+
+						if ( ! get_userdata( $user_id ) ) {
+							return new WP_Error( 'not_found', __( 'User not found.', 'enable-abilities-for-mcp' ), array( 'status' => 404 ) );
+						}
+						$course = get_post( $course_id );
+						if ( ! $course || tutor()->course_post_type !== $course->post_type ) {
+							return new WP_Error( 'not_found', __( 'Course not found.', 'enable-abilities-for-mcp' ), array( 'status' => 404 ) );
+						}
+
+						$existing = \Tutor\Models\EnrollmentModel::is_enrolled( $course_id, $user_id, false );
+						if ( $existing ) {
+							return array(
+								'success'          => true,
+								'message'          => __( 'User already enrolled in this course.', 'enable-abilities-for-mcp' ),
+								'already_enrolled' => true,
+							);
+						}
+
+						$enrollment_id = tutor_utils()->do_enroll( $course_id, 0, $user_id );
+						if ( ! $enrollment_id ) {
+							return new WP_Error( 'enroll_failed', __( 'Enrollment failed.', 'enable-abilities-for-mcp' ) );
+						}
+
+						return array(
+							'success'       => true,
+							'user_id'       => $user_id,
+							'course_id'     => $course_id,
+							'enrollment_id' => (int) $enrollment_id,
+							'message'       => __( 'User enrolled successfully.', 'enable-abilities-for-mcp' ),
+						);
+					},
+					'meta'                => array(
+						'show_in_rest' => true,
+						'annotations'  => array(
+							'readonly'    => false,
+							'destructive' => false,
+						),
+						'mcp'          => array(
+							'public' => true,
+						),
+					),
+				)
+			);
+		}
+
+		// ── K8: Unenroll User (disabled by default) ───────────────────────────
+		if ( ewpa_is_ability_enabled( 'ewpa/tutor-unenroll-user' ) ) {
+			ewpa_register_ability_with_log(
+				'ewpa/tutor-unenroll-user',
+				array(
+					'label'               => __( 'Tutor LMS: Unenroll User', 'enable-abilities-for-mcp' ),
+					'category'            => 'tutor',
+					'description'         => __( "Cancels a user's enrollment in a Tutor LMS course (sets the enrollment status to cancel). Requires manage_options. Opt-in required — disabled by default.", 'enable-abilities-for-mcp' ),
+					'input_schema'        => array(
+						'type'       => 'object',
+						'required'   => array( 'user_id', 'course_id' ),
+						'properties' => array(
+							'user_id'   => array(
+								'type'        => 'integer',
+								'description' => __( 'WordPress user ID.', 'enable-abilities-for-mcp' ),
+							),
+							'course_id' => array(
+								'type'        => 'integer',
+								'description' => __( 'Course post ID.', 'enable-abilities-for-mcp' ),
+							),
+						),
+					),
+					'permission_callback' => function () {
+						return current_user_can( 'manage_options' );
+					},
+					'execute_callback'    => function ( $input ) {
+						$user_id   = absint( $input['user_id'] ?? 0 );
+						$course_id = absint( $input['course_id'] ?? 0 );
+
+						$enrollment = \Tutor\Models\EnrollmentModel::is_enrolled( $course_id, $user_id, false );
+						if ( ! $enrollment ) {
+							return new WP_Error( 'not_enrolled', __( 'User is not enrolled in this course.', 'enable-abilities-for-mcp' ), array( 'status' => 404 ) );
+						}
+
+						$updated = wp_update_post(
+							array(
+								'ID'          => $enrollment->ID,
+								'post_status' => 'cancel',
+							),
+							true
+						);
+						if ( is_wp_error( $updated ) ) {
+							return $updated;
+						}
+
+						return array(
+							'success'   => true,
+							'user_id'   => $user_id,
+							'course_id' => $course_id,
+							'message'   => __( "User's enrollment cancelled successfully.", 'enable-abilities-for-mcp' ),
+						);
+					},
+					'meta'                => array(
+						'show_in_rest' => true,
+						'annotations'  => array(
+							'readonly'    => false,
+							'destructive' => true,
 						),
 						'mcp'          => array(
 							'public' => true,
