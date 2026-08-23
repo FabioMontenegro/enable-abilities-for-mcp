@@ -279,6 +279,9 @@ add_action( 'plugins_loaded', 'ewpa_maybe_migrate_keys_v240' );
 // Adds the v2.5.0 Tutor LMS course/progress/quiz abilities to existing installs.
 add_action( 'plugins_loaded', 'ewpa_maybe_migrate_keys_v250' );
 
+// Adds ewpa/duplicate-post introduced in v2.5.0 to existing installs.
+add_action( 'plugins_loaded', 'ewpa_maybe_migrate_keys_v251' );
+
 
 /*
  * ==========================================================================
@@ -740,6 +743,30 @@ function ewpa_maybe_migrate_keys_v250() {
 	}
 
 	update_option( 'ewpa_keys_migrated_v250', true );
+}
+
+/**
+ * Adds ewpa/duplicate-post introduced in v2.5.0 to existing installs.
+ *
+ * @return void
+ */
+function ewpa_maybe_migrate_keys_v251(): void {
+	if ( get_option( 'ewpa_keys_migrated_v251' ) ) {
+		return;
+	}
+
+	$enabled = get_option( EWPA_OPTION_KEY );
+	if ( ! is_array( $enabled ) ) {
+		update_option( 'ewpa_keys_migrated_v251', true );
+		return;
+	}
+
+	if ( ! in_array( 'ewpa/duplicate-post', $enabled, true ) ) {
+		$enabled[] = 'ewpa/duplicate-post';
+		update_option( EWPA_OPTION_KEY, $enabled );
+	}
+
+	update_option( 'ewpa_keys_migrated_v251', true );
 }
 
 /**
