@@ -2447,7 +2447,7 @@ function ewpa_register_custom_abilities(): void {
 								continue;
 							}
 							foreach ( $values as $value ) {
-								add_post_meta( $new_id, $key, $value );
+								add_post_meta( $new_id, $key, wp_slash( $value ) );
 							}
 						}
 					}
