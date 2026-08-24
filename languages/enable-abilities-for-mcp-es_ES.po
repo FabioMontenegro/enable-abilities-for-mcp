@@ -1,6 +1,6 @@
 msgid ""
 msgstr ""
-"Project-Id-Version: Enable Abilities for MCP 2.0.13\n"
+"Project-Id-Version: Enable Abilities for MCP 2.5.0\n"
 "Report-Msgid-Bugs-To: https://wordpress.org/support/plugin/enable-abilities-for-mcp\n"
 "Last-Translator: Fabio Montenegro <edicionlimitadamail@gmail.com>\n"
 "Language-Team: Spanish (Spain) <https://translate.wordpress.org/locale/es/>\n"
@@ -2534,3 +2534,15 @@ msgstr "Duración del video: minutos. Por defecto \"0\"."
 #: includes/abilities.php:8065
 msgid "Video runtime — seconds. Default \"0\"."
 msgstr "Duración del video: segundos. Por defecto \"0\"."
+
+#: includes/abilities.php:2375
+msgid "Duplicate Post / Page / CPT"
+msgstr "Duplicar entrada / página / CPT"
+
+#: includes/abilities.php:2376
+msgid "Creates an exact copy of any post, page, or custom post type item — including all post meta (ACF, SEO, featured image) and taxonomy terms. The duplicate is saved as draft by default. Returns the new post ID and edit URL."
+msgstr "Crea una copia exacta de cualquier entrada, página o elemento de tipo de contenido personalizado — incluyendo todos los meta de la publicación (ACF, SEO, imagen destacada) y términos de taxonomía. El duplicado se guarda como borrador por defecto. Devuelve el ID de la nueva publicación y la URL de edición."
+
+#: includes/abilities.php:2413
+msgid "Post not found or type cannot be duplicated."
+msgstr "Publicación no encontrada o tipo no puede ser duplicado."

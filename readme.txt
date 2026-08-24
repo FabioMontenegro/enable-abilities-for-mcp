@@ -5,7 +5,7 @@ Tags: mcp, ai, rest-api, content-management, woocommerce
 Requires at least: 6.9
 Tested up to: 7.0
 Requires PHP: 8.0
-Stable tag: 2.4.0
+Stable tag: 2.5.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -176,6 +176,13 @@ Yes — strict OAuth clients require a direct `200` on `/.well-known/oauth-autho
 1. Admin settings page showing all abilities organized by category with toggle switches.
 
 == Changelog ==
+
+= 2.5.0 =
+* New: `ewpa/duplicate-post` — duplicates any post, page, or CPT item, copying all post meta (ACF fields, SEO data, featured image) and taxonomy terms. The copy is saved as a draft by default. Opt-in write ability.
+* Fix: meta values are now re-slashed before `add_post_meta()` to match WordPress's internal `wp_unslash()` contract — prevents backslash loss in serialized or JSON meta fields (e.g. `_elementor_data`) when duplicating.
+* Fix: self-healing migration automatically adds `ewpa/duplicate-post` to the enabled-abilities list on existing installs upgrading from earlier versions.
+* Updated: Total abilities: 85 in 18 categories.
+* i18n: POT and Spanish (es_ES) translation updated.
 
 = 2.4.0 =
 * New: Tutor LMS section — 2 abilities to read and set a lesson's video source: `ewpa/tutor-get-lesson-video` and `ewpa/tutor-update-lesson-video`, both enabled by default. Requires Tutor LMS (`tutor_utils()`).

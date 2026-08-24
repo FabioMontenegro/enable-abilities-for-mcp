@@ -2,7 +2,7 @@
 # This file is distributed under the GPL v2 or later.
 msgid ""
 msgstr ""
-"Project-Id-Version: Enable Abilities for MCP 2.4.0\n"
+"Project-Id-Version: Enable Abilities for MCP 2.5.0\n"
 "Report-Msgid-Bugs-To: https://wordpress.org/support/plugin/enable-abilities-for-mcp\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -2533,4 +2533,16 @@ msgstr ""
 
 #: includes/admin.php:1186
 msgid "Already reviewed / don&#8217;t show again"
+msgstr ""
+
+#: includes/abilities.php:2375
+msgid "Duplicate Post / Page / CPT"
+msgstr ""
+
+#: includes/abilities.php:2376
+msgid "Creates an exact copy of any post, page, or custom post type item — including all post meta (ACF, SEO, featured image) and taxonomy terms. The duplicate is saved as draft by default. Returns the new post ID and edit URL."
+msgstr ""
+
+#: includes/abilities.php:2413
+msgid "Post not found or type cannot be duplicated."
 msgstr ""
