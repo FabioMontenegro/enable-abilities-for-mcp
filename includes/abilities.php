@@ -2402,11 +2402,10 @@ function ewpa_register_custom_abilities(): void {
 						),
 					),
 				),
+				'permission_callback' => function () {
+					return current_user_can( 'edit_posts' );
+				},
 				'execute_callback'    => function ( $input ) {
-					if ( ! current_user_can( 'edit_posts' ) ) {
-						return new WP_Error( 'rest_forbidden', __( 'You do not have permission to duplicate posts.', 'enable-abilities-for-mcp' ), array( 'status' => 403 ) );
-					}
-
 					$post_id = absint( $input['post_id'] );
 					$post    = get_post( $post_id );
 
