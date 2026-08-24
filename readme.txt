@@ -30,7 +30,7 @@ Prefer tokens? Application Passwords (per-user) and a single-admin Bearer token 
 
 = Features =
 
-* **84 abilities** organized in 18 categories: Core, Read, Write, SEO (Rank Math), SEO (SEOPress), SEO (Yoast), Navigation Menus, Utility, Multilanguage, Custom Post Types, WooCommerce, The Events Calendar, Code Snippets, JetEngine Options Pages, Elementor, LearnDash, Tutor LMS, and AI Agent Readiness (llms.txt)
+* **91 abilities** organized in 18 categories: Core, Read, Write, SEO (Rank Math), SEO (SEOPress), SEO (Yoast), Navigation Menus, Utility, Multilanguage, Custom Post Types, WooCommerce, The Events Calendar, Code Snippets, JetEngine Options Pages, Elementor, LearnDash, Tutor LMS, and AI Agent Readiness (llms.txt)
 * **WooCommerce integration** — dedicated abilities to manage products, orders, and customers using the native WooCommerce API (HPOS-compatible, formally declared)
 * **The Events Calendar integration** — list, get, create, and update events with venue, organizer, and date filters
 * **claude.ai OAuth custom connector** — connect from claude.ai (web, mobile, or desktop) with zero local setup: an embedded OAuth 2.1 server with Client ID Metadata Document (CIMD) support lets each user log in with their own WordPress account and role
@@ -57,6 +57,7 @@ Prefer tokens? Application Passwords (per-user) and a single-admin Bearer token 
 * Moderate comments
 * Reply to comments as the authenticated user
 * Upload images from external URLs to the media library (with optional auto-assign as featured image)
+* Duplicate any post, page, or custom post type item — including all post meta (ACF, SEO, featured image) and taxonomy terms; saved as a draft by default
 
 **SEO — Rank Math:**
 
@@ -111,6 +112,10 @@ Prefer tokens? Application Passwords (per-user) and a single-admin Bearer token 
 
 * Read a lesson's video source configuration (type, value, and runtime)
 * Set a lesson's video source (external URL, YouTube, Vimeo, HTML5, or a third-party source such as Bunny.net) using Tutor's own storage function — avoids the string-only limitation of the generic Update Post Meta ability, which Tutor cannot read back
+* List courses, and get a single course's full detail with its topics/lessons hierarchy
+* Get a user's enrollment status and completion progress for a course
+* Get a user's quiz attempt results, optionally filtered to a single quiz
+* Enroll a user in a course, and unenroll them (both opt-in, `manage_options` only)
 
 **Utility:**
 
@@ -176,6 +181,11 @@ Yes — strict OAuth clients require a direct `200` on `/.well-known/oauth-autho
 1. Admin settings page showing all abilities organized by category with toggle switches.
 
 == Changelog ==
+
+= 2.5.1 =
+* Fix: `ewpa/tutor-get-user-progress` always returned `enrollment_status: null` — Tutor's `EnrollmentModel::is_enrolled()` doesn't select `post_status` in its query, so the field silently read as null. Now resolved via `get_post()`.
+* Docs: v2.5.0 also shipped 6 Tutor LMS parity abilities (list courses, get course detail with topics/lessons hierarchy, get user progress, get quiz results, enroll user, unenroll user) that were left undocumented in that release — now reflected here and in the Available Abilities list.
+* Updated: Total abilities: 91 in 18 categories (corrected from the 85 mistakenly listed in 2.5.0).
 
 = 2.5.0 =
 * New: `ewpa/duplicate-post` — duplicates any post, page, or CPT item, copying all post meta (ACF fields, SEO data, featured image) and taxonomy terms. The copy is saved as a draft by default. Opt-in write ability.

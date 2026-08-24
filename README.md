@@ -7,7 +7,7 @@
 
 Let AI assistants like Claude manage your WordPress site through the [Model Context Protocol](https://modelcontextprotocol.io/) — with full control over exactly what they can and cannot do.
 
-**84 abilities in 18 categories**, each one individually toggleable from the dashboard: content, SEO (Rank Math / SEOPress / Yoast), navigation menus, WooCommerce, Elementor, LearnDash, Tutor LMS, JetEngine, multilanguage, `llms.txt`, cache purge, and more.
+**91 abilities in 18 categories**, each one individually toggleable from the dashboard: content, SEO (Rank Math / SEOPress / Yoast), navigation menus, WooCommerce, Elementor, LearnDash, Tutor LMS, JetEngine, multilanguage, `llms.txt`, cache purge, and more.
 
 ## How it works
 
@@ -17,11 +17,11 @@ This plugin completes the stack:
 
 ```
 Claude / MCP client  ──►  MCP Adapter  ──►  Abilities API  ──►  Enable Abilities for MCP
-                                                                (84 abilities + per-ability toggles
+                                                                (91 abilities + per-ability toggles
                                                                  + auth + activity log)
 ```
 
-1. It **registers 81 content-management abilities** (plus exposing the 3 native WordPress core ones to MCP).
+1. It **registers 88 content-management abilities** (plus exposing the 3 native WordPress core ones to MCP).
 2. It gives you an **admin dashboard** to enable or disable each ability individually — expose only what you need.
 3. It provides **authentication** (claude.ai OAuth custom connector, Application Passwords, or single-admin Bearer token) and an **activity log** of every ability executed.
 4. It also governs **third-party abilities**: anything other MCP-ready plugins (Fluent Forms, …) register shows up in the same dashboard, grouped by plugin, with the same toggles — disabling one removes it from every MCP server on the site.
@@ -32,7 +32,7 @@ Claude / MCP client  ──►  MCP Adapter  ──►  Abilities API  ──►
 |---|---|---|
 | **WordPress Core** | 3 | Native site/user/environment info, exposed to MCP by this plugin |
 | **Read** | 9 | Posts, pages, categories, tags, comments, media, users — with filters |
-| **Write** | 10 | Create/update/delete posts and pages, moderate and reply to comments, upload images from URL |
+| **Write** | 11 | Create/update/delete posts and pages, moderate and reply to comments, upload images from URL, duplicate any post/page/CPT with meta and taxonomies |
 | **SEO — Rank Math** | 3 | Read/write all meta + write structured-data schema blocks (FAQPage, Article, Product…) as JSON-LD |
 | **SEO — SEOPress** | 3 | Read/write all meta + **content analysis**: every SEOPress check (headings, internal links, schemas…) with impact level and recommendation, optionally re-analyzing the rendered page first |
 | **SEO — Yoast SEO** | 3 | Read/write all meta + sitemap index |
@@ -46,10 +46,10 @@ Claude / MCP client  ──►  MCP Adapter  ──►  Abilities API  ──►
 | **JetEngine — Options Pages** | 3 | Read/write Options Pages fields, including repeaters |
 | **Elementor** | 3 | Read the element tree, edit element settings by id (single or batch), bind widget settings to dynamic tags |
 | **LearnDash** | 6 | Courses, user progress, quiz results, enroll/unenroll |
-| **Tutor LMS** | 2 | Read and set a lesson's video source (external URL, YouTube, Vimeo, HTML5, or third-party sources like Bunny.net) via Tutor's own storage function — avoids the string-only limitation of the generic post-meta ability |
+| **Tutor LMS** | 8 | Courses, course detail with topics/lessons hierarchy, user progress and quiz results, enroll/unenroll (opt-in), plus reading and setting a lesson's video source via Tutor's own storage function — avoids the string-only limitation of the generic post-meta ability |
 | **AI — Agent Readiness** | 2 | Read, validate, and write the site **llms.txt** (llmstxt.org spec, audited by Lighthouse "Agentic Browsing") — integrates with SEOPress Pro or serves the file itself |
 
-Write abilities validate per-post permissions (`edit_post`, `read_post`) and destructive or high-impact abilities are **opt-in** (disabled by default): Elementor edits, LearnDash enrollment, Options Pages writes, `llms.txt` writes, code snippets, and removing/deleting menu items or menus.
+Write abilities validate per-post permissions (`edit_post`, `read_post`) and destructive or high-impact abilities are **opt-in** (disabled by default): Elementor edits, LearnDash and Tutor LMS enrollment, Options Pages writes, `llms.txt` writes, code snippets, and removing/deleting menu items or menus.
 
 ## Quick start
 

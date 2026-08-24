@@ -8436,9 +8436,13 @@ function ewpa_register_custom_abilities(): void {
 						$enrollment = \Tutor\Models\EnrollmentModel::is_enrolled( $course_id, $user_id, false );
 						$stats      = tutor_utils()->get_course_completed_percent( $course_id, $user_id, true );
 
+						// EnrollmentModel::is_enrolled() does not SELECT post_status; fetch
+						// the full enrollment post to read its real status.
+						$enrollment_post = $enrollment ? get_post( $enrollment->ID ) : null;
+
 						return array(
 							'enrolled'          => (bool) $enrollment,
-							'enrollment_status' => $enrollment ? $enrollment->post_status : null,
+							'enrollment_status' => $enrollment_post ? $enrollment_post->post_status : null,
 							'enrolled_at'       => $enrollment ? $enrollment->post_date : null,
 							'completed_percent' => (int) ( $stats['completed_percent'] ?? 0 ),
 							'completed_count'   => (int) ( $stats['completed_count'] ?? 0 ),
