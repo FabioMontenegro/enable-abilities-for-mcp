@@ -490,6 +490,8 @@ function ewpa_register_ability_categories(): void {
  * Registers all enabled custom abilities.
  */
 function ewpa_register_custom_abilities(): void {
+	ewpa_run_migrations();
+
 	/*
 	 * ======================================================================
 	 * SECTION A: READ ABILITIES

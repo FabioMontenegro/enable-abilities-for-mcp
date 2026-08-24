@@ -762,6 +762,19 @@ function ewpa_maybe_migrate_keys_v251(): void {
 }
 
 /**
+ * Runs all ability key migrations in order.
+ *
+ * Called at the start of ewpa_register_custom_abilities() so every migration
+ * completes before any ewpa_is_ability_enabled() check runs — regardless of
+ * when wp_abilities_api_init fires relative to plugins_loaded.
+ *
+ * @return void
+ */
+function ewpa_run_migrations(): void {
+	ewpa_maybe_migrate_keys_v251();
+}
+
+/**
  * Returns the mapping from old Spanish keys to new English keys.
  *
  * @return array
