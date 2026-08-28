@@ -5,7 +5,7 @@ Tags: mcp, ai, rest-api, content-management, woocommerce
 Requires at least: 6.9
 Tested up to: 7.0
 Requires PHP: 8.0
-Stable tag: 2.5.0
+Stable tag: 2.5.2
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -181,6 +181,11 @@ Yes — strict OAuth clients require a direct `200` on `/.well-known/oauth-autho
 1. Admin settings page showing all abilities organized by category with toggle switches.
 
 == Changelog ==
+
+= 2.5.2 =
+* Fix: `ewpa/search-replace` matched against a `sanitize_text_field()`-cleaned copy of the search term instead of the raw text — a search containing HTML tags, line breaks, or repeated whitespace would silently never match `post_content` (which stores that raw). The search and replacement values are now used as-is.
+* Fix: `ewpa/search-replace` rejected a search term of `"0"` as empty, because PHP's `empty()` treats the string `"0"` as falsy. Now uses a strict empty-string check.
+* Fix: `Stable tag` in this readme was left at 2.5.0 after the 2.5.1 release, so WordPress.org never picked up 2.5.1 as current. Corrected to 2.5.2.
 
 = 2.5.1 =
 * Fix: `ewpa/tutor-get-user-progress` always returned `enrollment_status: null` — Tutor's `EnrollmentModel::is_enrolled()` doesn't select `post_status` in its query, so the field silently read as null. Now resolved via `get_post()`.

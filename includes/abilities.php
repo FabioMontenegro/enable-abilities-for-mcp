@@ -3992,10 +3992,10 @@ function ewpa_register_custom_abilities(): void {
 						return new WP_Error( 'forbidden', 'You do not have permission to edit this post.' );
 					}
 
-					$search  = sanitize_text_field( $input['search'] );
-					$replace = $input['replace'];
+					$search  = (string) $input['search'];
+					$replace = (string) $input['replace'];
 
-					if ( empty( $search ) ) {
+					if ( '' === $search ) {
 						return new WP_Error( 'invalid_input', 'The search text cannot be empty.' );
 					}
 
