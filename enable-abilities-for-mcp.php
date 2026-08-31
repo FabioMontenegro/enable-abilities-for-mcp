@@ -2,8 +2,8 @@
 /**
  * Plugin Name:       Enable Abilities for MCP
  * Plugin URI:        https://mcp.fabiomontenegro.com/
- * Description:       Manage which WordPress Abilities are exposed to MCP servers. Enable or disable each ability individually from the dashboard.
- * Version:           2.5.2
+ * Description:       Connect Claude, ChatGPT & any MCP client to WordPress. 94 abilities: content, SEO, WooCommerce, FSE, LMS & more. Free & self-hosted.
+ * Version:           2.6.0
  * Requires at least: 6.9
  * Requires PHP:      8.0
  * Author:            Fabio Montenegro
@@ -19,7 +19,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'EWPA_VERSION', '2.5.2' );
+define( 'EWPA_VERSION', '2.6.0' );
 define( 'EWPA_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'EWPA_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 define( 'EWPA_OPTION_KEY', 'ewpa_enabled_abilities' );
@@ -281,6 +281,9 @@ add_action( 'plugins_loaded', 'ewpa_maybe_migrate_keys_v250' );
 
 // Adds ewpa/duplicate-post introduced in v2.5.0 to existing installs.
 add_action( 'plugins_loaded', 'ewpa_maybe_migrate_keys_v251' );
+
+// Adds the v2.6.0 FSE Block Templates read abilities to existing installs.
+add_action( 'plugins_loaded', 'ewpa_maybe_migrate_keys_v260' );
 
 
 /*
@@ -762,6 +765,38 @@ function ewpa_maybe_migrate_keys_v251(): void {
 }
 
 /**
+ * Adds the FSE Block Templates read abilities introduced in v2.6.0 to existing installs.
+ *
+ * Read abilities only. ewpa/fse-update-template is opt-in (edit_theme_options, write)
+ * and stays disabled, matching the ewpa/ld-enroll-user / ewpa/tutor-enroll-user precedent.
+ *
+ * @return void
+ */
+function ewpa_maybe_migrate_keys_v260(): void {
+	$enabled = get_option( EWPA_OPTION_KEY );
+	if ( ! is_array( $enabled ) ) {
+		return;
+	}
+
+	$new_abilities = array(
+		'ewpa/fse-list-templates',
+		'ewpa/fse-get-template',
+	);
+
+	$changed = false;
+	foreach ( $new_abilities as $key ) {
+		if ( ! in_array( $key, $enabled, true ) ) {
+			$enabled[] = $key;
+			$changed   = true;
+		}
+	}
+
+	if ( $changed ) {
+		update_option( EWPA_OPTION_KEY, $enabled );
+	}
+}
+
+/**
  * Runs all ability key migrations in order.
  *
  * Called at the start of ewpa_register_custom_abilities() so every migration
@@ -772,6 +807,7 @@ function ewpa_maybe_migrate_keys_v251(): void {
  */
 function ewpa_run_migrations(): void {
 	ewpa_maybe_migrate_keys_v251();
+	ewpa_maybe_migrate_keys_v260();
 }
 
 /**
@@ -1353,6 +1389,30 @@ function ewpa_get_abilities_registry() {
 				),
 			),
 		),
+		'fse-templates' => array(
+			'section_label'  => __( 'FSE Block Templates', 'enable-abilities-for-mcp' ),
+			'section_desc'   => __( 'Inspect and edit Full Site Editing (FSE/Gutenberg) block templates and template parts. Only available when the active theme supports block templates.', 'enable-abilities-for-mcp' ),
+			'section_icon'   => 'dashicons-layout',
+			'section_badge'  => 'danger',
+			'section_notice' => 'ewpa_section_notice_fse',
+			'abilities'      => array(
+				'ewpa/fse-list-templates'  => array(
+					'label'   => __( 'List Templates', 'enable-abilities-for-mcp' ),
+					'desc'    => __( 'List all wp_template and wp_template_part entries for the active theme, with slug, title, area, and whether each is a theme default or a user-edited override.', 'enable-abilities-for-mcp' ),
+					'default' => true,
+				),
+				'ewpa/fse-get-template'    => array(
+					'label'   => __( 'Get Template', 'enable-abilities-for-mcp' ),
+					'desc'    => __( 'Get the full block markup for one template or template part by slug.', 'enable-abilities-for-mcp' ),
+					'default' => true,
+				),
+				'ewpa/fse-update-template' => array(
+					'label'   => __( 'Update Template', 'enable-abilities-for-mcp' ),
+					'desc'    => __( 'Write new block markup to a template or template part. Requires edit_theme_options. A header/footer edit affects every page that uses it — opt-in required, disabled by default.', 'enable-abilities-for-mcp' ),
+					'default' => false,
+				),
+			),
+		),
 	);
 }
 
@@ -1674,5 +1734,22 @@ function ewpa_section_notice_tutor(): string {
 	return '<div class="ewpa-section-notice ewpa-section-notice-info">'
 		. '<span class="dashicons dashicons-info"></span> '
 		. esc_html__( 'Tutor LMS is not active. These abilities require Tutor LMS to function.', 'enable-abilities-for-mcp' )
+		. '</div>';
+}
+
+/**
+ * Dashboard notice shown for the FSE Block Templates section when the active
+ * theme does not support block templates.
+ *
+ * @return string
+ */
+function ewpa_section_notice_fse(): string {
+	if ( current_theme_supports( 'block-templates' ) ) {
+		return '';
+	}
+
+	return '<div class="ewpa-section-notice ewpa-section-notice-info">'
+		. '<span class="dashicons dashicons-info"></span> '
+		. esc_html__( 'The active theme does not support block templates (Full Site Editing). These abilities require a block-based theme.', 'enable-abilities-for-mcp' )
 		. '</div>';
 }

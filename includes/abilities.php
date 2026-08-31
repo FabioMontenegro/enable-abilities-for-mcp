@@ -476,6 +476,14 @@ function ewpa_register_ability_categories(): void {
 			'description' => __( 'Abilities to manage Tutor LMS courses, lesson videos, user progress, quiz results, and enrollments.', 'enable-abilities-for-mcp' ),
 		)
 	);
+
+	wp_register_ability_category(
+		'fse-templates',
+		array(
+			'label'       => __( 'FSE Block Templates', 'enable-abilities-for-mcp' ),
+			'description' => __( 'Abilities to list, read, and edit Full Site Editing block templates and template parts.', 'enable-abilities-for-mcp' ),
+		)
+	);
 }
 
 /*
@@ -3805,8 +3813,12 @@ function ewpa_register_custom_abilities(): void {
 						}
 					}
 
-					// 3. Instantiate Snippet — supports both Code Snippets 2.x and 3.x.
-					if ( class_exists( '\Code_Snippets\Snippet' ) ) {
+					// 3. Instantiate Snippet — supports Code Snippets 2.x, 3.0–3.9.x, and 3.10+.
+					// 3.10.0's PSR-4 refactor moved the class from Code_Snippets\Snippet to
+					// Code_Snippets\Model\Snippet (confirmed against the plugin's own source).
+					if ( class_exists( '\Code_Snippets\Model\Snippet' ) ) {
+						$snippet = new \Code_Snippets\Model\Snippet();
+					} elseif ( class_exists( '\Code_Snippets\Snippet' ) ) {
 						$snippet = new \Code_Snippets\Snippet();
 					} elseif ( class_exists( 'Snippet' ) ) {
 						$snippet = new Snippet(); // phpcs:ignore WordPress.WP.GlobalVariablesOverride
@@ -8903,6 +8915,318 @@ function ewpa_register_custom_abilities(): void {
 			)
 		);
 	}
+
+	/*
+	 * ======================================================================
+	 * SECTION L: FSE BLOCK TEMPLATES
+	 * ======================================================================
+	 * Only registered when the active theme declares block-templates support.
+	 * All post-creation for overrides is scoped to get_stylesheet() so no
+	 * template from an inactive theme is ever listed, read, or written.
+	 */
+	if ( current_theme_supports( 'block-templates' ) ) {
+
+		// ── L1: List FSE Templates ────────────────────────────────────────
+		if ( ewpa_is_ability_enabled( 'ewpa/fse-list-templates' ) ) {
+			ewpa_register_ability_with_log(
+				'ewpa/fse-list-templates',
+				array(
+					'label'               => __( 'List FSE Templates', 'enable-abilities-for-mcp' ),
+					'description'         => __( 'Lists all wp_template and wp_template_part entries for the active theme, merging theme-file defaults with database overrides. Each entry reports whether it is a theme default or a user-edited (customized) override.', 'enable-abilities-for-mcp' ),
+					'category'            => 'fse-templates',
+					'input_schema'        => array(
+						'type'       => 'object',
+						'properties' => array(
+							'type' => array(
+								'type'        => 'string',
+								'enum'        => array( 'wp_template', 'wp_template_part', 'all' ),
+								'description' => 'Filter by type. Default: all (returns both templates and template parts).',
+							),
+						),
+					),
+					'output_schema'       => array(
+						'type'       => 'object',
+						'properties' => array(
+							'templates' => array( 'type' => 'array' ),
+							'count'     => array( 'type' => 'integer' ),
+						),
+					),
+					'permission_callback' => function () {
+						return current_user_can( 'edit_theme_options' );
+					},
+					'execute_callback'    => function ( $input ) {
+						if ( ! function_exists( 'get_block_templates' ) ) {
+							return new WP_Error( 'unsupported', __( 'This WordPress version does not support block templates.', 'enable-abilities-for-mcp' ) );
+						}
+
+						$filter = isset( $input['type'] ) ? sanitize_key( $input['type'] ) : 'all';
+						$types  = 'all' === $filter ? array( 'wp_template', 'wp_template_part' ) : array( $filter );
+						$theme  = get_stylesheet();
+
+						$templates = array();
+						foreach ( $types as $type ) {
+							foreach ( get_block_templates( array(), $type ) as $tpl ) {
+								if ( $tpl->theme !== $theme ) {
+									continue;
+								}
+
+								$templates[] = array(
+									'slug'          => $tpl->slug,
+									'title'         => $tpl->title,
+									'description'   => $tpl->description,
+									'type'          => $tpl->type,
+									'area'          => 'wp_template_part' === $tpl->type ? ( $tpl->area ?? '' ) : '',
+									'is_customized' => 'custom' === $tpl->source,
+									'wp_id'         => isset( $tpl->wp_id ) && $tpl->wp_id ? (int) $tpl->wp_id : null,
+								);
+							}
+						}
+
+						return array(
+							'templates' => $templates,
+							'count'     => count( $templates ),
+						);
+					},
+					'meta'                => array(
+						'show_in_rest' => true,
+						'annotations'  => array(
+							'readonly'    => true,
+							'destructive' => false,
+							'idempotent'  => true,
+						),
+						'mcp'          => array(
+							'public' => true,
+						),
+					),
+				)
+			);
+		}
+
+		// ── L2: Get FSE Template ───────────────────────────────────────────
+		if ( ewpa_is_ability_enabled( 'ewpa/fse-get-template' ) ) {
+			ewpa_register_ability_with_log(
+				'ewpa/fse-get-template',
+				array(
+					'label'               => __( 'Get FSE Template', 'enable-abilities-for-mcp' ),
+					'description'         => __( 'Gets the full block markup (post_content) for one wp_template or wp_template_part entry of the active theme, by slug.', 'enable-abilities-for-mcp' ),
+					'category'            => 'fse-templates',
+					'input_schema'        => array(
+						'type'       => 'object',
+						'required'   => array( 'slug' ),
+						'properties' => array(
+							'slug' => array(
+								'type'        => 'string',
+								'description' => 'Template or template part slug (e.g. "single", "header").',
+							),
+							'type' => array(
+								'type'        => 'string',
+								'enum'        => array( 'wp_template', 'wp_template_part' ),
+								'description' => 'Entry type. Default: wp_template.',
+							),
+						),
+					),
+					'output_schema'       => array(
+						'type'       => 'object',
+						'properties' => array(
+							'slug'          => array( 'type' => 'string' ),
+							'title'         => array( 'type' => 'string' ),
+							'type'          => array( 'type' => 'string' ),
+							'area'          => array( 'type' => 'string' ),
+							'content'       => array( 'type' => 'string' ),
+							'is_customized' => array( 'type' => 'boolean' ),
+							'wp_id'         => array( 'type' => array( 'integer', 'null' ) ),
+						),
+					),
+					'permission_callback' => function () {
+						return current_user_can( 'edit_theme_options' );
+					},
+					'execute_callback'    => function ( $input ) {
+						if ( ! function_exists( 'get_block_template' ) ) {
+							return new WP_Error( 'unsupported', __( 'This WordPress version does not support block templates.', 'enable-abilities-for-mcp' ) );
+						}
+
+						$slug = sanitize_title( $input['slug'] );
+						$type = isset( $input['type'] ) ? sanitize_key( $input['type'] ) : 'wp_template';
+						if ( ! in_array( $type, array( 'wp_template', 'wp_template_part' ), true ) ) {
+							return new WP_Error( 'invalid_type', __( 'template_type must be wp_template or wp_template_part.', 'enable-abilities-for-mcp' ) );
+						}
+
+						$id  = get_stylesheet() . '//' . $slug;
+						$tpl = get_block_template( $id, $type );
+
+						if ( ! $tpl ) {
+							return new WP_Error( 'not_found', __( 'Template not found for the active theme.', 'enable-abilities-for-mcp' ) );
+						}
+
+						return array(
+							'slug'          => $tpl->slug,
+							'title'         => $tpl->title,
+							'type'          => $tpl->type,
+							'area'          => 'wp_template_part' === $tpl->type ? ( $tpl->area ?? '' ) : '',
+							'content'       => $tpl->content,
+							'is_customized' => 'custom' === $tpl->source,
+							'wp_id'         => isset( $tpl->wp_id ) && $tpl->wp_id ? (int) $tpl->wp_id : null,
+						);
+					},
+					'meta'                => array(
+						'show_in_rest' => true,
+						'annotations'  => array(
+							'readonly'    => true,
+							'destructive' => false,
+							'idempotent'  => true,
+						),
+						'mcp'          => array(
+							'public' => true,
+						),
+					),
+				)
+			);
+		}
+
+		// ── L3: Update FSE Template ─────────────────────────────────────────
+		if ( ewpa_is_ability_enabled( 'ewpa/fse-update-template' ) ) {
+			ewpa_register_ability_with_log(
+				'ewpa/fse-update-template',
+				array(
+					'label'               => __( 'Update FSE Template', 'enable-abilities-for-mcp' ),
+					'description'         => __( 'Writes new block markup to an existing wp_template or wp_template_part of the active theme. If the template is currently a theme-file default, creates a user-edited database override instead of touching the theme file. Rejects content with unbalanced block-comment delimiters — the most common sign of truncated or corrupted markup. Changes site-wide appearance (a header/footer template affects every page that uses it) — opt-in, disabled by default.', 'enable-abilities-for-mcp' ),
+					'category'            => 'fse-templates',
+					'input_schema'        => array(
+						'type'       => 'object',
+						'required'   => array( 'slug', 'content' ),
+						'properties' => array(
+							'slug'    => array(
+								'type'        => 'string',
+								'description' => 'Template or template part slug (e.g. "single", "header").',
+							),
+							'type' => array(
+								'type'        => 'string',
+								'enum'        => array( 'wp_template', 'wp_template_part' ),
+								'description' => 'Entry type. Default: wp_template.',
+							),
+							'content' => array(
+								'type'        => 'string',
+								'description' => 'Full block markup to write (the new post_content).',
+							),
+							'title'   => array(
+								'type'        => 'string',
+								'description' => 'Title to use only when creating a new database override for a theme-file default. Ignored when updating an existing override.',
+							),
+						),
+					),
+					'output_schema'       => array(
+						'type'       => 'object',
+						'properties' => array(
+							'slug'    => array( 'type' => 'string' ),
+							'type'    => array( 'type' => 'string' ),
+							'wp_id'   => array( 'type' => 'integer' ),
+							'action'  => array( 'type' => 'string' ),
+							'message' => array( 'type' => 'string' ),
+						),
+					),
+					'permission_callback' => function () {
+						return current_user_can( 'edit_theme_options' );
+					},
+					'execute_callback'    => function ( $input ) {
+						if ( ! function_exists( 'get_block_template' ) ) {
+							return new WP_Error( 'unsupported', __( 'This WordPress version does not support block templates.', 'enable-abilities-for-mcp' ) );
+						}
+
+						$slug    = sanitize_title( $input['slug'] );
+						$type    = isset( $input['type'] ) ? sanitize_key( $input['type'] ) : 'wp_template';
+						$content = (string) $input['content'];
+
+						if ( ! in_array( $type, array( 'wp_template', 'wp_template_part' ), true ) ) {
+							return new WP_Error( 'invalid_type', __( 'template_type must be wp_template or wp_template_part.', 'enable-abilities-for-mcp' ) );
+						}
+
+						if ( '' === trim( $content ) ) {
+							return new WP_Error( 'empty_content', __( 'content cannot be empty.', 'enable-abilities-for-mcp' ) );
+						}
+
+						// Mandatory sanity check: a truncated or corrupted block-markup
+						// edit almost always leaves an unmatched HTML comment delimiter.
+						// parse_blocks() itself never fails (it silently downgrades
+						// unrecognized markup to freeform HTML), so this count is the
+						// real guard against writing broken content site-wide.
+						if ( substr_count( $content, '<!--' ) !== substr_count( $content, '-->' ) ) {
+							return new WP_Error( 'malformed_blocks', __( 'content has unbalanced block-comment delimiters (mismatched <!-- / -->). This usually means the markup was truncated or corrupted — refusing to write it.', 'enable-abilities-for-mcp' ) );
+						}
+
+						$id  = get_stylesheet() . '//' . $slug;
+						$tpl = get_block_template( $id, $type );
+
+						if ( ! $tpl ) {
+							return new WP_Error( 'not_found', __( 'Template not found for the active theme. This ability only updates templates that already exist (theme default or override) — it does not create new template slugs.', 'enable-abilities-for-mcp' ) );
+						}
+
+						if ( ! empty( $tpl->wp_id ) ) {
+							$updated = wp_update_post(
+								array(
+									'ID'           => $tpl->wp_id,
+									'post_content' => wp_slash( $content ),
+								),
+								true
+							);
+
+							if ( is_wp_error( $updated ) ) {
+								return $updated;
+							}
+
+							return array(
+								'slug'    => $slug,
+								'type'    => $type,
+								'wp_id'   => (int) $tpl->wp_id,
+								'action'  => 'updated',
+								'message' => __( 'Existing template override updated.', 'enable-abilities-for-mcp' ),
+							);
+						}
+
+						$title = isset( $input['title'] ) ? sanitize_text_field( $input['title'] ) : $tpl->title;
+
+						$new_id = wp_insert_post(
+							array(
+								'post_type'    => $type,
+								'post_name'    => $slug,
+								'post_title'   => $title,
+								'post_content' => wp_slash( $content ),
+								'post_status'  => 'publish',
+							),
+							true
+						);
+
+						if ( is_wp_error( $new_id ) ) {
+							return $new_id;
+						}
+
+						wp_set_post_terms( $new_id, get_stylesheet(), 'wp_theme' );
+
+						if ( 'wp_template_part' === $type && ! empty( $tpl->area ) ) {
+							update_post_meta( $new_id, 'wp_template_part_area', $tpl->area );
+						}
+
+						return array(
+							'slug'    => $slug,
+							'type'    => $type,
+							'wp_id'   => (int) $new_id,
+							'action'  => 'created',
+							'message' => __( 'Theme default was not yet customized — created a new database override.', 'enable-abilities-for-mcp' ),
+						);
+					},
+					'meta'                => array(
+						'show_in_rest' => true,
+						'annotations'  => array(
+							'readonly'    => false,
+							'destructive' => true,
+						),
+						'mcp'          => array(
+							'public' => true,
+						),
+					),
+				)
+			);
+		}
+	} // end if current_theme_supports( 'block-templates' )
 }
 
 // ── Navigation Menus ─────────────────────────────────────────────────────

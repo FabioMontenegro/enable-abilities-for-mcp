@@ -3,13 +3,13 @@ Contributors: fabiomontenegro1987
 Donate link: https://ko-fi.com/fabiomontenegro
 Tags: mcp, ai, rest-api, content-management, woocommerce
 Requires at least: 6.9
-Tested up to: 7.0
+Tested up to: 7.1
 Requires PHP: 8.0
-Stable tag: 2.5.2
+Stable tag: 2.6.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
-Manage which WordPress Abilities are exposed to MCP servers. Supports WooCommerce, The Events Calendar, and any custom post type.
+Connect Claude, ChatGPT & any MCP client to WordPress. 94 abilities: content, SEO, WooCommerce, FSE, LMS & more. Free & self-hosted.
 
 == Description ==
 
@@ -30,7 +30,7 @@ Prefer tokens? Application Passwords (per-user) and a single-admin Bearer token 
 
 = Features =
 
-* **91 abilities** organized in 18 categories: Core, Read, Write, SEO (Rank Math), SEO (SEOPress), SEO (Yoast), Navigation Menus, Utility, Multilanguage, Custom Post Types, WooCommerce, The Events Calendar, Code Snippets, JetEngine Options Pages, Elementor, LearnDash, Tutor LMS, and AI Agent Readiness (llms.txt)
+* **94 abilities** organized in 19 categories: Core, Read, Write, SEO (Rank Math), SEO (SEOPress), SEO (Yoast), Navigation Menus, Utility, Multilanguage, Custom Post Types, WooCommerce, The Events Calendar, Code Snippets, JetEngine Options Pages, Elementor, LearnDash, Tutor LMS, AI Agent Readiness (llms.txt), and FSE Block Templates
 * **WooCommerce integration** — dedicated abilities to manage products, orders, and customers using the native WooCommerce API (HPOS-compatible, formally declared)
 * **The Events Calendar integration** — list, get, create, and update events with venue, organizer, and date filters
 * **claude.ai OAuth custom connector** — connect from claude.ai (web, mobile, or desktop) with zero local setup: an embedded OAuth 2.1 server with Client ID Metadata Document (CIMD) support lets each user log in with their own WordPress account and role
@@ -117,6 +117,45 @@ Prefer tokens? Application Passwords (per-user) and a single-admin Bearer token 
 * Get a user's quiz attempt results, optionally filtered to a single quiz
 * Enroll a user in a course, and unenroll them (both opt-in, `manage_options` only)
 
+**Multilanguage:**
+
+* Assign a language to an existing post via Polylang or WPML
+* Link two posts as translations of each other in the same translation group
+* Get the full translation map for a post: language, post ID, title, permalink, and status for each translation
+
+**LearnDash:**
+
+* List courses with enrollment count, and get a single course's full detail (lessons, topics, quizzes)
+* Get a user's enrollment status/progress and quiz results for a course
+* Enroll or unenroll a user in a course (opt-in — write, `manage_options`)
+
+**JetEngine Options Pages:**
+
+* List all registered Options Pages with their field schema
+* Get all fields and current values for an Options Page by slug
+* Update a single Options Page field, including repeater rows (opt-in — write)
+
+**Elementor:**
+
+* Get a compact, read-only tree of an Elementor page/template (element ids, types, text preview)
+* Update an Elementor element's settings by id — single or batch edits (opt-in — write)
+* Bind a widget setting to a dynamic tag: post title, or a JetEngine/meta field (opt-in — write)
+
+**Code Snippets:**
+
+* Create a PHP code snippet via the Code Snippets plugin — always saved as inactive, activate manually from wp-admin. Validates PHP syntax and blocks dangerous functions (`eval`, `exec`, `shell_exec`, and more)
+
+**AI Agent Readiness (llms.txt):**
+
+* Fetch and validate the site's llms.txt against the llmstxt.org spec, with actionable issues
+* Write llms.txt content — routes automatically to SEOPress Pro's option when active, or serves it directly (opt-in — write)
+
+**FSE Block Templates:**
+
+* List all `wp_template` and `wp_template_part` entries for the active theme, merging theme-file defaults with database overrides
+* Get the full block markup for one template or template part by slug
+* Write new block markup to a template or template part — creates a database override automatically when the target is still a theme default; rejects content with unbalanced block-comment delimiters (opt-in — write, `edit_theme_options`)
+
 **Utility:**
 
 * Search and replace text in post content
@@ -181,6 +220,13 @@ Yes — strict OAuth clients require a direct `200` on `/.well-known/oauth-autho
 1. Admin settings page showing all abilities organized by category with toggle switches.
 
 == Changelog ==
+
+= 2.6.0 =
+* New: FSE Block Templates section (3 abilities) — `ewpa/fse-list-templates` and `ewpa/fse-get-template` (read, enabled by default) list and read `wp_template` / `wp_template_part` entries for the active theme via `get_block_templates()` / `get_block_template()`, merging theme-file defaults with database overrides; `ewpa/fse-update-template` (write, opt-in) writes new block markup, creating a database override when the target is still a theme default, and rejects content with unbalanced block-comment delimiters before saving. Guarded behind `current_theme_supports('block-templates')`. Requested by redsoulwarrior in a WordPress.org review.
+* Fix: `ewpa/create-code-snippet` failed on every call with "Cannot instantiate Snippet class" on Code Snippets 3.10.0+ — its PSR-4 refactor moved the `Snippet` class from `Code_Snippets\Snippet` to `Code_Snippets\Model\Snippet`. Now checks both locations (plus the legacy global `Snippet` for 2.x), so it works across Code Snippets 2.x through 3.10+. Reported by redsoulwarrior with a confirmed version-downgrade repro.
+* Docs: "Available Abilities" section now documents the Multilanguage, LearnDash, JetEngine Options Pages, Elementor, Code Snippets, and AI Agent Readiness (llms.txt) sections — previously listed only in the Features summary, not broken out in detail.
+* Compatibility: Tested up to WordPress 7.1.
+* Updated: Total abilities: 94 in 19 categories.
 
 = 2.5.2 =
 * Fix: `ewpa/search-replace` matched against a `sanitize_text_field()`-cleaned copy of the search term instead of the raw text — a search containing HTML tags, line breaks, or repeated whitespace would silently never match `post_content` (which stores that raw). The search and replacement values are now used as-is.
