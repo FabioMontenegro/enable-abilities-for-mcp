@@ -2,8 +2,8 @@
 /**
  * Plugin Name:       Enable Abilities for MCP
  * Plugin URI:        https://mcp.fabiomontenegro.com/
- * Description:       Connect Claude, ChatGPT & any MCP client to WordPress. 96 abilities: content, SEO, WooCommerce, FSE, LMS & more. Free & self-hosted.
- * Version:           2.7.0
+ * Description:       Connect Claude, ChatGPT & any MCP client to WordPress. 100 abilities: content, SEO, WooCommerce, FSE, LMS & more. Free & self-hosted.
+ * Version:           2.7.2
  * Requires at least: 6.9
  * Requires PHP:      8.0
  * Author:            Fabio Montenegro
@@ -19,7 +19,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'EWPA_VERSION', '2.7.0' );
+define( 'EWPA_VERSION', '2.7.2' );
 define( 'EWPA_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'EWPA_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 define( 'EWPA_OPTION_KEY', 'ewpa_enabled_abilities' );
@@ -287,6 +287,12 @@ add_action( 'plugins_loaded', 'ewpa_maybe_migrate_keys_v260' );
 
 // Adds the v2.7.0 term meta abilities to existing installs.
 add_action( 'plugins_loaded', 'ewpa_maybe_migrate_keys_v270' );
+
+// Adds ewpa/update-term introduced in v2.7.1 to existing installs.
+add_action( 'plugins_loaded', 'ewpa_maybe_migrate_keys_v271' );
+
+// Adds the v2.7.2 JetEngine Query Builder read abilities to existing installs.
+add_action( 'plugins_loaded', 'ewpa_maybe_migrate_keys_v272' );
 
 
 /*
@@ -829,6 +835,56 @@ function ewpa_maybe_migrate_keys_v270(): void {
 }
 
 /**
+ * Adds ewpa/update-term introduced in v2.7.1 to existing installs.
+ *
+ * @return void
+ */
+function ewpa_maybe_migrate_keys_v271(): void {
+	$enabled = get_option( EWPA_OPTION_KEY );
+	if ( ! is_array( $enabled ) ) {
+		return;
+	}
+	if ( ! in_array( 'ewpa/update-term', $enabled, true ) ) {
+		$enabled[] = 'ewpa/update-term';
+		update_option( EWPA_OPTION_KEY, $enabled );
+	}
+}
+
+/**
+ * Adds the JetEngine Query Builder read abilities introduced in v2.7.2 to
+ * existing installs.
+ *
+ * Read abilities only. ewpa/je-update-query is opt-in (destructive, write)
+ * and stays disabled, matching the ewpa/je-update-options-page-field
+ * precedent.
+ *
+ * @return void
+ */
+function ewpa_maybe_migrate_keys_v272(): void {
+	$enabled = get_option( EWPA_OPTION_KEY );
+	if ( ! is_array( $enabled ) ) {
+		return;
+	}
+
+	$new_abilities = array(
+		'ewpa/je-list-queries',
+		'ewpa/je-get-query',
+	);
+
+	$changed = false;
+	foreach ( $new_abilities as $key ) {
+		if ( ! in_array( $key, $enabled, true ) ) {
+			$enabled[] = $key;
+			$changed   = true;
+		}
+	}
+
+	if ( $changed ) {
+		update_option( EWPA_OPTION_KEY, $enabled );
+	}
+}
+
+/**
  * Runs all ability key migrations in order.
  *
  * Called at the start of ewpa_register_custom_abilities() so every migration
@@ -841,6 +897,8 @@ function ewpa_run_migrations(): void {
 	ewpa_maybe_migrate_keys_v251();
 	ewpa_maybe_migrate_keys_v260();
 	ewpa_maybe_migrate_keys_v270();
+	ewpa_maybe_migrate_keys_v271();
+	ewpa_maybe_migrate_keys_v272();
 }
 
 /**
@@ -1277,6 +1335,10 @@ function ewpa_get_abilities_registry() {
 					'label' => __( 'Update Term Meta', 'enable-abilities-for-mcp' ),
 					'desc'  => __( 'Write any term meta field by exact key. Requires edit_term capability.', 'enable-abilities-for-mcp' ),
 				),
+				'ewpa/update-term'        => array(
+					'label' => __( 'Update Term', 'enable-abilities-for-mcp' ),
+					'desc'  => __( 'Update a taxonomy term\'s core fields: name, slug, description, or parent. Requires edit_term capability.', 'enable-abilities-for-mcp' ),
+				),
 			),
 		),
 		'jetengine-options-pages' => array(
@@ -1299,6 +1361,30 @@ function ewpa_get_abilities_registry() {
 				'ewpa/je-update-options-page-field' => array(
 					'label'   => __( 'Update Options Page Field', 'enable-abilities-for-mcp' ),
 					'desc'    => __( 'Write a new value to a single field of a JetEngine Options Page. Destructive — opt-in required.', 'enable-abilities-for-mcp' ),
+					'default' => false,
+				),
+			),
+		),
+		'jetengine-query-builder' => array(
+			'section_label'  => __( 'JetEngine Query Builder', 'enable-abilities-for-mcp' ),
+			'section_desc'   => __( 'List, read, and update JetEngine Query Builder queries. Complements JetEngine\'s own native "Add Query" MCP tool, which has no edit/get/list equivalent. Requires JetEngine with the Query Builder module.', 'enable-abilities-for-mcp' ),
+			'section_icon'   => 'dashicons-database',
+			'section_badge'  => 'danger',
+			'section_notice' => 'ewpa_section_notice_je_query_builder',
+			'abilities'      => array(
+				'ewpa/je-list-queries' => array(
+					'label'   => __( 'List Queries', 'enable-abilities-for-mcp' ),
+					'desc'    => __( 'List all Query Builder queries with id, name, and query type.', 'enable-abilities-for-mcp' ),
+					'default' => true,
+				),
+				'ewpa/je-get-query'    => array(
+					'label'   => __( 'Get Query', 'enable-abilities-for-mcp' ),
+					'desc'    => __( 'Get the full settings of one query by id.', 'enable-abilities-for-mcp' ),
+					'default' => true,
+				),
+				'ewpa/je-update-query' => array(
+					'label'   => __( 'Update Query', 'enable-abilities-for-mcp' ),
+					'desc'    => __( 'Update an existing query\'s name, type, or arguments. Destructive — opt-in required.', 'enable-abilities-for-mcp' ),
 					'default' => false,
 				),
 			),
@@ -1775,6 +1861,27 @@ function ewpa_section_notice_tutor(): string {
 	return '<div class="ewpa-section-notice ewpa-section-notice-info">'
 		. '<span class="dashicons dashicons-info"></span> '
 		. esc_html__( 'Tutor LMS is not active. These abilities require Tutor LMS to function.', 'enable-abilities-for-mcp' )
+		. '</div>';
+}
+
+/**
+ * Dashboard notice shown for the JetEngine Query Builder section when the
+ * Query Builder module is not available.
+ *
+ * @return string
+ */
+function ewpa_section_notice_je_query_builder(): string {
+	if ( function_exists( 'jet_engine' ) && class_exists( '\Jet_Engine\Query_Builder\Manager' ) ) {
+		return '';
+	}
+
+	$msg = function_exists( 'jet_engine' )
+		? __( 'JetEngine is active but the Query Builder module is not enabled. Enable it under JetEngine › Settings › Modules.', 'enable-abilities-for-mcp' )
+		: __( 'JetEngine plugin is not active. These abilities require JetEngine with the Query Builder module enabled.', 'enable-abilities-for-mcp' );
+
+	return '<div class="ewpa-section-notice ewpa-section-notice-info">'
+		. '<span class="dashicons dashicons-info"></span> '
+		. esc_html( $msg )
 		. '</div>';
 }
 

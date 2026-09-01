@@ -478,6 +478,14 @@ function ewpa_register_ability_categories(): void {
 	);
 
 	wp_register_ability_category(
+		'jetengine-query-builder',
+		array(
+			'label'       => __( 'JetEngine Query Builder', 'enable-abilities-for-mcp' ),
+			'description' => __( 'Abilities to list, read, and update JetEngine Query Builder queries.', 'enable-abilities-for-mcp' ),
+		)
+	);
+
+	wp_register_ability_category(
 		'fse-templates',
 		array(
 			'label'       => __( 'FSE Block Templates', 'enable-abilities-for-mcp' ),
@@ -5729,6 +5737,118 @@ function ewpa_register_custom_abilities(): void {
 		);
 	}
 
+	// ── D10: Update Term ──────────────────────────────────────────────────
+	if ( ewpa_is_ability_enabled( 'ewpa/update-term' ) ) {
+		ewpa_register_ability_with_log(
+			'ewpa/update-term',
+			array(
+				'label'               => __( 'Update Term', 'enable-abilities-for-mcp' ),
+				'description'         => __( 'Updates the core (non-meta) fields of an existing taxonomy term: name, slug, description, or parent. Only the provided fields are modified.', 'enable-abilities-for-mcp' ),
+				'category'            => 'cpt-management',
+				'input_schema'        => array(
+					'type'       => 'object',
+					'required'   => array( 'taxonomy', 'term_id' ),
+					'properties' => array(
+						'taxonomy'    => array(
+							'type'        => 'string',
+							'description' => __( 'Taxonomy slug the term belongs to (e.g. category, tour_categoria).', 'enable-abilities-for-mcp' ),
+						),
+						'term_id'     => array(
+							'type'        => 'integer',
+							'description' => __( 'ID of the term to update.', 'enable-abilities-for-mcp' ),
+						),
+						'name'        => array(
+							'type'        => 'string',
+							'description' => __( 'New term name.', 'enable-abilities-for-mcp' ),
+						),
+						'slug'        => array(
+							'type'        => 'string',
+							'description' => __( 'New term slug.', 'enable-abilities-for-mcp' ),
+						),
+						'description' => array(
+							'type'        => 'string',
+							'description' => __( 'New term description.', 'enable-abilities-for-mcp' ),
+						),
+						'parent'      => array(
+							'type'        => 'integer',
+							'description' => __( 'New parent term ID (0 = no parent).', 'enable-abilities-for-mcp' ),
+						),
+					),
+				),
+				'output_schema'       => array(
+					'type'       => 'object',
+					'properties' => array(
+						'term_id'  => array( 'type' => 'integer' ),
+						'taxonomy' => array( 'type' => 'string' ),
+						'name'     => array( 'type' => 'string' ),
+						'slug'     => array( 'type' => 'string' ),
+						'message'  => array( 'type' => 'string' ),
+					),
+				),
+				'permission_callback' => function ( $input ) {
+					$term_id = isset( $input['term_id'] ) ? absint( $input['term_id'] ) : 0;
+					return current_user_can( 'edit_term', $term_id );
+				},
+				'execute_callback'    => function ( $input ) {
+					$term_id  = absint( $input['term_id'] );
+					$taxonomy = sanitize_key( $input['taxonomy'] );
+
+					$term = get_term( $term_id, $taxonomy );
+					if ( ! $term || is_wp_error( $term ) ) {
+						return new WP_Error( 'not_found', __( 'Term not found for the given taxonomy.', 'enable-abilities-for-mcp' ) );
+					}
+
+					$args = array();
+					if ( isset( $input['name'] ) && '' !== $input['name'] ) {
+						$args['name'] = sanitize_text_field( $input['name'] );
+					}
+					if ( isset( $input['slug'] ) && '' !== $input['slug'] ) {
+						$args['slug'] = sanitize_title( $input['slug'] );
+					}
+					if ( isset( $input['description'] ) ) {
+						$args['description'] = sanitize_textarea_field( $input['description'] );
+					}
+					if ( isset( $input['parent'] ) ) {
+						$args['parent'] = absint( $input['parent'] );
+					}
+
+					if ( empty( $args ) ) {
+						return new WP_Error( 'no_fields', __( 'Provide at least one of: name, slug, description, parent.', 'enable-abilities-for-mcp' ) );
+					}
+
+					$updated = wp_update_term( $term_id, $taxonomy, $args );
+					if ( is_wp_error( $updated ) ) {
+						return $updated;
+					}
+
+					$new_term = get_term( $updated['term_id'], $taxonomy );
+
+					return array(
+						'term_id'  => (int) $updated['term_id'],
+						'taxonomy' => $taxonomy,
+						'name'     => $new_term->name,
+						'slug'     => $new_term->slug,
+						'message'  => sprintf(
+							/* translators: %d: term id */
+							__( 'Term %d updated.', 'enable-abilities-for-mcp' ),
+							$updated['term_id']
+						),
+					);
+				},
+				'meta'                => array(
+					'show_in_rest' => true,
+					'annotations'  => array(
+						'readonly'    => false,
+						'destructive' => false,
+					),
+					'mcp'          => array(
+						'public' => true,
+					),
+				),
+			)
+		);
+	}
+
 	// -------------------------------------------------------------------------
 	// Section E: WooCommerce abilities
 	// -------------------------------------------------------------------------
@@ -7389,6 +7509,267 @@ function ewpa_register_custom_abilities(): void {
 						'old_value'  => $old_value,
 						'new_value'  => $value,
 						'message'    => __( 'Field updated successfully.', 'enable-abilities-for-mcp' ),
+					);
+				},
+				'meta'                => array(
+					'show_in_rest' => true,
+					'annotations'  => array(
+						'readonly'    => false,
+						'destructive' => true,
+					),
+					'mcp'          => array(
+						'public' => true,
+					),
+				),
+			)
+		);
+	}
+
+	/*
+	 * ======================================================================
+	 * SECTION H2: JETENGINE QUERY BUILDER
+	 * ======================================================================
+	 * JetEngine's own bundled MCP server (Jet_Engine\MCP_Tools\Registry, a
+	 * separate registry from the WordPress Abilities API) only exposes
+	 * "add query", not get/list/edit. These abilities fill that gap through
+	 * the same internal data layer JetEngine's own REST endpoints use
+	 * (Jet_Engine\Query_Builder\Manager::instance()->data), registered here
+	 * as ordinary abilities rather than hooking JetEngine's internal
+	 * registry — keeps us on the stable, official WP Abilities API instead
+	 * of an undocumented third-party mechanism that could change without
+	 * notice.
+	 */
+
+	// ── H2-1: List JetEngine Queries ────────────────────────────────────────
+	if ( ewpa_is_ability_enabled( 'ewpa/je-list-queries' ) ) {
+		ewpa_register_ability_with_log(
+			'ewpa/je-list-queries',
+			array(
+				'label'               => __( 'List JetEngine Queries', 'enable-abilities-for-mcp' ),
+				'description'         => __( 'Lists all Query Builder queries registered in JetEngine, with id, name, and query type.', 'enable-abilities-for-mcp' ),
+				'category'            => 'jetengine-query-builder',
+				'output_schema'       => array(
+					'type'       => 'object',
+					'properties' => array(
+						'queries' => array( 'type' => 'array' ),
+						'count'   => array( 'type' => 'integer' ),
+					),
+				),
+				'permission_callback' => function () {
+					return current_user_can( 'manage_options' );
+				},
+				'execute_callback'    => function () {
+					if ( ! function_exists( 'jet_engine' ) || ! class_exists( '\Jet_Engine\Query_Builder\Manager' ) ) {
+						return new WP_Error( 'plugin_inactive', __( 'JetEngine Query Builder is not active.', 'enable-abilities-for-mcp' ) );
+					}
+
+					$items   = (array) \Jet_Engine\Query_Builder\Manager::instance()->data->get_items();
+					$queries = array();
+
+					foreach ( $items as $item ) {
+						$labels = maybe_unserialize( $item['labels'] ?? array() );
+						$args   = maybe_unserialize( $item['args'] ?? array() );
+
+						$queries[] = array(
+							'id'         => (int) $item['id'],
+							'name'       => is_array( $labels ) && isset( $labels['name'] ) ? $labels['name'] : '',
+							'query_type' => is_array( $args ) && isset( $args['query_type'] ) ? $args['query_type'] : '',
+						);
+					}
+
+					return array(
+						'queries' => $queries,
+						'count'   => count( $queries ),
+					);
+				},
+				'meta'                => array(
+					'show_in_rest' => true,
+					'annotations'  => array(
+						'readonly'    => true,
+						'destructive' => false,
+						'idempotent'  => true,
+					),
+					'mcp'          => array(
+						'public' => true,
+					),
+				),
+			)
+		);
+	}
+
+	// ── H2-2: Get JetEngine Query ────────────────────────────────────────────
+	if ( ewpa_is_ability_enabled( 'ewpa/je-get-query' ) ) {
+		ewpa_register_ability_with_log(
+			'ewpa/je-get-query',
+			array(
+				'label'               => __( 'Get JetEngine Query', 'enable-abilities-for-mcp' ),
+				'description'         => __( 'Gets the full settings of one JetEngine Query Builder query by id: query type, its type-specific arguments (WP_Query-style for posts/terms/users/comments, raw SQL for sql), API and cache settings.', 'enable-abilities-for-mcp' ),
+				'category'            => 'jetengine-query-builder',
+				'input_schema'        => array(
+					'type'       => 'object',
+					'required'   => array( 'query_id' ),
+					'properties' => array(
+						'query_id' => array(
+							'type'        => 'integer',
+							'description' => __( 'ID of the query to read.', 'enable-abilities-for-mcp' ),
+						),
+					),
+				),
+				'output_schema'       => array(
+					'type'       => 'object',
+					'properties' => array(
+						'query_id'   => array( 'type' => 'integer' ),
+						'name'       => array( 'type' => 'string' ),
+						'query_type' => array( 'type' => 'string' ),
+						'settings'   => array( 'type' => 'object' ),
+					),
+				),
+				'permission_callback' => function () {
+					return current_user_can( 'manage_options' );
+				},
+				'execute_callback'    => function ( $input ) {
+					if ( ! function_exists( 'jet_engine' ) || ! class_exists( '\Jet_Engine\Query_Builder\Manager' ) ) {
+						return new WP_Error( 'plugin_inactive', __( 'JetEngine Query Builder is not active.', 'enable-abilities-for-mcp' ) );
+					}
+
+					$query_id = absint( $input['query_id'] );
+					$item     = \Jet_Engine\Query_Builder\Manager::instance()->data->get_item_for_edit( $query_id );
+
+					if ( ! $item ) {
+						return new WP_Error( 'not_found', __( 'Query not found.', 'enable-abilities-for-mcp' ) );
+					}
+
+					return array(
+						'query_id'   => $query_id,
+						'name'       => $item['name'] ?? '',
+						'query_type' => $item['query_type'] ?? '',
+						'settings'   => $item,
+					);
+				},
+				'meta'                => array(
+					'show_in_rest' => true,
+					'annotations'  => array(
+						'readonly'    => true,
+						'destructive' => false,
+						'idempotent'  => true,
+					),
+					'mcp'          => array(
+						'public' => true,
+					),
+				),
+			)
+		);
+	}
+
+	// ── H2-3: Update JetEngine Query ─────────────────────────────────────────
+	if ( ewpa_is_ability_enabled( 'ewpa/je-update-query' ) ) {
+		ewpa_register_ability_with_log(
+			'ewpa/je-update-query',
+			array(
+				'label'               => __( 'Update JetEngine Query', 'enable-abilities-for-mcp' ),
+				'description'         => __( 'Updates an existing JetEngine Query Builder query by id — the missing counterpart to JetEngine\'s own native "Add Query" MCP tool, which has no edit equivalent. Only the provided fields are changed: name, query_type, and/or query_args (same shape JetEngine\'s own Add Query tool expects — WP_Query-style for posts/terms/users/comments, {"sql": "..."} for sql). Destructive — opt-in, disabled by default.', 'enable-abilities-for-mcp' ),
+				'category'            => 'jetengine-query-builder',
+				'input_schema'        => array(
+					'type'       => 'object',
+					'required'   => array( 'query_id' ),
+					'properties' => array(
+						'query_id'   => array(
+							'type'        => 'integer',
+							'description' => __( 'ID of the query to update.', 'enable-abilities-for-mcp' ),
+						),
+						'name'       => array(
+							'type'        => 'string',
+							'description' => __( 'New name for the query.', 'enable-abilities-for-mcp' ),
+						),
+						'query_type' => array(
+							'type'        => 'string',
+							'description' => __( 'New query type (e.g. posts, terms, users, comments, sql). Leave unset to keep the current type.', 'enable-abilities-for-mcp' ),
+						),
+						'query_args' => array(
+							'type'        => 'object',
+							'description' => __( 'Replacement arguments for the query type (WP_Query-style for posts/terms/users/comments, {"sql": "..."} for sql). Replaces the existing type-specific arguments entirely when provided.', 'enable-abilities-for-mcp' ),
+						),
+					),
+				),
+				'output_schema'       => array(
+					'type'       => 'object',
+					'properties' => array(
+						'query_id'   => array( 'type' => 'integer' ),
+						'name'       => array( 'type' => 'string' ),
+						'query_type' => array( 'type' => 'string' ),
+						'message'    => array( 'type' => 'string' ),
+					),
+				),
+				'permission_callback' => function () {
+					return current_user_can( 'manage_options' );
+				},
+				'execute_callback'    => function ( $input ) {
+					if ( ! function_exists( 'jet_engine' ) || ! class_exists( '\Jet_Engine\Query_Builder\Manager' ) ) {
+						return new WP_Error( 'plugin_inactive', __( 'JetEngine Query Builder is not active.', 'enable-abilities-for-mcp' ) );
+					}
+
+					$query_id = absint( $input['query_id'] );
+					$manager  = \Jet_Engine\Query_Builder\Manager::instance();
+					$current  = $manager->data->get_item_for_edit( $query_id );
+
+					if ( ! $current ) {
+						return new WP_Error( 'not_found', __( 'Query not found.', 'enable-abilities-for-mcp' ) );
+					}
+
+					$name       = ( isset( $input['name'] ) && '' !== $input['name'] ) ? sanitize_text_field( $input['name'] ) : $current['name'];
+					$query_type = ( isset( $input['query_type'] ) && '' !== $input['query_type'] ) ? sanitize_key( $input['query_type'] ) : ( $current['query_type'] ?? '' );
+
+					if ( '' === $query_type ) {
+						return new WP_Error( 'invalid_type', __( 'Could not determine the query type — pass query_type explicitly.', 'enable-abilities-for-mcp' ) );
+					}
+
+					// Ensure JetEngine's MCP converter classes are loadable regardless
+					// of whether its own MCP registry has already booted this request.
+					require_once jet_engine()->plugin_path( 'includes/components/query-builder/mcp/controller.php' );
+
+					$general_settings = $current;
+					unset( $general_settings['id'], $general_settings['name'] );
+					$general_settings['name']       = $name;
+					$general_settings['query_type'] = $query_type;
+
+					if ( isset( $input['query_args'] ) && is_array( $input['query_args'] ) ) {
+						$converter      = \Jet_Engine\Query_Builder\MCP\Controller::get_converter( $query_type );
+						$converted_args = $converter ? $converter->convert( $input['query_args'] ) : $input['query_args'];
+						$dynamic_key    = '__dynamic_' . $query_type;
+
+						if ( isset( $converted_args[ $dynamic_key ] ) ) {
+							$general_settings[ $dynamic_key ] = $converted_args[ $dynamic_key ];
+							unset( $converted_args[ $dynamic_key ] );
+						}
+
+						$general_settings[ $query_type ] = $converted_args;
+					}
+
+					$manager->data->set_request(
+						array(
+							'id'          => $query_id,
+							'name'        => $name,
+							'slug'        => '',
+							'args'        => $general_settings,
+							'meta_fields' => array(),
+						)
+					);
+
+					$updated = $manager->data->edit_item( false );
+
+					if ( ! $updated ) {
+						return new WP_Error( 'update_failed', __( 'JetEngine could not update the query.', 'enable-abilities-for-mcp' ) );
+					}
+
+					return array(
+						'query_id'   => $query_id,
+						'name'       => $name,
+						'query_type' => $query_type,
+						'message'    => sprintf(
+							/* translators: %d: query id */
+							__( 'Query %d updated.', 'enable-abilities-for-mcp' ),
+							$query_id
+						),
 					);
 				},
 				'meta'                => array(
