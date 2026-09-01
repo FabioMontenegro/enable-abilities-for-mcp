@@ -2,8 +2,8 @@
 /**
  * Plugin Name:       Enable Abilities for MCP
  * Plugin URI:        https://mcp.fabiomontenegro.com/
- * Description:       Connect Claude, ChatGPT & any MCP client to WordPress. 94 abilities: content, SEO, WooCommerce, FSE, LMS & more. Free & self-hosted.
- * Version:           2.6.0
+ * Description:       Connect Claude, ChatGPT & any MCP client to WordPress. 96 abilities: content, SEO, WooCommerce, FSE, LMS & more. Free & self-hosted.
+ * Version:           2.7.0
  * Requires at least: 6.9
  * Requires PHP:      8.0
  * Author:            Fabio Montenegro
@@ -19,7 +19,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'EWPA_VERSION', '2.6.0' );
+define( 'EWPA_VERSION', '2.7.0' );
 define( 'EWPA_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'EWPA_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 define( 'EWPA_OPTION_KEY', 'ewpa_enabled_abilities' );
@@ -284,6 +284,9 @@ add_action( 'plugins_loaded', 'ewpa_maybe_migrate_keys_v251' );
 
 // Adds the v2.6.0 FSE Block Templates read abilities to existing installs.
 add_action( 'plugins_loaded', 'ewpa_maybe_migrate_keys_v260' );
+
+// Adds the v2.7.0 term meta abilities to existing installs.
+add_action( 'plugins_loaded', 'ewpa_maybe_migrate_keys_v270' );
 
 
 /*
@@ -797,6 +800,35 @@ function ewpa_maybe_migrate_keys_v260(): void {
 }
 
 /**
+ * Adds the term meta abilities introduced in v2.7.0 to existing installs.
+ *
+ * @return void
+ */
+function ewpa_maybe_migrate_keys_v270(): void {
+	$enabled = get_option( EWPA_OPTION_KEY );
+	if ( ! is_array( $enabled ) ) {
+		return;
+	}
+
+	$new_abilities = array(
+		'ewpa/get-term-meta',
+		'ewpa/update-term-meta',
+	);
+
+	$changed = false;
+	foreach ( $new_abilities as $key ) {
+		if ( ! in_array( $key, $enabled, true ) ) {
+			$enabled[] = $key;
+			$changed   = true;
+		}
+	}
+
+	if ( $changed ) {
+		update_option( EWPA_OPTION_KEY, $enabled );
+	}
+}
+
+/**
  * Runs all ability key migrations in order.
  *
  * Called at the start of ewpa_register_custom_abilities() so every migration
@@ -808,6 +840,7 @@ function ewpa_maybe_migrate_keys_v260(): void {
 function ewpa_run_migrations(): void {
 	ewpa_maybe_migrate_keys_v251();
 	ewpa_maybe_migrate_keys_v260();
+	ewpa_maybe_migrate_keys_v270();
 }
 
 /**
@@ -1235,6 +1268,14 @@ function ewpa_get_abilities_registry() {
 				'ewpa/assign-cpt-terms'   => array(
 					'label' => __( 'Assign Terms to CPT Item', 'enable-abilities-for-mcp' ),
 					'desc'  => __( 'Assign taxonomy terms to a CPT item. Can add to or replace existing terms.', 'enable-abilities-for-mcp' ),
+				),
+				'ewpa/get-term-meta'      => array(
+					'label' => __( 'Get Term Meta', 'enable-abilities-for-mcp' ),
+					'desc'  => __( 'Read any single term meta field by exact key, or all meta for a term. Requires edit_term capability.', 'enable-abilities-for-mcp' ),
+				),
+				'ewpa/update-term-meta'   => array(
+					'label' => __( 'Update Term Meta', 'enable-abilities-for-mcp' ),
+					'desc'  => __( 'Write any term meta field by exact key. Requires edit_term capability.', 'enable-abilities-for-mcp' ),
 				),
 			),
 		),

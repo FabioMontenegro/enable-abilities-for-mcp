@@ -5,11 +5,11 @@ Tags: mcp, ai, rest-api, content-management, woocommerce
 Requires at least: 6.9
 Tested up to: 7.1
 Requires PHP: 8.0
-Stable tag: 2.6.0
+Stable tag: 2.7.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
-Connect Claude, ChatGPT & any MCP client to WordPress. 94 abilities: content, SEO, WooCommerce, FSE, LMS & more. Free & self-hosted.
+Connect Claude, ChatGPT & any MCP client to WordPress. 96 abilities: content, SEO, WooCommerce, FSE, LMS & more. Free & self-hosted.
 
 == Description ==
 
@@ -30,7 +30,7 @@ Prefer tokens? Application Passwords (per-user) and a single-admin Bearer token 
 
 = Features =
 
-* **94 abilities** organized in 19 categories: Core, Read, Write, SEO (Rank Math), SEO (SEOPress), SEO (Yoast), Navigation Menus, Utility, Multilanguage, Custom Post Types, WooCommerce, The Events Calendar, Code Snippets, JetEngine Options Pages, Elementor, LearnDash, Tutor LMS, AI Agent Readiness (llms.txt), and FSE Block Templates
+* **96 abilities** organized in 19 categories: Core, Read, Write, SEO (Rank Math), SEO (SEOPress), SEO (Yoast), Navigation Menus, Utility, Multilanguage, Custom Post Types, WooCommerce, The Events Calendar, Code Snippets, JetEngine Options Pages, Elementor, LearnDash, Tutor LMS, AI Agent Readiness (llms.txt), and FSE Block Templates
 * **WooCommerce integration** — dedicated abilities to manage products, orders, and customers using the native WooCommerce API (HPOS-compatible, formally declared)
 * **The Events Calendar integration** — list, get, create, and update events with venue, organizer, and date filters
 * **claude.ai OAuth custom connector** — connect from claude.ai (web, mobile, or desktop) with zero local setup: an embedded OAuth 2.1 server with Client ID Metadata Document (CIMD) support lets each user log in with their own WordPress account and role
@@ -83,6 +83,8 @@ Prefer tokens? Application Passwords (per-user) and a single-admin Bearer token 
 * Create, update, and delete CPT items with taxonomy and meta field support
 * Get CPT taxonomies with their terms
 * Assign taxonomy terms to CPT items
+* Read term meta by exact key, or all meta for a term
+* Write a term meta field by exact key
 
 **WooCommerce:**
 
@@ -220,6 +222,11 @@ Yes — strict OAuth clients require a direct `200` on `/.well-known/oauth-autho
 1. Admin settings page showing all abilities organized by category with toggle switches.
 
 == Changelog ==
+
+= 2.7.0 =
+* New: `ewpa/get-term-meta` and `ewpa/update-term-meta` (Custom Post Types section, enabled by default) — read and write taxonomy term meta by exact key, the term-level equivalent of `ewpa/get-post-meta` / `ewpa/update-post-meta`. `get-term-meta` returns every meta field for the term when `meta_key` is omitted. Both require the `edit_term` capability on the target term.
+* Fix: `ewpa/get-cpt-taxonomies` threw an output-schema validation error ("not of type string") for taxonomies registered with `'label' => false` — a pattern used by internal taxonomies some multilingual plugins (e.g. Polylang) attach to custom post types. The taxonomy slug is now used as a fallback label instead of the raw `false` value. Reported from a live JetEngine + Polylang site.
+* Updated: Total abilities: 96 in 19 categories.
 
 = 2.6.0 =
 * New: FSE Block Templates section (3 abilities) — `ewpa/fse-list-templates` and `ewpa/fse-get-template` (read, enabled by default) list and read `wp_template` / `wp_template_part` entries for the active theme via `get_block_templates()` / `get_block_template()`, merging theme-file defaults with database overrides; `ewpa/fse-update-template` (write, opt-in) writes new block markup, creating a database override when the target is still a theme default, and rejects content with unbalanced block-comment delimiters before saving. Guarded behind `current_theme_supports('block-templates')`. Requested by redsoulwarrior in a WordPress.org review.

@@ -5396,7 +5396,10 @@ function ewpa_register_custom_abilities(): void {
 
 						$result[] = array(
 							'taxonomy'     => $tax_slug,
-							'label'        => $tax_obj->label,
+							// Some taxonomies (e.g. internal ones Polylang attaches to
+							// post types) register with 'label' => false, which is not
+							// a valid string per the output schema. Fall back to the slug.
+							'label'        => is_string( $tax_obj->label ) ? $tax_obj->label : $tax_slug,
 							'hierarchical' => $tax_obj->hierarchical,
 							'terms'        => $term_data,
 						);
@@ -5526,12 +5529,198 @@ function ewpa_register_custom_abilities(): void {
 							/* translators: %1$d: number of terms, %2$s: taxonomy label */
 							__( '%1$d term(s) assigned for %2$s.', 'enable-abilities-for-mcp' ),
 							count( $terms_set ),
-							$tax_obj->label
+							is_string( $tax_obj->label ) ? $tax_obj->label : $taxonomy
 						),
 					);
 				},
 				'meta'                => array(
 					'show_in_rest' => true,
+					'mcp'          => array(
+						'public' => true,
+					),
+				),
+			)
+		);
+	}
+
+	// ── D8: Get Term Meta ─────────────────────────────────────────────────
+	if ( ewpa_is_ability_enabled( 'ewpa/get-term-meta' ) ) {
+		ewpa_register_ability_with_log(
+			'ewpa/get-term-meta',
+			array(
+				'label'               => __( 'Get Term Meta', 'enable-abilities-for-mcp' ),
+				'description'         => __( 'Reads term meta for a taxonomy term. Pass meta_key to read a single field by exact key, or omit it to return all meta fields for the term.', 'enable-abilities-for-mcp' ),
+				'category'            => 'cpt-management',
+				'input_schema'        => array(
+					'type'       => 'object',
+					'required'   => array( 'taxonomy', 'term_id' ),
+					'properties' => array(
+						'taxonomy' => array(
+							'type'        => 'string',
+							'description' => __( 'Taxonomy slug the term belongs to (e.g. category, tour_categoria).', 'enable-abilities-for-mcp' ),
+						),
+						'term_id'  => array(
+							'type'        => 'integer',
+							'description' => __( 'ID of the term to read.', 'enable-abilities-for-mcp' ),
+						),
+						'meta_key' => array(
+							'type'        => 'string',
+							'description' => __( 'Exact meta key to read. Omit to return every meta field for the term.', 'enable-abilities-for-mcp' ),
+						),
+					),
+				),
+				'output_schema'       => array(
+					'type'       => 'object',
+					'properties' => array(
+						'term_id'    => array( 'type' => 'integer' ),
+						'taxonomy'   => array( 'type' => 'string' ),
+						'meta_key'   => array( 'type' => 'string' ),
+						'meta_value' => array( 'type' => 'string' ),
+						'found'      => array( 'type' => 'boolean' ),
+						'meta'       => array(
+							'type'        => 'object',
+							'description' => 'Present only when meta_key is omitted: every meta key mapped to its value.',
+						),
+					),
+				),
+				'permission_callback' => function ( $input ) {
+					$term_id = isset( $input['term_id'] ) ? absint( $input['term_id'] ) : 0;
+					return current_user_can( 'edit_term', $term_id );
+				},
+				'execute_callback'    => function ( $input ) {
+					$term_id  = absint( $input['term_id'] );
+					$taxonomy = sanitize_key( $input['taxonomy'] );
+
+					$term = get_term( $term_id, $taxonomy );
+					if ( ! $term || is_wp_error( $term ) ) {
+						return new WP_Error( 'not_found', __( 'Term not found for the given taxonomy.', 'enable-abilities-for-mcp' ) );
+					}
+
+					if ( ! isset( $input['meta_key'] ) || '' === $input['meta_key'] ) {
+						$all_meta = get_term_meta( $term_id );
+						$meta     = array();
+						foreach ( $all_meta as $key => $values ) {
+							$value        = $values[0] ?? '';
+							$meta[ $key ] = ( is_array( $value ) || is_object( $value ) ) ? wp_json_encode( $value ) : (string) $value;
+						}
+
+						return array(
+							'term_id'  => $term_id,
+							'taxonomy' => $taxonomy,
+							'meta'     => $meta,
+						);
+					}
+
+					$meta_key = sanitize_text_field( $input['meta_key'] );
+					$all_keys = get_term_meta( $term_id );
+					$found    = array_key_exists( $meta_key, $all_keys );
+					$value    = get_term_meta( $term_id, $meta_key, true );
+
+					if ( is_array( $value ) || is_object( $value ) ) {
+						$value = wp_json_encode( $value );
+					} else {
+						$value = (string) $value;
+					}
+
+					return array(
+						'term_id'    => $term_id,
+						'taxonomy'   => $taxonomy,
+						'meta_key'   => $meta_key,
+						'meta_value' => $value,
+						'found'      => $found,
+					);
+				},
+				'meta'                => array(
+					'show_in_rest' => true,
+					'annotations'  => array(
+						'readonly'    => true,
+						'destructive' => false,
+						'idempotent'  => true,
+					),
+					'mcp'          => array(
+						'public' => true,
+					),
+				),
+			)
+		);
+	}
+
+	// ── D9: Update Term Meta ──────────────────────────────────────────────
+	if ( ewpa_is_ability_enabled( 'ewpa/update-term-meta' ) ) {
+		ewpa_register_ability_with_log(
+			'ewpa/update-term-meta',
+			array(
+				'label'               => __( 'Update Term Meta', 'enable-abilities-for-mcp' ),
+				'description'         => __( 'Writes a term meta field by exact key. Requires edit_term capability on the target term.', 'enable-abilities-for-mcp' ),
+				'category'            => 'cpt-management',
+				'input_schema'        => array(
+					'type'       => 'object',
+					'required'   => array( 'taxonomy', 'term_id', 'meta_key', 'meta_value' ),
+					'properties' => array(
+						'taxonomy'   => array(
+							'type'        => 'string',
+							'description' => __( 'Taxonomy slug the term belongs to (e.g. category, tour_categoria).', 'enable-abilities-for-mcp' ),
+						),
+						'term_id'    => array(
+							'type'        => 'integer',
+							'description' => __( 'ID of the term to update.', 'enable-abilities-for-mcp' ),
+						),
+						'meta_key'   => array(
+							'type'        => 'string',
+							'description' => __( 'Exact meta key to write.', 'enable-abilities-for-mcp' ),
+						),
+						'meta_value' => array(
+							'type'        => 'string',
+							'description' => __( 'Value to store. Always stored as a string.', 'enable-abilities-for-mcp' ),
+						),
+					),
+				),
+				'output_schema'       => array(
+					'type'       => 'object',
+					'properties' => array(
+						'term_id'    => array( 'type' => 'integer' ),
+						'taxonomy'   => array( 'type' => 'string' ),
+						'meta_key'   => array( 'type' => 'string' ),
+						'meta_value' => array( 'type' => 'string' ),
+						'message'    => array( 'type' => 'string' ),
+					),
+				),
+				'permission_callback' => function ( $input ) {
+					$term_id = isset( $input['term_id'] ) ? absint( $input['term_id'] ) : 0;
+					return current_user_can( 'edit_term', $term_id );
+				},
+				'execute_callback'    => function ( $input ) {
+					$term_id    = absint( $input['term_id'] );
+					$taxonomy   = sanitize_key( $input['taxonomy'] );
+					$meta_key   = sanitize_text_field( $input['meta_key'] );
+					$meta_value = $input['meta_value'];
+
+					$term = get_term( $term_id, $taxonomy );
+					if ( ! $term || is_wp_error( $term ) ) {
+						return new WP_Error( 'not_found', __( 'Term not found for the given taxonomy.', 'enable-abilities-for-mcp' ) );
+					}
+
+					update_term_meta( $term_id, $meta_key, wp_slash( $meta_value ) );
+
+					return array(
+						'term_id'    => $term_id,
+						'taxonomy'   => $taxonomy,
+						'meta_key'   => $meta_key,
+						'meta_value' => $meta_value,
+						'message'    => sprintf(
+							/* translators: 1: meta key, 2: term id */
+							__( 'Meta key "%1$s" updated for term %2$d.', 'enable-abilities-for-mcp' ),
+							$meta_key,
+							$term_id
+						),
+					);
+				},
+				'meta'                => array(
+					'show_in_rest' => true,
+					'annotations'  => array(
+						'readonly'    => false,
+						'destructive' => false,
+					),
 					'mcp'          => array(
 						'public' => true,
 					),
