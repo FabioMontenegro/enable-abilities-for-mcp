@@ -5,11 +5,11 @@ Tags: mcp, ai, rest-api, content-management, woocommerce
 Requires at least: 6.9
 Tested up to: 7.1
 Requires PHP: 8.0
-Stable tag: 2.7.2
+Stable tag: 2.8.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
-Connect Claude, ChatGPT & any MCP client to WordPress. 100 abilities: content, SEO, WooCommerce, FSE, LMS & more. Free & self-hosted.
+Connect Claude, ChatGPT & any MCP client to WordPress. 101 abilities: content, SEO, WooCommerce, FSE, LMS & more. Free & self-hosted.
 
 == Description ==
 
@@ -30,7 +30,7 @@ Prefer tokens? Application Passwords (per-user) and a single-admin Bearer token 
 
 = Features =
 
-* **100 abilities** organized in 20 categories: Core, Read, Write, SEO (Rank Math), SEO (SEOPress), SEO (Yoast), Navigation Menus, Utility, Multilanguage, Custom Post Types, WooCommerce, The Events Calendar, Code Snippets, JetEngine Options Pages, JetEngine Query Builder, Elementor, LearnDash, Tutor LMS, AI Agent Readiness (llms.txt), and FSE Block Templates
+* **101 abilities** organized in 21 categories: Core, Read, Write, SEO (Rank Math), SEO (SEOPress), SEO (Yoast), Navigation Menus, Utility, Multilanguage, Custom Post Types, WooCommerce, The Events Calendar, Code Snippets, JetEngine Options Pages, JetEngine Query Builder, Elementor, LearnDash, Tutor LMS, AI Agent Readiness (llms.txt), FSE Block Templates, and Accessibility (WCAG)
 * **WooCommerce integration** — dedicated abilities to manage products, orders, and customers using the native WooCommerce API (HPOS-compatible, formally declared)
 * **The Events Calendar integration** — list, get, create, and update events with venue, organizer, and date filters
 * **claude.ai OAuth custom connector** — connect from claude.ai (web, mobile, or desktop) with zero local setup: an embedded OAuth 2.1 server with Client ID Metadata Document (CIMD) support lets each user log in with their own WordPress account and role
@@ -165,6 +165,10 @@ Prefer tokens? Application Passwords (per-user) and a single-admin Bearer token 
 * Get the full block markup for one template or template part by slug
 * Write new block markup to a template or template part — creates a database override automatically when the target is still a theme default; rejects content with unbalanced block-comment delimiters (opt-in — write, `edit_theme_options`)
 
+**Accessibility (WCAG):**
+
+* Scan the media library for images missing alt text (WCAG 1.1.1 Non-text Content), paginated
+
 **Utility:**
 
 * Search and replace text in post content
@@ -229,6 +233,10 @@ Yes — strict OAuth clients require a direct `200` on `/.well-known/oauth-autho
 1. Admin settings page showing all abilities organized by category with toggle switches.
 
 == Changelog ==
+
+= 2.8.0 =
+* New: Accessibility (WCAG) section — `ewpa/get-accessibility-snapshot` (read, enabled by default) scans the media library for images missing alt text (WCAG 1.1.1 Non-text Content) and returns a paginated list, so they can be fixed via `ewpa/update-post-meta` (`_wp_attachment_image_alt`). Deliberately narrow scope: full WCAG scanning (color contrast, ARIA, keyboard navigation) is a rendered-page/browser concern already covered by browser-based tools such as Lighthouse, not duplicated here.
+* Updated: Total abilities: 101 in 21 categories.
 
 = 2.7.2 =
 * New: JetEngine Query Builder section (3 abilities) — `ewpa/je-list-queries` and `ewpa/je-get-query` (read, enabled by default) list and read Query Builder queries via JetEngine's own internal data layer (`Jet_Engine\Query_Builder\Manager`); `ewpa/je-update-query` (write, opt-in) updates an existing query's name, type, or arguments, converting `query_args` the same way JetEngine's own tools do. This is the missing counterpart to JetEngine's own native "Add Query" MCP tool — JetEngine ships its own separate, bundled MCP server with a tool to create a query but none to list, read, or edit one; these abilities close that gap through the standard WordPress Abilities API instead of JetEngine's internal tool registry. Requires JetEngine with the Query Builder module. Validated end-to-end on a live production site, including a real write to an in-use query with a non-trivial tax_query/post_type configuration that was confirmed intact after the update.

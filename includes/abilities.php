@@ -478,6 +478,14 @@ function ewpa_register_ability_categories(): void {
 	);
 
 	wp_register_ability_category(
+		'accessibility',
+		array(
+			'label'       => __( 'Accessibility (WCAG)', 'enable-abilities-for-mcp' ),
+			'description' => __( 'Abilities to detect and help fix accessibility issues WordPress can diagnose server-side.', 'enable-abilities-for-mcp' ),
+		)
+	);
+
+	wp_register_ability_category(
 		'jetengine-query-builder',
 		array(
 			'label'       => __( 'JetEngine Query Builder', 'enable-abilities-for-mcp' ),
@@ -9797,6 +9805,125 @@ function ewpa_register_custom_abilities(): void {
 			);
 		}
 	} // end if current_theme_supports( 'block-templates' )
+
+	/*
+	 * ======================================================================
+	 * SECTION M: ACCESSIBILITY (WCAG)
+	 * ======================================================================
+	 * Deliberately narrow scope: server-side diagnostics WordPress itself
+	 * can answer cheaply (missing alt text stored in the media library).
+	 * Full WCAG scanning (color contrast, ARIA, keyboard nav) is a rendered
+	 * -page/browser concern, already covered by the chrome-devtools MCP's
+	 * Lighthouse accessibility audit — not duplicated here.
+	 */
+
+	// ── M1: Get Accessibility Snapshot ──────────────────────────────────────
+	if ( ewpa_is_ability_enabled( 'ewpa/get-accessibility-snapshot' ) ) {
+		ewpa_register_ability_with_log(
+			'ewpa/get-accessibility-snapshot',
+			array(
+				'label'               => __( 'Get Accessibility Snapshot', 'enable-abilities-for-mcp' ),
+				'description'         => __( 'Scans the media library for images missing alt text (WCAG 1.1.1 Non-text Content) and returns a paginated list so they can be fixed via ewpa/update-post-meta (_wp_attachment_image_alt) or a dedicated media-editing ability. Read-only; does not check rendered pages for color contrast, ARIA, or keyboard navigation — use a browser-based tool (e.g. Lighthouse) for those.', 'enable-abilities-for-mcp' ),
+				'category'            => 'accessibility',
+				'input_schema'        => array(
+					'type'       => 'object',
+					'properties' => array(
+						'per_page' => array(
+							'type'        => 'integer',
+							'description' => __( 'Number of missing-alt images to return per page (1-100). Default: 20.', 'enable-abilities-for-mcp' ),
+						),
+						'page'     => array(
+							'type'        => 'integer',
+							'description' => __( 'Page number. Default: 1.', 'enable-abilities-for-mcp' ),
+						),
+					),
+				),
+				'output_schema'       => array(
+					'type'       => 'object',
+					'properties' => array(
+						'total_images'      => array( 'type' => 'integer' ),
+						'missing_alt_count' => array( 'type' => 'integer' ),
+						'missing_alt_items' => array( 'type' => 'array' ),
+						'page'              => array( 'type' => 'integer' ),
+						'per_page'          => array( 'type' => 'integer' ),
+						'total_pages'       => array( 'type' => 'integer' ),
+					),
+				),
+				'permission_callback' => function () {
+					return current_user_can( 'upload_files' );
+				},
+				'execute_callback'    => function ( $input ) {
+					$per_page = isset( $input['per_page'] ) ? max( 1, min( 100, absint( $input['per_page'] ) ) ) : 20;
+					$page     = isset( $input['page'] ) ? max( 1, absint( $input['page'] ) ) : 1;
+
+					$total_query = new WP_Query(
+						array(
+							'post_type'      => 'attachment',
+							'post_mime_type' => 'image',
+							'post_status'    => 'inherit',
+							'posts_per_page' => 1,
+							'fields'         => 'ids',
+							'no_found_rows'  => false,
+						)
+					);
+					$total_images = (int) $total_query->found_posts;
+
+					$missing_query = new WP_Query(
+						array(
+							'post_type'      => 'attachment',
+							'post_mime_type' => 'image',
+							'post_status'    => 'inherit',
+							'posts_per_page' => $per_page,
+							'paged'          => $page,
+							'fields'         => 'ids',
+							'meta_query'     => array( // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_query
+								'relation' => 'OR',
+								array(
+									'key'     => '_wp_attachment_image_alt',
+									'compare' => 'NOT EXISTS',
+								),
+								array(
+									'key'     => '_wp_attachment_image_alt',
+									'value'   => '',
+									'compare' => '=',
+								),
+							),
+						)
+					);
+
+					$missing_alt_items = array();
+					foreach ( $missing_query->posts as $attachment_id ) {
+						$missing_alt_items[] = array(
+							'attachment_id' => (int) $attachment_id,
+							'title'         => get_the_title( $attachment_id ),
+							'filename'      => wp_basename( get_attached_file( $attachment_id ) ),
+							'url'           => wp_get_attachment_url( $attachment_id ),
+						);
+					}
+
+					return array(
+						'total_images'      => $total_images,
+						'missing_alt_count' => (int) $missing_query->found_posts,
+						'missing_alt_items' => $missing_alt_items,
+						'page'              => $page,
+						'per_page'          => $per_page,
+						'total_pages'       => (int) $missing_query->max_num_pages,
+					);
+				},
+				'meta'                => array(
+					'show_in_rest' => true,
+					'annotations'  => array(
+						'readonly'    => true,
+						'destructive' => false,
+						'idempotent'  => true,
+					),
+					'mcp'          => array(
+						'public' => true,
+					),
+				),
+			)
+		);
+	}
 }
 
 // ── Navigation Menus ─────────────────────────────────────────────────────

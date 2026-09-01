@@ -2,8 +2,8 @@
 /**
  * Plugin Name:       Enable Abilities for MCP
  * Plugin URI:        https://mcp.fabiomontenegro.com/
- * Description:       Connect Claude, ChatGPT & any MCP client to WordPress. 100 abilities: content, SEO, WooCommerce, FSE, LMS & more. Free & self-hosted.
- * Version:           2.7.2
+ * Description:       Connect Claude, ChatGPT & any MCP client to WordPress. 101 abilities: content, SEO, WooCommerce, FSE, LMS & more. Free & self-hosted.
+ * Version:           2.8.0
  * Requires at least: 6.9
  * Requires PHP:      8.0
  * Author:            Fabio Montenegro
@@ -19,7 +19,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'EWPA_VERSION', '2.7.2' );
+define( 'EWPA_VERSION', '2.8.0' );
 define( 'EWPA_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'EWPA_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 define( 'EWPA_OPTION_KEY', 'ewpa_enabled_abilities' );
@@ -293,6 +293,9 @@ add_action( 'plugins_loaded', 'ewpa_maybe_migrate_keys_v271' );
 
 // Adds the v2.7.2 JetEngine Query Builder read abilities to existing installs.
 add_action( 'plugins_loaded', 'ewpa_maybe_migrate_keys_v272' );
+
+// Adds ewpa/get-accessibility-snapshot introduced in v2.8.0 to existing installs.
+add_action( 'plugins_loaded', 'ewpa_maybe_migrate_keys_v280' );
 
 
 /*
@@ -885,6 +888,22 @@ function ewpa_maybe_migrate_keys_v272(): void {
 }
 
 /**
+ * Adds ewpa/get-accessibility-snapshot introduced in v2.8.0 to existing installs.
+ *
+ * @return void
+ */
+function ewpa_maybe_migrate_keys_v280(): void {
+	$enabled = get_option( EWPA_OPTION_KEY );
+	if ( ! is_array( $enabled ) ) {
+		return;
+	}
+	if ( ! in_array( 'ewpa/get-accessibility-snapshot', $enabled, true ) ) {
+		$enabled[] = 'ewpa/get-accessibility-snapshot';
+		update_option( EWPA_OPTION_KEY, $enabled );
+	}
+}
+
+/**
  * Runs all ability key migrations in order.
  *
  * Called at the start of ewpa_register_custom_abilities() so every migration
@@ -899,6 +918,7 @@ function ewpa_run_migrations(): void {
 	ewpa_maybe_migrate_keys_v270();
 	ewpa_maybe_migrate_keys_v271();
 	ewpa_maybe_migrate_keys_v272();
+	ewpa_maybe_migrate_keys_v280();
 }
 
 /**
@@ -1513,6 +1533,17 @@ function ewpa_get_abilities_registry() {
 					'label'   => __( 'Update llms.txt', 'enable-abilities-for-mcp' ),
 					'desc'    => __( 'Write the llms.txt content (SEOPress Pro option when active, or a virtual file served by this plugin). Requires manage_options. Opt-in.', 'enable-abilities-for-mcp' ),
 					'default' => false,
+				),
+			),
+		),
+		'accessibility' => array(
+			'section_label' => __( 'Accessibility (WCAG)', 'enable-abilities-for-mcp' ),
+			'section_desc'  => __( 'Detect accessibility issues WordPress can diagnose server-side. Does not replace a browser-based audit (e.g. Lighthouse) for color contrast, ARIA, or keyboard navigation.', 'enable-abilities-for-mcp' ),
+			'section_icon'  => 'dashicons-universal-access-alt',
+			'abilities'     => array(
+				'ewpa/get-accessibility-snapshot' => array(
+					'label' => __( 'Get Accessibility Snapshot', 'enable-abilities-for-mcp' ),
+					'desc'  => __( 'Scan the media library for images missing alt text (WCAG 1.1.1), paginated.', 'enable-abilities-for-mcp' ),
 				),
 			),
 		),
