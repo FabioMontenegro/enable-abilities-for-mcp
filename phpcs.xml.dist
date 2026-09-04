@@ -6,6 +6,7 @@
 	<file>enable-abilities-for-mcp.php</file>
 	<file>uninstall.php</file>
 	<file>includes/abilities.php</file>
+	<file>includes/multilanguage.php</file>
 	<file>includes/admin.php</file>
 	<file>includes/auth.php</file>
 	<file>includes/activity-log.php</file>
