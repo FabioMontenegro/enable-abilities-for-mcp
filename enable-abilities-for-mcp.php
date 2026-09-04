@@ -3,7 +3,7 @@
  * Plugin Name:       Enable Abilities for MCP
  * Plugin URI:        https://mcp.fabiomontenegro.com/
  * Description:       Connect Claude, ChatGPT & any MCP client to WordPress. 101 abilities: content, SEO, WooCommerce, FSE, LMS & more. Free & self-hosted.
- * Version:           2.8.0
+ * Version:           2.8.1
  * Requires at least: 6.9
  * Requires PHP:      8.0
  * Author:            Fabio Montenegro
@@ -19,7 +19,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'EWPA_VERSION', '2.8.0' );
+define( 'EWPA_VERSION', '2.8.1' );
 define( 'EWPA_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'EWPA_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 define( 'EWPA_OPTION_KEY', 'ewpa_enabled_abilities' );
@@ -43,6 +43,7 @@ add_action(
 require_once EWPA_PLUGIN_DIR . 'includes/activity-log.php';
 require_once EWPA_PLUGIN_DIR . 'includes/auth.php';
 require_once EWPA_PLUGIN_DIR . 'includes/admin.php';
+require_once EWPA_PLUGIN_DIR . 'includes/multilanguage.php';
 require_once EWPA_PLUGIN_DIR . 'includes/abilities.php';
 require_once EWPA_PLUGIN_DIR . 'includes/thirdparty.php';
 
@@ -252,6 +253,9 @@ add_action( 'plugins_loaded', 'ewpa_maybe_migrate_keys_v207' );
 // Migration: add ewpa/get-post-translations introduced in v2.0.8 to existing installs.
 add_action( 'plugins_loaded', 'ewpa_maybe_migrate_keys_v208' );
 
+// Migration: add the Linguator-aware multilanguage abilities introduced in v2.8.1 to existing installs.
+add_action( 'plugins_loaded', 'ewpa_maybe_migrate_keys_v281' );
+
 // Migration: add ewpa/update-rankmath-schema introduced in v2.0.8b to existing installs.
 add_action( 'plugins_loaded', 'ewpa_maybe_migrate_keys_v208b' );
 
@@ -405,9 +409,15 @@ function ewpa_maybe_migrate_keys_v207() {
 	$new_abilities = array(
 		'ewpa/get-post-meta',
 		'ewpa/get-active-plugins',
+		'ewpa/list-languages',
+		'ewpa/create-post-translation',
 		'ewpa/set-post-language',
 		'ewpa/link-post-translation',
 		'ewpa/get-post-translations',
+		'ewpa/set-term-language',
+		'ewpa/link-term-translation',
+		'ewpa/get-term-translations',
+		'ewpa/create-term-translation',
 	);
 
 	$changed = false;
@@ -447,6 +457,46 @@ function ewpa_maybe_migrate_keys_v208() {
 	}
 
 	update_option( 'ewpa_keys_migrated_v208', true );
+}
+
+/**
+ * Adds the multilanguage abilities introduced in v2.8.1 (list-languages, create-post-translation and the term/taxonomy set) to existing installs.
+ *
+ * @return void
+ */
+function ewpa_maybe_migrate_keys_v281() {
+	if ( get_option( 'ewpa_keys_migrated_v281' ) ) {
+		return;
+	}
+
+	$enabled = get_option( EWPA_OPTION_KEY );
+	if ( ! is_array( $enabled ) ) {
+		update_option( 'ewpa_keys_migrated_v281', true );
+		return;
+	}
+
+	$new_abilities = array(
+		'ewpa/list-languages',
+		'ewpa/create-post-translation',
+		'ewpa/set-term-language',
+		'ewpa/link-term-translation',
+		'ewpa/get-term-translations',
+		'ewpa/create-term-translation',
+	);
+
+	$changed = false;
+	foreach ( $new_abilities as $ability ) {
+		if ( ! in_array( $ability, $enabled, true ) ) {
+			$enabled[] = $ability;
+			$changed   = true;
+		}
+	}
+
+	if ( $changed ) {
+		update_option( EWPA_OPTION_KEY, $enabled );
+	}
+
+	update_option( 'ewpa_keys_migrated_v281', true );
 }
 
 /**
@@ -919,6 +969,7 @@ function ewpa_run_migrations(): void {
 	ewpa_maybe_migrate_keys_v271();
 	ewpa_maybe_migrate_keys_v272();
 	ewpa_maybe_migrate_keys_v280();
+	ewpa_maybe_migrate_keys_v281();
 }
 
 /**
@@ -1228,22 +1279,46 @@ function ewpa_get_abilities_registry() {
 			),
 			'multilanguage' => array(
 			'section_label'  => __( 'Multilanguage', 'enable-abilities-for-mcp' ),
-			'section_desc'   => __( 'Assign languages and link translation groups between posts via Polylang or WPML.', 'enable-abilities-for-mcp' ),
+			'section_desc'   => __( 'List languages, create and link translations, and assign languages to posts and taxonomy terms via Polylang, WPML, or Linguator AI.', 'enable-abilities-for-mcp' ),
 			'section_icon'   => 'dashicons-translation',
 			'section_badge'  => 'warning',
 			'section_notice' => 'ewpa_section_notice_multilanguage',
 			'abilities'      => array(
-				'ewpa/set-post-language'    => array(
-					'label' => __( 'Set Post Language', 'enable-abilities-for-mcp' ),
-					'desc'  => __( 'Assign a language code to an existing post via Polylang or WPML.', 'enable-abilities-for-mcp' ),
+				'ewpa/list-languages'          => array(
+					'label' => __( 'List Languages', 'enable-abilities-for-mcp' ),
+					'desc'  => __( 'List available languages from Polylang, WPML, or Linguator AI.', 'enable-abilities-for-mcp' ),
 				),
-				'ewpa/link-post-translation'  => array(
+				'ewpa/create-post-translation' => array(
+					'label' => __( 'Create Post Translation', 'enable-abilities-for-mcp' ),
+					'desc'  => __( 'Create the translation of a post in a target language and link it to the source. The AI supplies the translated text; taxonomies, custom fields and the featured image are copied over.', 'enable-abilities-for-mcp' ),
+				),
+				'ewpa/set-post-language'       => array(
+					'label' => __( 'Set Post Language', 'enable-abilities-for-mcp' ),
+					'desc'  => __( 'Assign a language code to an existing post via Polylang, WPML, or Linguator AI.', 'enable-abilities-for-mcp' ),
+				),
+				'ewpa/link-post-translation'   => array(
 					'label' => __( 'Link Post Translation', 'enable-abilities-for-mcp' ),
 					'desc'  => __( 'Link two posts as translations of each other in the same translation group.', 'enable-abilities-for-mcp' ),
 				),
-				'ewpa/get-post-translations'  => array(
+				'ewpa/get-post-translations'   => array(
 					'label' => __( 'Get Post Translations', 'enable-abilities-for-mcp' ),
 					'desc'  => __( 'Return the full translation map for a post: language, post ID, title, permalink, and status for each available translation.', 'enable-abilities-for-mcp' ),
+				),
+				'ewpa/create-term-translation' => array(
+					'label' => __( 'Create Term Translation', 'enable-abilities-for-mcp' ),
+					'desc'  => __( 'Create the translation of a category, tag, or custom taxonomy term and link it to the source. The AI supplies the translated name and description; term meta is copied and the parent term is remapped.', 'enable-abilities-for-mcp' ),
+				),
+				'ewpa/set-term-language'       => array(
+					'label' => __( 'Set Term Language', 'enable-abilities-for-mcp' ),
+					'desc'  => __( 'Assign a language code to an existing taxonomy term via Polylang, WPML, or Linguator AI.', 'enable-abilities-for-mcp' ),
+				),
+				'ewpa/link-term-translation'   => array(
+					'label' => __( 'Link Term Translation', 'enable-abilities-for-mcp' ),
+					'desc'  => __( 'Link two taxonomy terms as translations of each other in the same translation group.', 'enable-abilities-for-mcp' ),
+				),
+				'ewpa/get-term-translations'   => array(
+					'label' => __( 'Get Term Translations', 'enable-abilities-for-mcp' ),
+					'desc'  => __( 'Return the full translation map for a taxonomy term: language, term ID, name, slug, description, count, and archive URL.', 'enable-abilities-for-mcp' ),
 				),
 			),
 		),
@@ -1655,21 +1730,6 @@ function ewpa_get_seo_meta_keys() {
 	return apply_filters( 'ewpa_seo_meta_keys', $keys );
 }
 
-/**
- * Detects which multilanguage plugin is active.
- *
- * @return string 'polylang' | 'wpml' | '' (empty string = none detected)
- */
-function ewpa_get_translation_plugin(): string {
-	if ( function_exists( 'pll_set_post_language' ) ) {
-		return 'polylang';
-	}
-	if ( defined( 'ICL_SITEPRESS_VERSION' ) ) {
-		return 'wpml';
-	}
-	return '';
-}
-
 
 /*
  * ==========================================================================
@@ -1801,11 +1861,6 @@ function ewpa_section_notice_tec() {
 }
 
 /**
- * Section notice for Multilanguage: shows info when neither Polylang nor WPML is active.
- *
- * @return string
- */
-/**
  * Section notice for Code Snippets: warns when plugin is inactive, always shows security notice.
  *
  * @return string
@@ -1832,6 +1887,11 @@ function ewpa_section_notice_code_snippets() {
 	return $out;
 }
 
+/**
+ * Section notice for Multilanguage: shows info when no supported multilanguage backend is active.
+ *
+ * @return string
+ */
 function ewpa_section_notice_multilanguage() {
 	if ( ewpa_get_translation_plugin() ) {
 		return '';
@@ -1839,7 +1899,7 @@ function ewpa_section_notice_multilanguage() {
 
 	return '<div class="ewpa-section-notice ewpa-section-notice-info">'
 		. '<span class="dashicons dashicons-info"></span> '
-		. esc_html__( 'No multilanguage plugin detected. These abilities require Polylang or WPML to function.', 'enable-abilities-for-mcp' )
+		. esc_html__( 'No multilanguage plugin detected. These abilities require Polylang, WPML, or Linguator AI to function.', 'enable-abilities-for-mcp' )
 		. '</div>';
 }
 

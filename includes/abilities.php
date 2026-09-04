@@ -161,6 +161,38 @@ function ewpa_check_post_permission( $input, string $capability, string $param =
 }
 
 /**
+ * Verifies that the authenticated user can edit the term referenced by $input.
+ *
+ * @param array  $input Ability input.
+ * @param string $param Name of the parameter holding the term ID.
+ * @return true|WP_Error
+ */
+function ewpa_check_term_permission( $input, string $param = 'term_id' ) {
+	$term_id = absint( $input[ $param ] ?? 0 );
+
+	if ( ! $term_id ) {
+		return new WP_Error(
+			'missing_parameter',
+			sprintf( 'The "%s" parameter is required. Pass it inside the "parameters" object of the execute-ability call.', $param )
+		);
+	}
+
+	$term = get_term( $term_id );
+	if ( ! $term || is_wp_error( $term ) ) {
+		return new WP_Error( 'not_found', sprintf( 'Invalid term ID: %d does not exist.', $term_id ) );
+	}
+
+	if ( ! current_user_can( 'edit_term', $term_id ) ) {
+		return new WP_Error(
+			'forbidden',
+			sprintf( 'The authenticated user is not allowed to edit term %d.', $term_id )
+		);
+	}
+
+	return true;
+}
+
+/**
  * Detects the active page-cache plugin.
  *
  * @return string One of: wp_rocket | litespeed | w3_total_cache | wp_super_cache | wp_fastest_cache | none.
@@ -1438,29 +1470,10 @@ function ewpa_register_custom_abilities(): void {
 					$translation_plugin = ewpa_get_translation_plugin();
 					if ( $translation_plugin && ! empty( $input['language'] ) ) {
 						$lang = sanitize_text_field( $input['language'] );
-						if ( 'polylang' === $translation_plugin && function_exists( 'pll_set_post_language' ) ) {
-							pll_set_post_language( $post_id, $lang );
-							if ( ! empty( $input['translation_of'] ) ) {
-								$original_id = absint( $input['translation_of'] );
-								$translations = function_exists( 'pll_get_post_translations' )
-									? pll_get_post_translations( $original_id )
-									: array();
-								$translations[ $lang ] = $post_id;
-								pll_save_post_translations( $translations );
-							}
-						} elseif ( 'wpml' === $translation_plugin ) {
-							do_action(
-								'wpml_set_element_language_details',
-								array(
-									'element_id'           => $post_id,
-									'element_type'         => 'post_post',
-									'trid'                 => ! empty( $input['translation_of'] )
-										? apply_filters( 'wpml_element_trid', null, absint( $input['translation_of'] ), 'post_post' )
-										: false,
-									'language_code'        => $lang,
-									'source_language_code' => ! empty( $input['translation_of'] ) ? null : null,
-								)
-							);
+						if ( ! empty( $input['translation_of'] ) ) {
+							ewpa_multilanguage_link_post_translation( absint( $input['translation_of'] ), $post_id, $lang );
+						} else {
+							ewpa_multilanguage_set_post_language( $post_id, $lang );
 						}
 					}
 
@@ -4341,6 +4354,10 @@ function ewpa_register_custom_abilities(): void {
 							'check' => fn() => defined( 'ICL_SITEPRESS_VERSION' ),
 							'label' => 'multilanguage',
 						),
+						'linguator'   => array(
+							'check' => fn() => ewpa_is_linguator_available(),
+							'label' => 'multilanguage',
+						),
 						'rankmath'    => array(
 							'check' => fn() => class_exists( 'RankMath' ),
 							'label' => 'seo',
@@ -6954,17 +6971,53 @@ function ewpa_register_custom_abilities(): void {
 	/*
 	 * ======================================================================
 	 * SECTION G: MULTILANGUAGE ABILITIES
-	 * Requires Polylang or WPML. All abilities check ewpa_get_translation_plugin().
+	 * Requires Polylang, WPML, or Linguator AI. All abilities use the shared backend adapter.
 	 * ======================================================================
 	 */
 
-	// ── G1: Set Post Language ────────────────────────────────────────────
+	// G0: List Languages.
+	if ( ewpa_is_ability_enabled( 'ewpa/list-languages' ) ) {
+		ewpa_register_ability_with_log(
+			'ewpa/list-languages',
+			array(
+				'label'               => __( 'List Languages', 'enable-abilities-for-mcp' ),
+				'description'         => __( 'Lists available languages from Polylang, WPML, or Linguator AI.', 'enable-abilities-for-mcp' ),
+				'category'            => 'multilanguage',
+				'output_schema'       => array(
+					'type'  => 'array',
+					'items' => array(
+						'type'       => 'object',
+						'properties' => array(
+							'slug'    => array( 'type' => 'string' ),
+							'locale'  => array( 'type' => 'string' ),
+							'name'    => array( 'type' => 'string' ),
+							'term_id' => array( 'type' => 'integer' ),
+						),
+					),
+				),
+				'permission_callback' => function () {
+					return current_user_can( 'read' );
+				},
+				'execute_callback'    => function () {
+					return ewpa_multilanguage_list_languages();
+				},
+				'meta'                => array(
+					'show_in_rest' => true,
+					'mcp'          => array(
+						'public' => true,
+					),
+				),
+			)
+		);
+	}
+
+	// G1: Set Post Language.
 	if ( ewpa_is_ability_enabled( 'ewpa/set-post-language' ) ) {
 		ewpa_register_ability_with_log(
 			'ewpa/set-post-language',
 			array(
 				'label'               => __( 'Set Post Language', 'enable-abilities-for-mcp' ),
-				'description'         => __( 'Assigns a language to an existing post via Polylang or WPML. Does nothing if no multilanguage plugin is active.', 'enable-abilities-for-mcp' ),
+				'description'         => __( 'Assigns a language to an existing post via Polylang, WPML, or Linguator AI.', 'enable-abilities-for-mcp' ),
 				'category'            => 'multilanguage',
 				'input_schema'        => array(
 					'type'       => 'object',
@@ -6993,39 +7046,7 @@ function ewpa_register_custom_abilities(): void {
 					return ewpa_check_post_permission( $input, 'edit_post' );
 				},
 				'execute_callback'    => function ( $input ) {
-					$post_id = absint( $input['post_id'] );
-					$lang    = sanitize_text_field( $input['language'] );
-					$plugin  = ewpa_get_translation_plugin();
-
-					if ( ! get_post( $post_id ) ) {
-						return new WP_Error( 'not_found', 'Post not found.' );
-					}
-
-					if ( ! $plugin ) {
-						return new WP_Error( 'no_plugin', 'No multilanguage plugin detected (Polylang or WPML required).' );
-					}
-
-					if ( 'polylang' === $plugin ) {
-						pll_set_post_language( $post_id, $lang );
-					} elseif ( 'wpml' === $plugin ) {
-						do_action(
-							'wpml_set_element_language_details',
-							array(
-								'element_id'           => $post_id,
-								'element_type'         => 'post_post',
-								'trid'                 => false,
-								'language_code'        => $lang,
-								'source_language_code' => null,
-							)
-						);
-					}
-
-					return array(
-						'post_id'  => $post_id,
-						'language' => $lang,
-						'plugin'   => $plugin,
-						'message'  => sprintf( 'Language "%s" set successfully via %s.', $lang, $plugin ),
-					);
+					return ewpa_multilanguage_set_post_language( absint( $input['post_id'] ), sanitize_text_field( $input['language'] ) );
 				},
 				'meta'                => array(
 					'show_in_rest' => true,
@@ -7037,13 +7058,13 @@ function ewpa_register_custom_abilities(): void {
 		);
 	}
 
-	// ── G2: Link Post Translation ────────────────────────────────────────
+	// G2: Link Post Translation.
 	if ( ewpa_is_ability_enabled( 'ewpa/link-post-translation' ) ) {
 		ewpa_register_ability_with_log(
 			'ewpa/link-post-translation',
 			array(
 				'label'               => __( 'Link Post Translation', 'enable-abilities-for-mcp' ),
-				'description'         => __( 'Links two posts as translations of each other via Polylang or WPML. Both posts must already have a language assigned.', 'enable-abilities-for-mcp' ),
+				'description'         => __( 'Links two posts as translations of each other via Polylang, WPML, or Linguator AI. Both posts must already exist.', 'enable-abilities-for-mcp' ),
 				'category'            => 'multilanguage',
 				'input_schema'        => array(
 					'type'       => 'object',
@@ -7080,52 +7101,7 @@ function ewpa_register_custom_abilities(): void {
 					return ewpa_check_post_permission( $input, 'edit_post', 'translated_post_id' );
 				},
 				'execute_callback'    => function ( $input ) {
-					$original_id     = absint( $input['original_post_id'] );
-					$translated_id   = absint( $input['translated_post_id'] );
-					$translated_lang = sanitize_text_field( $input['translated_language'] );
-					$plugin          = ewpa_get_translation_plugin();
-
-					if ( ! get_post( $original_id ) ) {
-						return new WP_Error( 'not_found', 'Original post not found.' );
-					}
-					if ( ! get_post( $translated_id ) ) {
-						return new WP_Error( 'not_found', 'Translated post not found.' );
-					}
-					if ( ! $plugin ) {
-						return new WP_Error( 'no_plugin', 'No multilanguage plugin detected (Polylang or WPML required).' );
-					}
-
-					if ( 'polylang' === $plugin ) {
-						$translations = function_exists( 'pll_get_post_translations' )
-							? pll_get_post_translations( $original_id )
-							: array();
-						$translations[ $translated_lang ] = $translated_id;
-						pll_save_post_translations( $translations );
-					} elseif ( 'wpml' === $plugin ) {
-						$trid = apply_filters( 'wpml_element_trid', null, $original_id, 'post_post' );
-						do_action(
-							'wpml_set_element_language_details',
-							array(
-								'element_id'           => $translated_id,
-								'element_type'         => 'post_post',
-								'trid'                 => $trid,
-								'language_code'        => $translated_lang,
-								'source_language_code' => null,
-							)
-						);
-					}
-
-					return array(
-						'original_post_id'   => $original_id,
-						'translated_post_id' => $translated_id,
-						'plugin'             => $plugin,
-						'message'            => sprintf(
-							'Posts %d and %d linked as translations via %s.',
-							$original_id,
-							$translated_id,
-							$plugin
-						),
-					);
+					return ewpa_multilanguage_link_post_translation( absint( $input['original_post_id'] ), absint( $input['translated_post_id'] ), sanitize_text_field( $input['translated_language'] ) );
 				},
 				'meta'                => array(
 					'show_in_rest' => true,
@@ -7137,13 +7113,13 @@ function ewpa_register_custom_abilities(): void {
 		);
 	}
 
-	// ── G3: Get Post Translations ────────────────────────────────────────
+	// G3: Get Post Translations.
 	if ( ewpa_is_ability_enabled( 'ewpa/get-post-translations' ) ) {
 		ewpa_register_ability_with_log(
 			'ewpa/get-post-translations',
 			array(
 				'label'               => __( 'Get Post Translations', 'enable-abilities-for-mcp' ),
-				'description'         => __( 'Returns the full translation map for a post: language codes, post IDs, titles, and permalink for each available translation. Requires Polylang or WPML.', 'enable-abilities-for-mcp' ),
+				'description'         => __( 'Returns the full translation map for a post via Polylang, WPML, or Linguator AI.', 'enable-abilities-for-mcp' ),
 				'category'            => 'multilanguage',
 				'input_schema'        => array(
 					'type'       => 'object',
@@ -7159,6 +7135,7 @@ function ewpa_register_custom_abilities(): void {
 					'type'       => 'object',
 					'properties' => array(
 						'post_id'      => array( 'type' => 'integer' ),
+						'language'     => array( 'type' => 'string' ),
 						'plugin'       => array( 'type' => 'string' ),
 						'translations' => array(
 							'type'  => 'array',
@@ -7179,50 +7156,369 @@ function ewpa_register_custom_abilities(): void {
 					return ewpa_check_post_permission( $input, 'read_post' );
 				},
 				'execute_callback'    => function ( $input ) {
-					$post_id = absint( $input['post_id'] );
-					$plugin  = ewpa_get_translation_plugin();
-
-					if ( ! get_post( $post_id ) ) {
-						return new WP_Error( 'not_found', 'Post not found.' );
+					return ewpa_multilanguage_get_post_translations( absint( $input['post_id'] ) );
+				},
+				'meta'                => array(
+					'show_in_rest' => true,
+					'mcp'          => array(
+						'public' => true,
+					),
+				),
+			)
+		);
+	}
+	// G4: Create Post Translation.
+	if ( ewpa_is_ability_enabled( 'ewpa/create-post-translation' ) ) {
+		ewpa_register_ability_with_log(
+			'ewpa/create-post-translation',
+			array(
+				'label'               => __( 'Create Post Translation', 'enable-abilities-for-mcp' ),
+				'description'         => __( 'Creates the translation of an existing post in a target language and links it to the source post. Translate the source text yourself and pass the result in "title", "content" and "excerpt" — this ability does not call any translation service. Taxonomies, custom fields and the featured image are copied from the source; on Linguator AI the plugin\'s own duplication engine is used, so the result matches what its bulk translation screen produces. Fields left empty keep the source value. If a translation already exists in that language it is updated instead of duplicated. Use ewpa/list-languages to discover the available language slugs.', 'enable-abilities-for-mcp' ),
+				'category'            => 'multilanguage',
+				'input_schema'        => array(
+					'type'       => 'object',
+					'properties' => array(
+						'post_id'         => array(
+							'type'        => 'integer',
+							'description' => __( 'ID of the source post to translate. It must already have a language assigned.', 'enable-abilities-for-mcp' ),
+						),
+						'target_language' => array(
+							'type'        => 'string',
+							'description' => __( 'Target language slug, e.g. "it" or "de". See ewpa/list-languages.', 'enable-abilities-for-mcp' ),
+						),
+						'title'           => array(
+							'type'        => 'string',
+							'description' => __( 'Translated post title.', 'enable-abilities-for-mcp' ),
+						),
+						'content'         => array(
+							'type'        => 'string',
+							'description' => __( 'Translated post content. Keep the source markup (HTML or Gutenberg block comments) intact and translate only the text.', 'enable-abilities-for-mcp' ),
+						),
+						'excerpt'         => array(
+							'type'        => 'string',
+							'description' => __( 'Translated excerpt. Optional.', 'enable-abilities-for-mcp' ),
+						),
+						'slug'            => array(
+							'type'        => 'string',
+							'description' => __( 'Translated post slug. Optional.', 'enable-abilities-for-mcp' ),
+						),
+						'status'          => array(
+							'type'        => 'string',
+							'enum'        => array( 'draft', 'publish', 'pending', 'private' ),
+							'description' => __( 'Status of the translated post. Defaults to the backend default (draft on Linguator AI).', 'enable-abilities-for-mcp' ),
+						),
+					),
+					'required'   => array( 'post_id', 'target_language' ),
+				),
+				'output_schema'       => array(
+					'type'       => 'object',
+					'properties' => array(
+						'post_id'        => array( 'type' => 'integer' ),
+						'source_post_id' => array( 'type' => 'integer' ),
+						'language'       => array( 'type' => 'string' ),
+						'created'        => array( 'type' => 'boolean' ),
+						'plugin'         => array( 'type' => 'string' ),
+						'permalink'      => array( 'type' => 'string' ),
+						'edit_link'      => array( 'type' => 'string' ),
+						'status'         => array( 'type' => 'string' ),
+						'message'        => array( 'type' => 'string' ),
+					),
+				),
+				'permission_callback' => function ( $input ) {
+					$permission = ewpa_check_post_permission( $input, 'read_post' );
+					if ( true !== $permission ) {
+						return $permission;
 					}
 
-					if ( ! $plugin ) {
-						return new WP_Error( 'no_plugin', 'No multilanguage plugin detected (Polylang or WPML required).' );
-					}
+					$post_type        = get_post_type( absint( $input['post_id'] ) );
+					$post_type_object = $post_type ? get_post_type_object( $post_type ) : null;
+					$capability       = $post_type_object && isset( $post_type_object->cap->create_posts )
+						? $post_type_object->cap->create_posts
+						: 'publish_posts';
 
-					$translations_map = array();
-
-					if ( 'polylang' === $plugin && function_exists( 'pll_get_post_translations' ) ) {
-						$translations_map = pll_get_post_translations( $post_id );
-					} elseif ( 'wpml' === $plugin ) {
-						$trid     = apply_filters( 'wpml_element_trid', null, $post_id, 'post_post' );
-						$raw_map  = apply_filters( 'wpml_get_element_translations', null, $trid, 'post_post' );
-						if ( is_array( $raw_map ) ) {
-							foreach ( $raw_map as $lang => $translation ) {
-								$translations_map[ $lang ] = $translation->element_id ?? 0;
-							}
-						}
-					}
-
-					$result = array();
-					foreach ( $translations_map as $lang => $translated_id ) {
-						$translated_post = get_post( $translated_id );
-						if ( ! $translated_post ) {
-							continue;
-						}
-						$result[] = array(
-							'language'  => $lang,
-							'post_id'   => (int) $translated_id,
-							'title'     => $translated_post->post_title,
-							'permalink' => get_permalink( $translated_id ),
-							'status'    => $translated_post->post_status,
+					if ( ! current_user_can( $capability ) ) {
+						return new WP_Error(
+							'forbidden',
+							sprintf( 'The authenticated user is not allowed to create %s items.', (string) $post_type )
 						);
 					}
 
-					return array(
-						'post_id'      => $post_id,
-						'plugin'       => $plugin,
-						'translations' => $result,
+					return true;
+				},
+				'execute_callback'    => function ( $input ) {
+					return ewpa_multilanguage_create_post_translation(
+						absint( $input['post_id'] ),
+						sanitize_text_field( $input['target_language'] ),
+						array(
+							'title'   => $input['title'] ?? '',
+							'content' => $input['content'] ?? '',
+							'excerpt' => $input['excerpt'] ?? '',
+							'slug'    => $input['slug'] ?? '',
+							'status'  => $input['status'] ?? '',
+						)
+					);
+				},
+				'meta'                => array(
+					'show_in_rest' => true,
+					'mcp'          => array(
+						'public' => true,
+					),
+				),
+			)
+		);
+	}
+
+
+
+	// G5: Set Term Language.
+	if ( ewpa_is_ability_enabled( 'ewpa/set-term-language' ) ) {
+		ewpa_register_ability_with_log(
+			'ewpa/set-term-language',
+			array(
+				'label'               => __( 'Set Term Language', 'enable-abilities-for-mcp' ),
+				'description'         => __( 'Assigns a language to an existing taxonomy term (category, tag, or any custom taxonomy) via Polylang, WPML, or Linguator AI.', 'enable-abilities-for-mcp' ),
+				'category'            => 'multilanguage',
+				'input_schema'        => array(
+					'type'       => 'object',
+					'properties' => array(
+						'term_id'  => array(
+							'type'        => 'integer',
+							'description' => __( 'ID of the term.', 'enable-abilities-for-mcp' ),
+						),
+						'language' => array(
+							'type'        => 'string',
+							'description' => __( 'Language slug, e.g. "it" or "de". See ewpa/list-languages.', 'enable-abilities-for-mcp' ),
+						),
+					),
+					'required'   => array( 'term_id', 'language' ),
+				),
+				'output_schema'       => array(
+					'type'       => 'object',
+					'properties' => array(
+						'term_id'  => array( 'type' => 'integer' ),
+						'taxonomy' => array( 'type' => 'string' ),
+						'language' => array( 'type' => 'string' ),
+						'plugin'   => array( 'type' => 'string' ),
+						'message'  => array( 'type' => 'string' ),
+					),
+				),
+				'permission_callback' => function ( $input ) {
+					return ewpa_check_term_permission( $input );
+				},
+				'execute_callback'    => function ( $input ) {
+					return ewpa_multilanguage_set_term_language( absint( $input['term_id'] ), sanitize_text_field( $input['language'] ) );
+				},
+				'meta'                => array(
+					'show_in_rest' => true,
+					'mcp'          => array(
+						'public' => true,
+					),
+				),
+			)
+		);
+	}
+
+	// G6: Link Term Translation.
+	if ( ewpa_is_ability_enabled( 'ewpa/link-term-translation' ) ) {
+		ewpa_register_ability_with_log(
+			'ewpa/link-term-translation',
+			array(
+				'label'               => __( 'Link Term Translation', 'enable-abilities-for-mcp' ),
+				'description'         => __( 'Links two taxonomy terms as translations of each other via Polylang, WPML, or Linguator AI. Both terms must belong to the same taxonomy.', 'enable-abilities-for-mcp' ),
+				'category'            => 'multilanguage',
+				'input_schema'        => array(
+					'type'       => 'object',
+					'properties' => array(
+						'original_term_id'    => array(
+							'type'        => 'integer',
+							'description' => __( 'ID of the source term.', 'enable-abilities-for-mcp' ),
+						),
+						'translated_term_id'  => array(
+							'type'        => 'integer',
+							'description' => __( 'ID of the translated term.', 'enable-abilities-for-mcp' ),
+						),
+						'translated_language' => array(
+							'type'        => 'string',
+							'description' => __( 'Language slug of the translated term. See ewpa/list-languages.', 'enable-abilities-for-mcp' ),
+						),
+					),
+					'required'   => array( 'original_term_id', 'translated_term_id', 'translated_language' ),
+				),
+				'output_schema'       => array(
+					'type'       => 'object',
+					'properties' => array(
+						'original_term_id'   => array( 'type' => 'integer' ),
+						'translated_term_id' => array( 'type' => 'integer' ),
+						'taxonomy'           => array( 'type' => 'string' ),
+						'plugin'             => array( 'type' => 'string' ),
+						'message'            => array( 'type' => 'string' ),
+					),
+				),
+				'permission_callback' => function ( $input ) {
+					$permission = ewpa_check_term_permission( $input, 'original_term_id' );
+					if ( true !== $permission ) {
+						return $permission;
+					}
+
+					return ewpa_check_term_permission( $input, 'translated_term_id' );
+				},
+				'execute_callback'    => function ( $input ) {
+					return ewpa_multilanguage_link_term_translation(
+						absint( $input['original_term_id'] ),
+						absint( $input['translated_term_id'] ),
+						sanitize_text_field( $input['translated_language'] )
+					);
+				},
+				'meta'                => array(
+					'show_in_rest' => true,
+					'mcp'          => array(
+						'public' => true,
+					),
+				),
+			)
+		);
+	}
+
+	// G7: Get Term Translations.
+	if ( ewpa_is_ability_enabled( 'ewpa/get-term-translations' ) ) {
+		ewpa_register_ability_with_log(
+			'ewpa/get-term-translations',
+			array(
+				'label'               => __( 'Get Term Translations', 'enable-abilities-for-mcp' ),
+				'description'         => __( 'Returns the full translation map for a taxonomy term: language, term ID, name, slug, description, post count, and archive URL for each available translation.', 'enable-abilities-for-mcp' ),
+				'category'            => 'multilanguage',
+				'input_schema'        => array(
+					'type'       => 'object',
+					'properties' => array(
+						'term_id' => array(
+							'type'        => 'integer',
+							'description' => __( 'ID of the term.', 'enable-abilities-for-mcp' ),
+						),
+					),
+					'required'   => array( 'term_id' ),
+				),
+				'output_schema'       => array(
+					'type'       => 'object',
+					'properties' => array(
+						'term_id'      => array( 'type' => 'integer' ),
+						'taxonomy'     => array( 'type' => 'string' ),
+						'language'     => array( 'type' => 'string' ),
+						'plugin'       => array( 'type' => 'string' ),
+						'translations' => array(
+							'type'  => 'array',
+							'items' => array(
+								'type'       => 'object',
+								'properties' => array(
+									'language'    => array( 'type' => 'string' ),
+									'term_id'     => array( 'type' => 'integer' ),
+									'name'        => array( 'type' => 'string' ),
+									'slug'        => array( 'type' => 'string' ),
+									'description' => array( 'type' => 'string' ),
+									'count'       => array( 'type' => 'integer' ),
+									'permalink'   => array( 'type' => 'string' ),
+								),
+							),
+						),
+					),
+				),
+				'permission_callback' => function () {
+					return current_user_can( 'read' );
+				},
+				'execute_callback'    => function ( $input ) {
+					return ewpa_multilanguage_get_term_translations( absint( $input['term_id'] ) );
+				},
+				'meta'                => array(
+					'show_in_rest' => true,
+					'mcp'          => array(
+						'public' => true,
+					),
+				),
+			)
+		);
+	}
+
+	// G8: Create Term Translation.
+	if ( ewpa_is_ability_enabled( 'ewpa/create-term-translation' ) ) {
+		ewpa_register_ability_with_log(
+			'ewpa/create-term-translation',
+			array(
+				'label'               => __( 'Create Term Translation', 'enable-abilities-for-mcp' ),
+				'description'         => __( 'Creates the translation of a taxonomy term (category, tag, or custom taxonomy) in a target language and links it to the source term. Translate the source strings yourself and pass them in "name" and "description" — this ability does not call any translation service. Term meta is copied from the source and the parent term is remapped to its target-language counterpart when one exists. Fields left empty keep the source value. If a translation already exists in that language it is updated instead of duplicated. Use ewpa/list-languages to discover the available language slugs.', 'enable-abilities-for-mcp' ),
+				'category'            => 'multilanguage',
+				'input_schema'        => array(
+					'type'       => 'object',
+					'properties' => array(
+						'term_id'         => array(
+							'type'        => 'integer',
+							'description' => __( 'ID of the source term to translate. It must already have a language assigned.', 'enable-abilities-for-mcp' ),
+						),
+						'target_language' => array(
+							'type'        => 'string',
+							'description' => __( 'Target language slug, e.g. "it" or "de". See ewpa/list-languages.', 'enable-abilities-for-mcp' ),
+						),
+						'name'            => array(
+							'type'        => 'string',
+							'description' => __( 'Translated term name.', 'enable-abilities-for-mcp' ),
+						),
+						'slug'            => array(
+							'type'        => 'string',
+							'description' => __( 'Translated term slug. Optional; defaults to a slug derived from the translated name.', 'enable-abilities-for-mcp' ),
+						),
+						'description'     => array(
+							'type'        => 'string',
+							'description' => __( 'Translated term description. Optional.', 'enable-abilities-for-mcp' ),
+						),
+					),
+					'required'   => array( 'term_id', 'target_language' ),
+				),
+				'output_schema'       => array(
+					'type'       => 'object',
+					'properties' => array(
+						'term_id'        => array( 'type' => 'integer' ),
+						'source_term_id' => array( 'type' => 'integer' ),
+						'taxonomy'       => array( 'type' => 'string' ),
+						'language'       => array( 'type' => 'string' ),
+						'created'        => array( 'type' => 'boolean' ),
+						'plugin'         => array( 'type' => 'string' ),
+						'name'           => array( 'type' => 'string' ),
+						'slug'           => array( 'type' => 'string' ),
+						'permalink'      => array( 'type' => 'string' ),
+						'edit_link'      => array( 'type' => 'string' ),
+						'message'        => array( 'type' => 'string' ),
+					),
+				),
+				'permission_callback' => function ( $input ) {
+					$term_id = absint( $input['term_id'] ?? 0 );
+					if ( ! $term_id ) {
+						return new WP_Error( 'missing_parameter', 'The "term_id" parameter is required. Pass it inside the "parameters" object of the execute-ability call.' );
+					}
+
+					$term = get_term( $term_id );
+					if ( ! $term || is_wp_error( $term ) ) {
+						return new WP_Error( 'not_found', sprintf( 'Invalid term ID: %d does not exist.', $term_id ) );
+					}
+
+					$tax_obj    = get_taxonomy( $term->taxonomy );
+					$capability = $tax_obj && isset( $tax_obj->cap->edit_terms ) ? $tax_obj->cap->edit_terms : 'manage_categories';
+
+					if ( ! current_user_can( $capability ) ) {
+						return new WP_Error(
+							'forbidden',
+							sprintf( 'The authenticated user is not allowed to create terms in the "%s" taxonomy.', $term->taxonomy )
+						);
+					}
+
+					return true;
+				},
+				'execute_callback'    => function ( $input ) {
+					return ewpa_multilanguage_create_term_translation(
+						absint( $input['term_id'] ),
+						sanitize_text_field( $input['target_language'] ),
+						array(
+							'name'        => $input['name'] ?? '',
+							'slug'        => $input['slug'] ?? '',
+							'description' => $input['description'] ?? '',
+						)
 					);
 				},
 				'meta'                => array(

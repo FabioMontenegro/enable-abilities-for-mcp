@@ -5,11 +5,11 @@ Tags: mcp, ai, rest-api, content-management, woocommerce
 Requires at least: 6.9
 Tested up to: 7.1
 Requires PHP: 8.0
-Stable tag: 2.8.0
+Stable tag: 2.8.1
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
-Connect Claude, ChatGPT & any MCP client to WordPress. 101 abilities: content, SEO, WooCommerce, FSE, LMS & more. Free & self-hosted.
+Connect Claude, ChatGPT & any MCP client to WordPress. 107 abilities: content, SEO, WooCommerce, FSE, LMS & more. Free & self-hosted.
 
 == Description ==
 
@@ -30,7 +30,7 @@ Prefer tokens? Application Passwords (per-user) and a single-admin Bearer token 
 
 = Features =
 
-* **101 abilities** organized in 21 categories: Core, Read, Write, SEO (Rank Math), SEO (SEOPress), SEO (Yoast), Navigation Menus, Utility, Multilanguage, Custom Post Types, WooCommerce, The Events Calendar, Code Snippets, JetEngine Options Pages, JetEngine Query Builder, Elementor, LearnDash, Tutor LMS, AI Agent Readiness (llms.txt), FSE Block Templates, and Accessibility (WCAG)
+* **107 abilities** organized in 21 categories: Core, Read, Write, SEO (Rank Math), SEO (SEOPress), SEO (Yoast), Navigation Menus, Utility, Multilanguage, Custom Post Types, WooCommerce, The Events Calendar, Code Snippets, JetEngine Options Pages, JetEngine Query Builder, Elementor, LearnDash, Tutor LMS, AI Agent Readiness (llms.txt), FSE Block Templates, and Accessibility (WCAG)
 * **WooCommerce integration** — dedicated abilities to manage products, orders, and customers using the native WooCommerce API (HPOS-compatible, formally declared)
 * **The Events Calendar integration** — list, get, create, and update events with venue, organizer, and date filters
 * **claude.ai OAuth custom connector** — connect from claude.ai (web, mobile, or desktop) with zero local setup: an embedded OAuth 2.1 server with Client ID Metadata Document (CIMD) support lets each user log in with their own WordPress account and role
@@ -233,6 +233,15 @@ Yes — strict OAuth clients require a direct `200` on `/.well-known/oauth-autho
 1. Admin settings page showing all abilities organized by category with toggle switches.
 
 == Changelog ==
+
+= 2.8.1 =
+* New: Multilanguage support now includes Linguator AI alongside Polylang and WPML — both releases of the plugin, "Linguator AI - Auto Translate & Create Multilingual Sites" (translate-words) and "Multilingual AI Translator" (linguator-multilingual-ai-translation), which share the same public API. `ewpa/set-post-language`, `ewpa/link-post-translation`, `ewpa/get-post-translations` and the language linking done by `ewpa/create-post` now resolve through a shared backend adapter that uses Linguator public API functions instead of writing Linguator taxonomies or translation metadata directly.
+* New: `ewpa/list-languages` returns the site languages (slug, locale, name, term ID) for the detected backend, so the assistant can discover valid language slugs before translating.
+* New: `ewpa/create-post-translation` creates the translation of a post in a target language and links it to the source. The MCP client supplies the translated title/content/excerpt; taxonomies, custom fields and the featured image are copied from the source. On Linguator AI the plugin's own duplication engine (Linguator_Sync_Post_Model) does the work, so the result matches its bulk translation screen; Polylang and WPML use a generic duplicator that remaps translated terms. An existing translation in that language is updated instead of duplicated.
+* New: term and taxonomy translation — `ewpa/create-term-translation`, `ewpa/set-term-language`, `ewpa/link-term-translation` and `ewpa/get-term-translations` bring categories, tags and custom taxonomy terms to parity with posts. Creating a term translation copies term meta and remaps the parent term to its target-language counterpart; on Linguator AI it goes through `linguator_insert_term()` / `linguator_update_term()`, the same public API its own term translation service uses.
+* Fixed: Linguator AI was never detected. Its model exposes `get_languages_list()` through `__call()`, so the `method_exists()` probe always failed and every multilanguage ability reported "No multilanguage plugin detected".
+* Fixed: `ewpa/link-post-translation` referenced an undefined variable in the WPML branch, so the source language was never passed to `wpml_set_element_language_details`.
+* Updated: Total abilities: 107 in 21 categories.
 
 = 2.8.0 =
 * New: Accessibility (WCAG) section — `ewpa/get-accessibility-snapshot` (read, enabled by default) scans the media library for images missing alt text (WCAG 1.1.1 Non-text Content) and returns a paginated list, so they can be fixed via `ewpa/update-post-meta` (`_wp_attachment_image_alt`). Deliberately narrow scope: full WCAG scanning (color contrast, ARIA, keyboard navigation) is a rendered-page/browser concern already covered by browser-based tools such as Lighthouse, not duplicated here.
