@@ -7,7 +7,7 @@
 
 Let AI assistants like Claude manage your WordPress site through the [Model Context Protocol](https://modelcontextprotocol.io/) — with full control over exactly what they can and cannot do.
 
-**101 abilities in 21 categories**, each one individually toggleable from the dashboard: content, SEO (Rank Math / SEOPress / Yoast), navigation menus, WooCommerce, Elementor, LearnDash, Tutor LMS, JetEngine (Options Pages + Query Builder), multilanguage, `llms.txt`, FSE block templates, accessibility (WCAG), cache purge, and more.
+**107 abilities in 21 categories**, each one individually toggleable from the dashboard: content, SEO (Rank Math / SEOPress / Yoast), navigation menus, WooCommerce, Elementor, LearnDash, Tutor LMS, JetEngine (Options Pages + Query Builder), multilanguage, `llms.txt`, FSE block templates, accessibility (WCAG), cache purge, and more.
 
 ## How it works
 
@@ -17,11 +17,11 @@ This plugin completes the stack:
 
 ```
 Claude / MCP client  ──►  MCP Adapter  ──►  Abilities API  ──►  Enable Abilities for MCP
-                                                                (101 abilities + per-ability toggles
+                                                                (107 abilities + per-ability toggles
                                                                  + auth + activity log)
 ```
 
-1. It **registers 98 content-management abilities** (plus exposing the 3 native WordPress core ones to MCP).
+1. It **registers 104 content-management abilities** (plus exposing the 3 native WordPress core ones to MCP).
 2. It gives you an **admin dashboard** to enable or disable each ability individually — expose only what you need.
 3. It provides **authentication** (claude.ai OAuth custom connector, Application Passwords, or single-admin Bearer token) and an **activity log** of every ability executed.
 4. It also governs **third-party abilities**: anything other MCP-ready plugins (Fluent Forms, …) register shows up in the same dashboard, grouped by plugin, with the same toggles — disabling one removes it from every MCP server on the site.
@@ -37,7 +37,7 @@ Claude / MCP client  ──►  MCP Adapter  ──►  Abilities API  ──►
 | **SEO — SEOPress** | 3 | Read/write all meta + **content analysis**: every SEOPress check (headings, internal links, schemas…) with impact level and recommendation, optionally re-analyzing the rendered page first |
 | **SEO — Yoast SEO** | 3 | Read/write all meta + sitemap index |
 | **Utility** | 6 | Search & replace, site stats, raw post-meta read/write, active plugins with capability detection, **cache purge** (WP Rocket, LiteSpeed, W3TC, WP Super Cache, WP Fastest Cache) |
-| **Multilanguage** | 3 | Assign language and link translations via Polylang or WPML; `create-post` accepts `language` + `translation_of` |
+| **Multilanguage** | 9 | List languages, **create post and term translations** (the AI supplies the translated text; taxonomies, custom fields, featured image and term meta are copied over), assign languages, and link translation groups for both posts and taxonomy terms via Polylang, WPML, or Linguator AI; `create-post` accepts `language` + `translation_of` |
 | **Navigation Menus** | 8 | Create menus, list/get with full item hierarchy, add/update items (pages, posts, terms, custom URLs), remove items, assign theme locations, delete menus (destructive ones opt-in) |
 | **Custom Post Types** | 11 | Discover and CRUD any CPT with taxonomy and meta support, including reading/writing term meta and core term fields (name, slug, description, parent) |
 | **WooCommerce** | 7 | Products, orders, customers — native WC API, HPOS-compatible |
