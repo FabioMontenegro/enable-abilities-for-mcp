@@ -5559,6 +5559,135 @@ function ewpa_register_custom_abilities(): void {
 		);
 	}
 
+	// ── D7b: Assign Post Terms ───────────────────────────────────────────────
+	if ( ewpa_is_ability_enabled( 'ewpa/assign-post-terms' ) ) {
+		ewpa_register_ability_with_log(
+			'ewpa/assign-post-terms',
+			array(
+				'label'               => __( 'Assign Post Terms', 'enable-abilities-for-mcp' ),
+				'description'         => __( 'Assigns taxonomy terms to a post or page. For a custom taxonomy registered on the built-in post/page types (e.g. by a companion plugin) — native categories and tags on posts already have dedicated abilities via ewpa/update-post. Can replace or append terms.', 'enable-abilities-for-mcp' ),
+				'category'            => 'content-management',
+				'input_schema'        => array(
+					'type'       => 'object',
+					'required'   => array( 'post_id', 'taxonomy', 'terms' ),
+					'properties' => array(
+						'post_id'  => array(
+							'type'        => 'integer',
+							'description' => __( 'The ID of the post or page to assign terms to.', 'enable-abilities-for-mcp' ),
+						),
+						'taxonomy' => array(
+							'type'        => 'string',
+							'description' => __( 'The taxonomy slug.', 'enable-abilities-for-mcp' ),
+						),
+						'terms'    => array(
+							'type'        => 'array',
+							'description' => __( 'Array of term slugs or IDs to assign.', 'enable-abilities-for-mcp' ),
+						),
+						'append'   => array(
+							'type'        => 'boolean',
+							'description' => __( 'If true, appends terms instead of replacing (default false).', 'enable-abilities-for-mcp' ),
+						),
+					),
+				),
+				'output_schema'       => array(
+					'type'       => 'object',
+					'properties' => array(
+						'post_id'   => array( 'type' => 'integer' ),
+						'taxonomy'  => array( 'type' => 'string' ),
+						'terms_set' => array( 'type' => 'array' ),
+						'message'   => array( 'type' => 'string' ),
+					),
+				),
+				'permission_callback' => function () {
+					return current_user_can( 'read' );
+				},
+				'execute_callback'    => function ( $input ) {
+					$post_id = absint( $input['post_id'] );
+					$post    = get_post( $post_id );
+
+					if ( ! $post ) {
+						return new WP_Error( 'not_found', __( 'Item not found.', 'enable-abilities-for-mcp' ) );
+					}
+
+					if ( ! in_array( $post->post_type, array( 'post', 'page' ), true ) ) {
+						return new WP_Error( 'invalid_post_type', __( 'This ability only assigns terms to posts and pages. Use ewpa/assign-cpt-terms for custom post types.', 'enable-abilities-for-mcp' ) );
+					}
+
+					if ( ! current_user_can( 'edit_post', $post_id ) ) {
+						return new WP_Error( 'forbidden', __( 'You do not have permission to edit this item.', 'enable-abilities-for-mcp' ) );
+					}
+
+					$taxonomy = sanitize_key( $input['taxonomy'] );
+
+					if ( ! taxonomy_exists( $taxonomy ) ) {
+						return new WP_Error( 'invalid_taxonomy', __( 'The specified taxonomy does not exist.', 'enable-abilities-for-mcp' ) );
+					}
+
+					if ( ! in_array( $taxonomy, get_object_taxonomies( $post->post_type ), true ) ) {
+						return new WP_Error(
+							'taxonomy_mismatch',
+							sprintf(
+								/* translators: %1$s: taxonomy slug, %2$s: post type */
+								__( 'The taxonomy "%1$s" is not associated with the "%2$s" post type.', 'enable-abilities-for-mcp' ),
+								$taxonomy,
+								$post->post_type
+							)
+						);
+					}
+
+					$tax_obj = get_taxonomy( $taxonomy );
+					if ( ! current_user_can( $tax_obj->cap->assign_terms ) ) {
+						return new WP_Error( 'forbidden', __( 'You do not have permission to assign terms for this taxonomy.', 'enable-abilities-for-mcp' ) );
+					}
+
+					$terms  = is_array( $input['terms'] ) ? $input['terms'] : array( $input['terms'] );
+					$append = ! empty( $input['append'] );
+
+					$result = wp_set_object_terms( $post_id, $terms, $taxonomy, $append );
+
+					if ( is_wp_error( $result ) ) {
+						return $result;
+					}
+
+					// Get the final assigned terms for confirmation.
+					$final_terms = wp_get_object_terms( $post_id, $taxonomy, array( 'fields' => 'all' ) );
+					$terms_set   = array();
+					if ( ! is_wp_error( $final_terms ) ) {
+						foreach ( $final_terms as $term ) {
+							$terms_set[] = array(
+								'term_id' => $term->term_id,
+								'name'    => $term->name,
+								'slug'    => $term->slug,
+							);
+						}
+					}
+
+					return array(
+						'post_id'   => $post_id,
+						'taxonomy'  => $taxonomy,
+						'terms_set' => $terms_set,
+						'message'   => sprintf(
+							/* translators: %1$d: number of terms, %2$s: taxonomy label */
+							__( '%1$d term(s) assigned for %2$s.', 'enable-abilities-for-mcp' ),
+							count( $terms_set ),
+							is_string( $tax_obj->label ) ? $tax_obj->label : $taxonomy
+						),
+					);
+				},
+				'meta'                => array(
+					'show_in_rest' => true,
+					'annotations'  => array(
+						'readonly'    => false,
+						'destructive' => false,
+					),
+					'mcp'          => array(
+						'public' => true,
+					),
+				),
+			)
+		);
+	}
+
 	// ── D8: Get Term Meta ─────────────────────────────────────────────────
 	if ( ewpa_is_ability_enabled( 'ewpa/get-term-meta' ) ) {
 		ewpa_register_ability_with_log(

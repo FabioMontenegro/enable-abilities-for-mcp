@@ -2,8 +2,8 @@
 /**
  * Plugin Name:       Enable Abilities for MCP
  * Plugin URI:        https://mcp.fabiomontenegro.com/
- * Description:       Connect Claude, ChatGPT & any MCP client to WordPress. 101 abilities: content, SEO, WooCommerce, FSE, LMS & more. Free & self-hosted.
- * Version:           2.8.0
+ * Description:       Connect Claude, ChatGPT & any MCP client to WordPress. 102 abilities: content, SEO, WooCommerce, FSE, LMS & more. Free & self-hosted.
+ * Version:           2.8.1
  * Requires at least: 6.9
  * Requires PHP:      8.0
  * Author:            Fabio Montenegro
@@ -19,7 +19,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'EWPA_VERSION', '2.8.0' );
+define( 'EWPA_VERSION', '2.8.1' );
 define( 'EWPA_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'EWPA_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 define( 'EWPA_OPTION_KEY', 'ewpa_enabled_abilities' );
@@ -296,6 +296,9 @@ add_action( 'plugins_loaded', 'ewpa_maybe_migrate_keys_v272' );
 
 // Adds ewpa/get-accessibility-snapshot introduced in v2.8.0 to existing installs.
 add_action( 'plugins_loaded', 'ewpa_maybe_migrate_keys_v280' );
+
+// Adds ewpa/assign-post-terms introduced in v2.8.1 to existing installs.
+add_action( 'plugins_loaded', 'ewpa_maybe_migrate_keys_v281' );
 
 
 /*
@@ -904,6 +907,22 @@ function ewpa_maybe_migrate_keys_v280(): void {
 }
 
 /**
+ * Adds ewpa/assign-post-terms introduced in v2.8.1 to existing installs.
+ *
+ * @return void
+ */
+function ewpa_maybe_migrate_keys_v281(): void {
+	$enabled = get_option( EWPA_OPTION_KEY );
+	if ( ! is_array( $enabled ) ) {
+		return;
+	}
+	if ( ! in_array( 'ewpa/assign-post-terms', $enabled, true ) ) {
+		$enabled[] = 'ewpa/assign-post-terms';
+		update_option( EWPA_OPTION_KEY, $enabled );
+	}
+}
+
+/**
  * Runs all ability key migrations in order.
  *
  * Called at the start of ewpa_register_custom_abilities() so every migration
@@ -919,6 +938,7 @@ function ewpa_run_migrations(): void {
 	ewpa_maybe_migrate_keys_v271();
 	ewpa_maybe_migrate_keys_v272();
 	ewpa_maybe_migrate_keys_v280();
+	ewpa_maybe_migrate_keys_v281();
 }
 
 /**
@@ -1080,6 +1100,10 @@ function ewpa_get_abilities_registry() {
 				'ewpa/duplicate-post'   => array(
 					'label' => __( 'Duplicate Post / Page / CPT', 'enable-abilities-for-mcp' ),
 					'desc'  => __( 'Create an exact copy of any post, page, or CPT item — including all meta and taxonomy terms. The duplicate is saved as draft by default.', 'enable-abilities-for-mcp' ),
+				),
+				'ewpa/assign-post-terms' => array(
+					'label' => __( 'Assign Post Terms', 'enable-abilities-for-mcp' ),
+					'desc'  => __( 'Assign a custom taxonomy\'s terms to a post or page (e.g. a taxonomy registered by a companion plugin). Native categories and tags are already covered by ewpa/update-post.', 'enable-abilities-for-mcp' ),
 				),
 			),
 		),
