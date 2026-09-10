@@ -25,6 +25,11 @@ function ewpa_uninstall_site(): void {
 	delete_option( 'ewpa_db_version' );
 	delete_option( 'ewpa_keys_migrated_v18' );
 	delete_option( 'ewpa_keys_migrated_v19' );
+	delete_option( 'ewpa_oauth_enabled' );
+	delete_option( 'ewpa_oauth_connectors_enabled' );
+	delete_option( 'ewpa_oauth_callback_allowlist' );
+	delete_option( 'ewpa_oauth_clients' );
+	delete_option( 'ewpa_oauth_connectors_rewrite_version' );
 
 	$table = $wpdb->prefix . 'ewpa_activity_log';
 	// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared

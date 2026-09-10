@@ -246,6 +246,123 @@ function ewpa_ajax_oauth_toggle(): void {
 	wp_send_json_success( array( 'enabled' => $enabled ) );
 }
 
+// ─── AJAX: ChatGPT / third-party OAuth connectors ────────────────────────────
+add_action( 'wp_ajax_ewpa_connectors_toggle', 'ewpa_ajax_connectors_toggle' );
+add_action( 'wp_ajax_ewpa_connectors_save_callbacks', 'ewpa_ajax_connectors_save_callbacks' );
+add_action( 'wp_ajax_ewpa_connectors_create_client', 'ewpa_ajax_connectors_create_client' );
+add_action( 'wp_ajax_ewpa_connectors_delete_client', 'ewpa_ajax_connectors_delete_client' );
+
+/**
+ * AJAX handler to enable/disable third-party OAuth connectors.
+ */
+function ewpa_ajax_connectors_toggle(): void {
+	check_ajax_referer( 'ewpa_connectors_nonce', 'nonce' );
+
+	if ( ! current_user_can( 'manage_options' ) ) {
+		wp_send_json_error( array( 'message' => __( 'You do not have sufficient permissions.', 'enable-abilities-for-mcp' ) ) );
+	}
+
+	$enabled = ! empty( $_POST['enabled'] ) && 'true' === sanitize_text_field( wp_unslash( $_POST['enabled'] ) );
+	update_option( EWPA_CONNECTORS_OPTION, $enabled, false );
+
+	// /oauth/register only exists while the OAuth layer is booted; re-persist
+	// the rules so the endpoint appears (or vanishes) on the next request.
+	ewpa_oauth_connectors_schedule_flush();
+
+	wp_send_json_success( array( 'enabled' => $enabled ) );
+}
+
+/**
+ * AJAX handler to save the allowed callback (redirect_uri) list.
+ */
+function ewpa_ajax_connectors_save_callbacks(): void {
+	check_ajax_referer( 'ewpa_connectors_nonce', 'nonce' );
+
+	if ( ! current_user_can( 'manage_options' ) ) {
+		wp_send_json_error( array( 'message' => __( 'You do not have sufficient permissions.', 'enable-abilities-for-mcp' ) ) );
+	}
+
+	// Not sanitize_textarea_field(): these are URLs with a newline separator,
+	// and each line is parsed and validated by ewpa_oauth_parse_callback_list().
+	$raw      = isset( $_POST['callbacks'] ) ? wp_unslash( $_POST['callbacks'] ) : ''; // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
+	$patterns = ewpa_oauth_save_callback_allowlist( (string) $raw );
+
+	wp_send_json_success(
+		array(
+			'callbacks' => implode( "\n", $patterns ),
+			'count'     => count( $patterns ),
+			'message'   => sprintf(
+				/* translators: %d: number of saved callback URLs */
+				_n( '%d callback URL saved.', '%d callback URLs saved.', count( $patterns ), 'enable-abilities-for-mcp' ),
+				count( $patterns )
+			),
+		)
+	);
+}
+
+/**
+ * AJAX handler to create a client by hand, for connectors that ask for a
+ * Client ID and Secret instead of registering themselves.
+ */
+function ewpa_ajax_connectors_create_client(): void {
+	check_ajax_referer( 'ewpa_connectors_nonce', 'nonce' );
+
+	if ( ! current_user_can( 'manage_options' ) ) {
+		wp_send_json_error( array( 'message' => __( 'You do not have sufficient permissions.', 'enable-abilities-for-mcp' ) ) );
+	}
+
+	$name        = isset( $_POST['client_name'] ) ? sanitize_text_field( wp_unslash( $_POST['client_name'] ) ) : '';
+	$raw_uris    = isset( $_POST['redirect_uris'] ) ? wp_unslash( $_POST['redirect_uris'] ) : ''; // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- URL list, validated below.
+	$uris        = array_filter( array_map( 'trim', (array) preg_split( '/[\r\n]+/', (string) $raw_uris ) ) );
+	$with_secret = ! empty( $_POST['with_secret'] ) && 'true' === sanitize_text_field( wp_unslash( $_POST['with_secret'] ) );
+
+	if ( empty( $uris ) ) {
+		wp_send_json_error( array( 'message' => __( 'Enter at least one callback URL for this client.', 'enable-abilities-for-mcp' ) ) );
+	}
+
+	$client = ewpa_oauth_create_client(
+		array(
+			'client_name'                => '' !== $name ? $name : __( 'Manual connector', 'enable-abilities-for-mcp' ),
+			'redirect_uris'              => array_values( $uris ),
+			'token_endpoint_auth_method' => $with_secret ? 'client_secret_post' : 'none',
+		),
+		'manual'
+	);
+
+	if ( is_wp_error( $client ) ) {
+		wp_send_json_error( array( 'message' => $client->get_error_message() ) );
+	}
+
+	wp_send_json_success(
+		array(
+			'client_id'     => $client['client_id'],
+			// Returned once, at creation; only its hash is stored.
+			'client_secret' => isset( $client['client_secret'] ) ? $client['client_secret'] : '',
+			'client_name'   => $client['client_name'],
+			'redirect_uris' => $client['redirect_uris'],
+		)
+	);
+}
+
+/**
+ * AJAX handler to remove a registered client.
+ */
+function ewpa_ajax_connectors_delete_client(): void {
+	check_ajax_referer( 'ewpa_connectors_nonce', 'nonce' );
+
+	if ( ! current_user_can( 'manage_options' ) ) {
+		wp_send_json_error( array( 'message' => __( 'You do not have sufficient permissions.', 'enable-abilities-for-mcp' ) ) );
+	}
+
+	$client_id = isset( $_POST['client_id'] ) ? sanitize_text_field( wp_unslash( $_POST['client_id'] ) ) : '';
+
+	if ( ! ewpa_oauth_delete_client( $client_id ) ) {
+		wp_send_json_error( array( 'message' => __( 'That client no longer exists.', 'enable-abilities-for-mcp' ) ) );
+	}
+
+	wp_send_json_success( array( 'client_id' => $client_id ) );
+}
+
 // ─── AJAX: Generate API Key ──────────────────────────────────────────────────
 add_action( 'wp_ajax_ewpa_generate_api_key', 'ewpa_ajax_generate_api_key' );
 
@@ -401,6 +518,311 @@ function ewpa_render_settings_page(): void {
 								}
 							} );
 						} );
+					} )();
+					</script>
+				</div>
+
+				<?php /* ── Panel 1b: ChatGPT & other OAuth connectors ──── */ ?>
+				<?php
+				$ewpa_conn_on        = (bool) get_option( EWPA_CONNECTORS_OPTION, false );
+				$ewpa_conn_callbacks = implode( "\n", ewpa_oauth_get_callback_allowlist() );
+				$ewpa_conn_clients   = ewpa_oauth_get_clients();
+				$ewpa_conn_nonce     = wp_create_nonce( 'ewpa_connectors_nonce' );
+				$ewpa_register_url   = home_url( '/oauth/register' );
+
+				// Sort newest first so a connector that just registered is at the top.
+				uasort(
+					$ewpa_conn_clients,
+					static function ( $a, $b ) {
+						return ( (int) ( $b['created'] ?? 0 ) ) <=> ( (int) ( $a['created'] ?? 0 ) );
+					}
+				);
+				?>
+				<div class="ewpa-auth-panel" style="padding: 20px; border-bottom: 1px solid #dcdcde;">
+					<div style="display: flex; align-items: flex-start; gap: 16px;">
+						<div style="flex: 1;">
+							<h3 style="margin: 0 0 4px; font-size: 14px;">
+								<?php esc_html_e( 'ChatGPT & Other OAuth Connectors', 'enable-abilities-for-mcp' ); ?>
+							</h3>
+							<p class="description" style="margin: 0;">
+								<?php esc_html_e( 'Claude identifies itself with a metadata URL that this plugin already trusts. ChatGPT instead registers itself dynamically (RFC 7591), so it needs its own door: turn this on to expose /oauth/register, and list below the callback URLs a connector is allowed to send users back to. Each user still logs in with their own WordPress account and approves a consent screen. Requires a public HTTPS site.', 'enable-abilities-for-mcp' ); ?>
+							</p>
+						</div>
+						<div style="flex-shrink: 0; display: flex; align-items: center; gap: 10px; padding-top: 2px;">
+							<span class="description" style="font-size: 12px;" id="ewpa-conn-status">
+								<?php echo $ewpa_conn_on ? esc_html__( 'Enabled', 'enable-abilities-for-mcp' ) : esc_html__( 'Disabled', 'enable-abilities-for-mcp' ); ?>
+							</span>
+							<label class="ewpa-switch" style="margin: 0;">
+								<input type="checkbox" id="ewpa-conn-toggle" <?php checked( $ewpa_conn_on ); ?>>
+								<span class="ewpa-slider"></span>
+							</label>
+						</div>
+					</div>
+
+					<div id="ewpa-conn-body" style="margin-top: 16px; <?php echo $ewpa_conn_on ? '' : 'display:none;'; ?>">
+
+						<?php if ( ! $ewpa_oauth_on ) : ?>
+							<div class="notice notice-warning inline" style="margin: 0 0 16px; padding: 8px 12px;">
+								<p style="margin: 0;">
+									<?php esc_html_e( 'The OAuth server above is turned off, so no connector can reach these endpoints. Enable it first.', 'enable-abilities-for-mcp' ); ?>
+								</p>
+							</div>
+						<?php endif; ?>
+
+						<p class="description" style="margin: 0 0 6px;">
+							<?php esc_html_e( 'Add a connector in ChatGPT → Settings → Connectors with this MCP server URL:', 'enable-abilities-for-mcp' ); ?>
+						</p>
+						<div style="display: flex; align-items: center; gap: 8px; margin-bottom: 18px;">
+							<code id="ewpa-conn-url" style="display: block; flex: 1; padding: 8px 12px; background: #f6f7f7; border: 1px solid #dcdcde; word-break: break-all;"><?php echo esc_url( $ewpa_oauth_url ); ?></code>
+							<button type="button" class="button ewpa-copy-btn" data-target="ewpa-conn-url">
+								<?php esc_html_e( 'Copy', 'enable-abilities-for-mcp' ); ?>
+							</button>
+						</div>
+
+						<?php /* ── Allowed callback URLs ───────────────────── */ ?>
+						<h4 style="margin: 0 0 4px; font-size: 13px;"><?php esc_html_e( 'Allowed callback URLs', 'enable-abilities-for-mcp' ); ?></h4>
+						<p class="description" style="margin: 0 0 8px;">
+							<?php esc_html_e( 'One URL per line. A connector may only send users back to a URL that matches one of these — anything else is refused before the login screen appears. Use * inside the path to stand for any characters (never in the host). Lines starting with # are notes. The defaults below are the callbacks ChatGPT commonly uses; confirm the exact one your connector shows and remove the rest.', 'enable-abilities-for-mcp' ); ?>
+						</p>
+						<textarea id="ewpa-conn-callbacks" rows="6" class="large-text code" spellcheck="false" style="font-family: Consolas, Monaco, monospace; font-size: 12px;"><?php echo esc_textarea( $ewpa_conn_callbacks ); ?></textarea>
+						<p style="margin: 8px 0 0; display: flex; align-items: center; gap: 10px;">
+							<button type="button" class="button button-primary" id="ewpa-conn-save-callbacks">
+								<?php esc_html_e( 'Save callback URLs', 'enable-abilities-for-mcp' ); ?>
+							</button>
+							<span class="description" id="ewpa-conn-callbacks-msg" style="font-size: 12px;"></span>
+						</p>
+
+						<?php /* ── Registered clients ──────────────────────── */ ?>
+						<h4 style="margin: 22px 0 4px; font-size: 13px;"><?php esc_html_e( 'Registered connectors', 'enable-abilities-for-mcp' ); ?></h4>
+						<p class="description" style="margin: 0 0 8px;">
+							<?php esc_html_e( 'Connectors that have registered themselves, plus any client you created by hand. Removing one stops it starting new sessions; sessions it already holds are revoked from Users → Profile → Application Passwords.', 'enable-abilities-for-mcp' ); ?>
+						</p>
+						<table class="widefat striped" id="ewpa-conn-clients" style="margin-bottom: 10px;">
+							<thead>
+								<tr>
+									<th style="width: 22%;"><?php esc_html_e( 'Name', 'enable-abilities-for-mcp' ); ?></th>
+									<th style="width: 26%;"><?php esc_html_e( 'Client ID', 'enable-abilities-for-mcp' ); ?></th>
+									<th><?php esc_html_e( 'Callback URLs', 'enable-abilities-for-mcp' ); ?></th>
+									<th style="width: 14%;"><?php esc_html_e( 'Added', 'enable-abilities-for-mcp' ); ?></th>
+									<th style="width: 80px;"></th>
+								</tr>
+							</thead>
+							<tbody>
+								<?php if ( empty( $ewpa_conn_clients ) ) : ?>
+									<tr class="ewpa-conn-empty">
+										<td colspan="5" class="description">
+											<?php esc_html_e( 'No connector has registered yet.', 'enable-abilities-for-mcp' ); ?>
+										</td>
+									</tr>
+								<?php else : ?>
+									<?php foreach ( $ewpa_conn_clients as $ewpa_cid => $ewpa_client ) : ?>
+										<tr data-client-id="<?php echo esc_attr( $ewpa_cid ); ?>">
+											<td>
+												<?php echo esc_html( (string) ( $ewpa_client['client_name'] ?? '' ) ); ?>
+												<?php if ( 'manual' === ( $ewpa_client['source'] ?? '' ) ) : ?>
+													<span class="description" style="font-size: 11px;">(<?php esc_html_e( 'manual', 'enable-abilities-for-mcp' ); ?>)</span>
+												<?php endif; ?>
+											</td>
+											<td><code style="font-size: 11px; word-break: break-all;"><?php echo esc_html( $ewpa_cid ); ?></code></td>
+											<td style="font-size: 11px; word-break: break-all;">
+												<?php echo esc_html( implode( ', ', (array) ( $ewpa_client['redirect_uris'] ?? array() ) ) ); ?>
+											</td>
+											<td class="description" style="font-size: 12px;">
+												<?php echo esc_html( date_i18n( (string) get_option( 'date_format' ), (int) ( $ewpa_client['created'] ?? 0 ) ) ); ?>
+											</td>
+											<td>
+												<button type="button" class="button button-small ewpa-conn-delete">
+													<?php esc_html_e( 'Remove', 'enable-abilities-for-mcp' ); ?>
+												</button>
+											</td>
+										</tr>
+									<?php endforeach; ?>
+								<?php endif; ?>
+							</tbody>
+						</table>
+
+						<?php /* ── Manual client ───────────────────────────── */ ?>
+						<details style="margin-top: 14px;">
+							<summary style="cursor: pointer; font-weight: 600; font-size: 13px;">
+								<?php esc_html_e( 'Create a Client ID and Secret by hand', 'enable-abilities-for-mcp' ); ?>
+							</summary>
+							<div style="margin-top: 10px;">
+								<p class="description" style="margin: 0 0 12px;">
+									<?php esc_html_e( 'Use this when a connector asks you to paste credentials instead of registering itself. The endpoint URLs below are fixed and always valid; the Client ID and Secret appear once you create a client. The callback URLs you enter must already be in the allowed list above, and the secret is shown only once — only its hash is stored.', 'enable-abilities-for-mcp' ); ?>
+								</p>
+
+								<?php /* Endpoint URLs are static, so show them before anything is created. */ ?>
+								<table class="widefat striped" style="margin-bottom: 14px;">
+									<tbody>
+										<tr>
+											<td style="width: 190px;"><strong><?php esc_html_e( 'Authorization URL', 'enable-abilities-for-mcp' ); ?></strong></td>
+											<td><code id="ewpa-conn-authz-url" style="word-break: break-all;"><?php echo esc_html( home_url( '/oauth/authorize' ) ); ?></code></td>
+											<td style="width: 70px;"><button type="button" class="button button-small ewpa-copy-btn" data-target="ewpa-conn-authz-url"><?php esc_html_e( 'Copy', 'enable-abilities-for-mcp' ); ?></button></td>
+										</tr>
+										<tr>
+											<td><strong><?php esc_html_e( 'Token URL', 'enable-abilities-for-mcp' ); ?></strong></td>
+											<td><code id="ewpa-conn-token-url" style="word-break: break-all;"><?php echo esc_html( home_url( '/oauth/token' ) ); ?></code></td>
+											<td><button type="button" class="button button-small ewpa-copy-btn" data-target="ewpa-conn-token-url"><?php esc_html_e( 'Copy', 'enable-abilities-for-mcp' ); ?></button></td>
+										</tr>
+										<tr>
+											<td><strong><?php esc_html_e( 'Scope', 'enable-abilities-for-mcp' ); ?></strong></td>
+											<td><code id="ewpa-conn-scope">mcp</code></td>
+											<td><button type="button" class="button button-small ewpa-copy-btn" data-target="ewpa-conn-scope"><?php esc_html_e( 'Copy', 'enable-abilities-for-mcp' ); ?></button></td>
+										</tr>
+										<tr>
+											<td><strong><?php esc_html_e( 'PKCE', 'enable-abilities-for-mcp' ); ?></strong></td>
+											<td colspan="2" class="description"><?php esc_html_e( 'Required — S256. The connector must send code_challenge; a request without it is refused.', 'enable-abilities-for-mcp' ); ?></td>
+										</tr>
+									</tbody>
+								</table>
+
+								<p>
+									<label for="ewpa-conn-name" style="display: block; margin-bottom: 4px;"><?php esc_html_e( 'Name', 'enable-abilities-for-mcp' ); ?></label>
+									<input type="text" id="ewpa-conn-name" class="regular-text" placeholder="<?php esc_attr_e( 'ChatGPT', 'enable-abilities-for-mcp' ); ?>">
+								</p>
+								<p>
+									<label for="ewpa-conn-uris" style="display: block; margin-bottom: 4px;"><?php esc_html_e( 'Callback URLs (one per line)', 'enable-abilities-for-mcp' ); ?></label>
+									<textarea id="ewpa-conn-uris" rows="3" class="large-text code" spellcheck="false" style="font-family: Consolas, Monaco, monospace; font-size: 12px;"><?php echo esc_textarea( $ewpa_conn_callbacks ); ?></textarea>
+									<span class="description"><?php esc_html_e( 'Prefilled from the allowed list above. Trim it to the callback your connector actually uses.', 'enable-abilities-for-mcp' ); ?></span>
+								</p>
+								<p>
+									<label>
+										<input type="checkbox" id="ewpa-conn-secret" checked>
+										<?php esc_html_e( 'Also issue a client secret (needed when the connector has a Client Secret field)', 'enable-abilities-for-mcp' ); ?>
+									</label>
+								</p>
+								<p style="display: flex; align-items: center; gap: 10px;">
+									<button type="button" class="button button-primary" id="ewpa-conn-create">
+										<?php esc_html_e( 'Create client', 'enable-abilities-for-mcp' ); ?>
+									</button>
+									<span class="description" id="ewpa-conn-create-msg" style="font-size: 12px;"></span>
+								</p>
+								<div id="ewpa-conn-created" style="display: none; padding: 12px 14px; background: #f6f7f7; border: 1px solid #dcdcde;"></div>
+							</div>
+						</details>
+
+						<p class="description" style="margin: 16px 0 0; font-size: 12px;">
+							<?php
+							printf(
+								/* translators: %s: the dynamic client registration endpoint URL */
+								esc_html__( 'Registration endpoint: %s — advertised automatically in the .well-known discovery document while this is enabled.', 'enable-abilities-for-mcp' ),
+								'<code>' . esc_html( $ewpa_register_url ) . '</code>'
+							);
+							?>
+						</p>
+					</div>
+
+					<script>
+					( function () {
+						var nonce  = '<?php echo esc_js( $ewpa_conn_nonce ); ?>';
+						var toggle = document.getElementById( 'ewpa-conn-toggle' );
+						var body   = document.getElementById( 'ewpa-conn-body' );
+
+						function post( action, fields ) {
+							var data = new URLSearchParams();
+							data.append( 'action', action );
+							data.append( 'nonce', nonce );
+							Object.keys( fields || {} ).forEach( function ( key ) {
+								data.append( key, fields[ key ] );
+							} );
+							return fetch( ajaxurl, { method: 'POST', credentials: 'same-origin', body: data } )
+								.then( function ( response ) { return response.json(); } );
+						}
+
+						if ( toggle ) {
+							toggle.addEventListener( 'change', function () {
+								post( 'ewpa_connectors_toggle', { enabled: toggle.checked ? 'true' : 'false' } ).then( function () {
+									var status = document.getElementById( 'ewpa-conn-status' );
+									if ( status ) {
+										status.textContent = toggle.checked ? '<?php echo esc_js( __( 'Enabled', 'enable-abilities-for-mcp' ) ); ?>' : '<?php echo esc_js( __( 'Disabled', 'enable-abilities-for-mcp' ) ); ?>';
+									}
+									if ( body ) {
+										body.style.display = toggle.checked ? '' : 'none';
+									}
+								} );
+							} );
+						}
+
+						var saveBtn = document.getElementById( 'ewpa-conn-save-callbacks' );
+						if ( saveBtn ) {
+							saveBtn.addEventListener( 'click', function () {
+								var field = document.getElementById( 'ewpa-conn-callbacks' );
+								var msg   = document.getElementById( 'ewpa-conn-callbacks-msg' );
+								saveBtn.disabled = true;
+								post( 'ewpa_connectors_save_callbacks', { callbacks: field.value } ).then( function ( result ) {
+									saveBtn.disabled = false;
+									if ( result && result.success ) {
+										// Echo back the normalised list so invalid lines visibly disappear.
+										field.value = result.data.callbacks;
+										msg.textContent = result.data.message;
+									} else {
+										msg.textContent = ( result && result.data && result.data.message ) || '<?php echo esc_js( __( 'Could not save.', 'enable-abilities-for-mcp' ) ); ?>';
+									}
+								} );
+							} );
+						}
+
+						var table = document.getElementById( 'ewpa-conn-clients' );
+						if ( table ) {
+							table.addEventListener( 'click', function ( event ) {
+								var button = event.target.closest( '.ewpa-conn-delete' );
+								if ( ! button ) {
+									return;
+								}
+								var row = button.closest( 'tr' );
+								if ( ! window.confirm( '<?php echo esc_js( __( 'Remove this connector? It will have to reconnect from scratch.', 'enable-abilities-for-mcp' ) ); ?>' ) ) {
+									return;
+								}
+								button.disabled = true;
+								post( 'ewpa_connectors_delete_client', { client_id: row.getAttribute( 'data-client-id' ) } ).then( function ( result ) {
+									if ( result && result.success ) {
+										row.parentNode.removeChild( row );
+									} else {
+										button.disabled = false;
+									}
+								} );
+							} );
+						}
+
+						var createBtn = document.getElementById( 'ewpa-conn-create' );
+						if ( createBtn ) {
+							createBtn.addEventListener( 'click', function () {
+								var msg = document.getElementById( 'ewpa-conn-create-msg' );
+								var out = document.getElementById( 'ewpa-conn-created' );
+								msg.textContent = '';
+								createBtn.disabled = true;
+								post( 'ewpa_connectors_create_client', {
+									client_name: document.getElementById( 'ewpa-conn-name' ).value,
+									redirect_uris: document.getElementById( 'ewpa-conn-uris' ).value,
+									with_secret: document.getElementById( 'ewpa-conn-secret' ).checked ? 'true' : 'false'
+								} ).then( function ( result ) {
+									createBtn.disabled = false;
+									if ( ! result || ! result.success ) {
+										msg.textContent = ( result && result.data && result.data.message ) || '<?php echo esc_js( __( 'Could not create the client.', 'enable-abilities-for-mcp' ) ); ?>';
+										return;
+									}
+									// Everything the connector form asks for, in one block.
+									var lines = [
+										'<?php echo esc_js( __( 'Authorization URL', 'enable-abilities-for-mcp' ) ); ?>: <?php echo esc_js( home_url( '/oauth/authorize' ) ); ?>',
+										'<?php echo esc_js( __( 'Token URL', 'enable-abilities-for-mcp' ) ); ?>: <?php echo esc_js( home_url( '/oauth/token' ) ); ?>',
+										'<?php echo esc_js( __( 'Scope', 'enable-abilities-for-mcp' ) ); ?>: mcp',
+										'<?php echo esc_js( __( 'Client ID', 'enable-abilities-for-mcp' ) ); ?>: ' + result.data.client_id
+									];
+									if ( result.data.client_secret ) {
+										lines.push( '<?php echo esc_js( __( 'Client Secret', 'enable-abilities-for-mcp' ) ); ?>: ' + result.data.client_secret );
+										lines.push( '' );
+										lines.push( '<?php echo esc_js( __( '⚠ Copy the secret now — it is not shown again.', 'enable-abilities-for-mcp' ) ); ?>' );
+									}
+									out.textContent = lines.join( '\n' );
+									out.style.whiteSpace = 'pre-wrap';
+									out.style.wordBreak = 'break-all';
+									out.style.fontFamily = 'Consolas, Monaco, monospace';
+									out.style.fontSize = '12px';
+									out.style.display = '';
+									msg.textContent = '<?php echo esc_js( __( 'Created. Reload the page to see it in the table.', 'enable-abilities-for-mcp' ) ); ?>';
+								} );
+							} );
+						}
 					} )();
 					</script>
 				</div>

@@ -26,6 +26,16 @@ Since version 2.1 the plugin ships an embedded OAuth 2.1 server built for claude
 * Every ability execution lands in the activity log under the real user's name
 * Works on single sites, subdirectory installs, and multisite networks (network-activate so the main site serves the OAuth discovery documents for every subsite)
 
+= Connect from ChatGPT with the same URL =
+
+claude.ai identifies itself with a fixed metadata URL the plugin already trusts. ChatGPT instead registers itself dynamically per connector (RFC 7591), so it needs its own door: turn on **ChatGPT & Other OAuth Connectors** on the Connection tab and list the callback URLs a connector is allowed to send users back to. Add the same MCP server URL in ChatGPT → Settings → Connectors and the normal login-and-consent flow takes over.
+
+* Opt-in and off by default — with the toggle off the discovery document drops `registration_endpoint`, `/oauth/register` refuses every request, and the claude.ai connector behaves exactly as before
+* A connector may only ever return a user to a **callback URL you listed**, re-checked on every authorization request — remove one and clients that registered while it was allowed are blocked immediately
+* Wildcards are allowed inside the path, never in the host; registration is capped and rate-limited per IP
+* Connectors that ask you to paste a Client ID and Secret instead are covered too — the panel can issue one (the secret is shown once and stored only as a hash)
+* Same as the claude.ai connector downstream: each user logs in with their own WordPress account and role, approves a consent screen, and every execution lands in the activity log under their name
+
 Prefer tokens? Application Passwords (per-user) and a single-admin Bearer token connect Claude Desktop / Claude Code, OpenAI Codex CLI, and Google Antigravity — the Connection tab generates ready-to-paste configuration for each client, and fills in your credentials automatically.
 
 = Features =
@@ -34,6 +44,7 @@ Prefer tokens? Application Passwords (per-user) and a single-admin Bearer token 
 * **WooCommerce integration** — dedicated abilities to manage products, orders, and customers using the native WooCommerce API (HPOS-compatible, formally declared)
 * **The Events Calendar integration** — list, get, create, and update events with venue, organizer, and date filters
 * **claude.ai OAuth custom connector** — connect from claude.ai (web, mobile, or desktop) with zero local setup: an embedded OAuth 2.1 server with Client ID Metadata Document (CIMD) support lets each user log in with their own WordPress account and role
+* **ChatGPT & other OAuth connectors** — separately opt-in: RFC 7591 dynamic client registration at `/oauth/register`, gated by an administrator-managed callback allowlist, so clients that register themselves can connect through the same consent flow
 * **Admin dashboard** with toggle switches for each ability
 * **Per-ability control** — expose only what you need
 * **Third-party ability control** — abilities registered by other MCP-ready plugins (e.g. Fluent Forms) appear in the same dashboard, grouped by plugin, with the same per-ability toggles; disabling one removes it from every MCP server on the site
@@ -224,6 +235,10 @@ Yes. Since 2.2, abilities registered by other plugins appear in the Abilities ta
 = The claude.ai custom connector fails with "Couldn't register with the sign-in service" — why? =
 
 In almost every reported case the OAuth flow is fine and the request never reaches WordPress: a security layer in front of your site is blocking Anthropic's backend, which connects with a non-browser User-Agent (`python-httpx`). Common culprits are hosting WAFs (cPGuard, Imunify360, ModSecurity rules like "generic HTTP client User-Agent") and Cloudflare's Bot Fight Mode or AI-crawler blocking. To diagnose, run `curl -A "python-httpx/0.28.1" https://your-site.com/.well-known/oauth-authorization-server` from an external machine — a 403 confirms the block. Ask your host to allow that User-Agent (or Anthropic's IP range 160.79.104.0/23) for `/.well-known/oauth-*`, `/oauth/*`, and `/wp-json/mcp/*`, or disable the relevant bot protection for the site.
+
+= How do I connect ChatGPT? =
+
+Turn on the OAuth server on the Connection tab, then turn on **ChatGPT & Other OAuth Connectors** below it. Check the **Allowed callback URLs** box — it is prefilled with the callbacks ChatGPT is commonly seen to use, so confirm the exact one your connector screen shows and delete the rest. Save, then add the same MCP server URL in ChatGPT → Settings → Connectors. ChatGPT reads the discovery document, finds `registration_endpoint`, registers itself, and runs the normal login-and-consent flow. The callback allowlist is the security boundary: a self-registered client can only ever return a user to a URL you listed.
 
 = The OAuth discovery documents return a 301 redirect or 404 — is that a problem? =
 

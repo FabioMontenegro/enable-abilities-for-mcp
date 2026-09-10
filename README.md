@@ -68,6 +68,7 @@ Go to **Settings → WP Abilities**:
 
 - **Connection tab** — choose an auth method:
   - **claude.ai OAuth Custom Connector**: add your site to claude.ai (web, mobile, or desktop) with just a URL — an embedded OAuth 2.1 server (CIMD) lets each user log in with their own WordPress account and approve a consent screen. No Client ID, no tokens to copy.
+  - **ChatGPT & other OAuth connectors**: opt-in. ChatGPT registers itself dynamically (RFC 7591) instead of publishing a fixed metadata URL, so it needs its own door — turn this on to expose `/oauth/register` and list the callback URLs a connector may return users to. Same login-and-consent flow, same per-user roles.
   - **Application Passwords**: per-user access respecting each user's role
   - **Single Admin Bearer Token**: generate an API key (stored as SHA-256 hash, shown once)
 - **Connect your AI client** — shared section with the MCP endpoint URL and ready-to-copy config for every client; generating Application Password credentials auto-fills the snippets
@@ -81,6 +82,7 @@ The **Connection tab** includes ready-to-copy configuration for every client:
 | Client | Config | Transport |
 |---|---|---|
 | claude.ai (web / mobile / desktop) | Settings → Connectors → add the OAuth URL | remote MCP over HTTPS (OAuth 2.1 + CIMD) |
+| ChatGPT (web) | Settings → Connectors → add the same OAuth URL | remote MCP over HTTPS (OAuth 2.1 + RFC 7591) |
 | Claude Desktop / Claude Code | `claude_desktop_config.json` | `npx mcp-remote` (stdio) |
 | OpenAI Codex CLI | `~/.codex/config.toml` | `npx mcp-remote` (stdio) |
 | Google Antigravity | `mcp_config.json` (Agent panel → MCP Servers) | direct `serverUrl` + `headers` — no npx |
@@ -108,10 +110,79 @@ Then just talk to your site:
 
 > *"Audit the SEO of my latest posts, fix the meta descriptions with SEOPress, clear the cache, and re-run the content analysis."*
 
+## The ChatGPT connector
+
+claude.ai identifies itself with a fixed metadata URL (a Client ID Metadata Document) that the
+embedded OAuth library already trusts. ChatGPT does not: it registers itself dynamically per
+connector (RFC 7591) and mints a fresh `client_id` URL each time, so no static allowlist can
+match it. Enabling **ChatGPT & Other OAuth Connectors** on the Connection tab adds the missing
+pieces without changing anything about how Claude connects.
+
+### Setup
+
+1. Turn on the OAuth server, then turn on **ChatGPT & Other OAuth Connectors** below it.
+2. Check the **Allowed callback URLs** box. It is prefilled with the callbacks ChatGPT is
+   commonly seen to use — confirm the exact one your connector screen shows, and delete the rest.
+3. Save, then add the same MCP server URL in ChatGPT → **Settings → Connectors**.
+
+ChatGPT reads `/.well-known/oauth-authorization-server`, finds `registration_endpoint`, registers
+itself at `/oauth/register`, and then runs the normal login-and-consent flow. Each user logs in
+with their own WordPress account, approves the consent screen, and gets a session bound to their
+own role. A connector that asks you to paste a Client ID and Secret instead is covered too —
+**Create a Client ID and Secret by hand** on the same panel issues one (the secret is shown once
+and stored only as a hash).
+
+### The callback allowlist
+
+This is the security boundary. An authorization server that lets a client nominate any
+`redirect_uri` is an open redirect that hands out access tokens, so a self-registered client may
+only return users to a URL an administrator has listed — enforced at registration time *and*
+again on every authorization request, so removing a URL immediately blocks clients that
+registered while it was allowed.
+
+| Component | Rule |
+|---|---|
+| Scheme | Literal; `https` required, except plain `http` on loopback (`127.0.0.1`, `localhost`, `::1`) for native apps per RFC 8252 §8.3 |
+| Host | Literal — never wildcarded. A pattern with `*` in the host is discarded on save |
+| Port | Exact match, except on loopback, where the per-session ephemeral port is ignored |
+| Path / query | `*` matches any run of characters except `?` and `#`, so a wildcard can widen a path but can never swallow a query string or reach another host |
+| Fragment, userinfo | A `redirect_uri` containing `#` or `user:pass@` is rejected outright |
+| `#` at line start | Treated as a comment, so the list can be annotated |
+
+The same list doubles as the SSRF gate for metadata fetches: a `client_id` URL is only ever
+dereferenced when its host already appears in the allowlist.
+
+### Endpoints
+
+Served from `home_url()`, so they follow the Site Address on subdirectory installs.
+
+| Path | Method | Purpose |
+|---|---|---|
+| `/.well-known/oauth-authorization-server` | GET | RFC 8414 metadata, with `registration_endpoint` added while connectors are on |
+| `/oauth/register` | POST, OPTIONS | RFC 7591 dynamic client registration (unauthenticated, rate-limited per IP, CORS-enabled) |
+
+Everything downstream — consent, single-use auth codes, PKCE verification, Application Password
+creation, JWT signing, refresh-token rotation, transport authentication — is still the embedded
+library's, unchanged. The handlers in [`includes/oauth-connectors.php`](includes/oauth-connectors.php)
+run on `template_redirect` at priority 9, one tick ahead of the library's, and return without
+output whenever the request is not theirs; nothing under `vendor/` is patched. With the toggle
+off, the discovery document drops `registration_endpoint`, `/oauth/register` refuses every
+request, and the library's own behaviour is bit-for-bit what it was.
+
+### Limits
+
+- Registration is open by design (that is what RFC 7591 means), so the allowlist is what keeps it
+  safe. It is capped at 50 stored clients — oldest self-registered records are evicted first, and
+  clients created by hand are never evicted — and throttled to 20 registrations per IP per hour.
+- Removing a connector stops it starting new sessions; sessions it already holds are revoked from
+  **Users → Profile → Application Passwords**, as before.
+- Requires a public HTTPS site, like the claude.ai connector.
+
 ## Security model
 
 - **Capability checks everywhere** — every ability declares a `permission_callback`; per-post abilities check `read_post`/`edit_post` on the specific target, not just site-wide caps
 - **OAuth 2.1 connector** — opt-in, PKCE S256, Client ID Metadata Documents restricted to trusted publishers (Claude bundled), per-user consent screen, JWT-authenticated transport
+- **Third-party connectors** — separately opt-in; a self-registering client may only ever return users to a callback URL an administrator has listed, checked again on every authorization request
 - **Bearer token** stored as SHA-256 hash, tied to an admin account, revocable at any time
 - **Per-ability toggles** — anything disabled is simply never registered
 - **Activity log** for full auditability
