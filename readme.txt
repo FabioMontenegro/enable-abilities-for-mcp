@@ -5,7 +5,7 @@ Tags: mcp, ai, rest-api, content-management, woocommerce
 Requires at least: 6.9
 Tested up to: 7.1
 Requires PHP: 8.0
-Stable tag: 2.8.1
+Stable tag: 2.9.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -26,7 +26,7 @@ Since version 2.1 the plugin ships an embedded OAuth 2.1 server built for claude
 * Every ability execution lands in the activity log under the real user's name
 * Works on single sites, subdirectory installs, and multisite networks (network-activate so the main site serves the OAuth discovery documents for every subsite)
 
-= Connect from ChatGPT with the same URL =
+= Connect from ChatGPT with the same URL (beta) =
 
 claude.ai identifies itself with a fixed metadata URL the plugin already trusts. ChatGPT instead registers itself dynamically per connector (RFC 7591), so it needs its own door: turn on **ChatGPT & Other OAuth Connectors** on the Connection tab and list the callback URLs a connector is allowed to send users back to. Add the same MCP server URL in ChatGPT → Settings → Connectors and the normal login-and-consent flow takes over.
 
@@ -44,7 +44,7 @@ Prefer tokens? Application Passwords (per-user) and a single-admin Bearer token 
 * **WooCommerce integration** — dedicated abilities to manage products, orders, and customers using the native WooCommerce API (HPOS-compatible, formally declared)
 * **The Events Calendar integration** — list, get, create, and update events with venue, organizer, and date filters
 * **claude.ai OAuth custom connector** — connect from claude.ai (web, mobile, or desktop) with zero local setup: an embedded OAuth 2.1 server with Client ID Metadata Document (CIMD) support lets each user log in with their own WordPress account and role
-* **ChatGPT & other OAuth connectors** — separately opt-in: RFC 7591 dynamic client registration at `/oauth/register`, gated by an administrator-managed callback allowlist, so clients that register themselves can connect through the same consent flow
+* **ChatGPT & other OAuth connectors (beta)** — separately opt-in: RFC 7591 dynamic client registration at `/oauth/register`, gated by an administrator-managed callback allowlist, so clients that register themselves can connect through the same consent flow
 * **Admin dashboard** with toggle switches for each ability
 * **Per-ability control** — expose only what you need
 * **Third-party ability control** — abilities registered by other MCP-ready plugins (e.g. Fluent Forms) appear in the same dashboard, grouped by plugin, with the same per-ability toggles; disabling one removes it from every MCP server on the site
@@ -249,6 +249,11 @@ Yes — strict OAuth clients require a direct `200` on `/.well-known/oauth-autho
 1. Admin settings page showing all abilities organized by category with toggle switches.
 
 == Changelog ==
+
+= 2.9.0 =
+* New: ChatGPT & Other OAuth Connectors (beta, opt-in, off by default) — RFC 7591 dynamic client registration at `/oauth/register`, so ChatGPT and other self-registering clients connect through the same login-and-consent flow as the claude.ai connector. The security boundary is an administrator-managed callback allowlist, enforced at registration and re-checked on every authorization request, so removing a URL immediately blocks clients that registered while it was allowed. The same list gates which client metadata documents are fetched (`wp_safe_remote_get`, no redirects). Consent, code issuance, PKCE, token signing and refresh rotation stay in the bundled wp-media/mcp-oauth library; with the toggle off, the claude.ai connector is unchanged. Contributed by @keyvansolha.
+* New: Regression suite for the connector callback allowlist (`tests/oauth-connectors-test.php`, 42 checks) covering redirect-URI smuggling — userinfo and backslash authorities, subdomain confusion, port and path-prefix mismatches, query strings and fragments through wildcards, protocol-relative and non-HTTP schemes — plus RFC 8252 loopback handling. Runs without WordPress: `php tests/oauth-connectors-test.php`.
+* Fix: IPv6 loopback redirect URIs (`http://[::1]:port/…`) were rejected, because PHP's `parse_url()` keeps the brackets around an IPv6 literal and the loopback check only knew `::1`. It failed closed, so nothing was ever allowed that should not have been; native clients on IPv6 loopback can now connect. Found by the new regression suite.
 
 = 2.8.1 =
 * New: `ewpa/assign-post-terms` (Write section, enabled by default) — assigns a custom taxonomy's terms to a post or page. `ewpa/assign-cpt-terms` explicitly rejects built-in post types (post, page, attachment, and others) by design, since native categories/tags on posts are already covered by `ewpa/update-post` — but that left a real gap for a custom taxonomy registered on `post`/`page` by a companion plugin, with no assignment path through MCP at all. Mirrors `ewpa/assign-cpt-terms`'s security checks exactly (`edit_post`, `taxonomy_exists`, taxonomy-post_type association, and the taxonomy's own `assign_terms` capability), so an admin-only taxonomy stays admin-only regardless of post type.

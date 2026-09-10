@@ -403,14 +403,14 @@ function ewpa_oauth_callback_pattern_matches( string $pattern, string $uri ): bo
 /**
  * Whether a host is a loopback address.
  *
- * WordPress's wp_parse_url() strips the brackets from an IPv6 literal, so
- * `::1` is the value seen here rather than `[::1]`.
+ * PHP's parse_url() keeps the brackets around an IPv6 literal, so an
+ * http://[::1]:port/ URI reaches this check as `[::1]`; both forms match.
  *
  * @param string $host Host component.
  * @return bool
  */
 function ewpa_oauth_is_loopback_host( string $host ): bool {
-	return in_array( strtolower( $host ), array( '127.0.0.1', 'localhost', '::1' ), true );
+	return in_array( strtolower( $host ), array( '127.0.0.1', 'localhost', '::1', '[::1]' ), true );
 }
 
 /**

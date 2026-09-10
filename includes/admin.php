@@ -541,11 +541,15 @@ function ewpa_render_settings_page(): void {
 				<div class="ewpa-auth-panel" style="padding: 20px; border-bottom: 1px solid #dcdcde;">
 					<div style="display: flex; align-items: flex-start; gap: 16px;">
 						<div style="flex: 1;">
-							<h3 style="margin: 0 0 4px; font-size: 14px;">
+							<h3 style="margin: 0 0 4px; font-size: 14px; display: flex; align-items: center; gap: 8px;">
 								<?php esc_html_e( 'ChatGPT & Other OAuth Connectors', 'enable-abilities-for-mcp' ); ?>
+								<span class="ewpa-badge ewpa-badge-warning"><?php esc_html_e( 'Beta', 'enable-abilities-for-mcp' ); ?></span>
 							</h3>
 							<p class="description" style="margin: 0;">
 								<?php esc_html_e( 'Claude identifies itself with a metadata URL that this plugin already trusts. ChatGPT instead registers itself dynamically (RFC 7591), so it needs its own door: turn this on to expose /oauth/register, and list below the callback URLs a connector is allowed to send users back to. Each user still logs in with their own WordPress account and approves a consent screen. Requires a public HTTPS site.', 'enable-abilities-for-mcp' ); ?>
+							</p>
+							<p class="description" style="margin: 4px 0 0;">
+								<?php esc_html_e( 'Beta: ChatGPT controls its connector flow and callback URLs and can change them without notice. If connecting stops working after a ChatGPT update, please report it in the plugin support forum.', 'enable-abilities-for-mcp' ); ?>
 							</p>
 						</div>
 						<div style="flex-shrink: 0; display: flex; align-items: center; gap: 10px; padding-top: 2px;">

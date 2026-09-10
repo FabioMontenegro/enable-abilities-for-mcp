@@ -23,6 +23,7 @@ sync-to-svn.ps1
 *.zip
 *.tar.gz
 dist
+tests
 *.log
 debug.log
 error_log

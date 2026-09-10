@@ -68,7 +68,7 @@ Go to **Settings → WP Abilities**:
 
 - **Connection tab** — choose an auth method:
   - **claude.ai OAuth Custom Connector**: add your site to claude.ai (web, mobile, or desktop) with just a URL — an embedded OAuth 2.1 server (CIMD) lets each user log in with their own WordPress account and approve a consent screen. No Client ID, no tokens to copy.
-  - **ChatGPT & other OAuth connectors**: opt-in. ChatGPT registers itself dynamically (RFC 7591) instead of publishing a fixed metadata URL, so it needs its own door — turn this on to expose `/oauth/register` and list the callback URLs a connector may return users to. Same login-and-consent flow, same per-user roles.
+  - **ChatGPT & other OAuth connectors (beta)**: opt-in. ChatGPT registers itself dynamically (RFC 7591) instead of publishing a fixed metadata URL, so it needs its own door — turn this on to expose `/oauth/register` and list the callback URLs a connector may return users to. Same login-and-consent flow, same per-user roles.
   - **Application Passwords**: per-user access respecting each user's role
   - **Single Admin Bearer Token**: generate an API key (stored as SHA-256 hash, shown once)
 - **Connect your AI client** — shared section with the MCP endpoint URL and ready-to-copy config for every client; generating Application Password credentials auto-fills the snippets
@@ -110,7 +110,7 @@ Then just talk to your site:
 
 > *"Audit the SEO of my latest posts, fix the meta descriptions with SEOPress, clear the cache, and re-run the content analysis."*
 
-## The ChatGPT connector
+## The ChatGPT connector (beta)
 
 claude.ai identifies itself with a fixed metadata URL (a Client ID Metadata Document) that the
 embedded OAuth library already trusts. ChatGPT does not: it registers itself dynamically per
