@@ -28,7 +28,7 @@ Since version 2.1 the plugin ships an embedded OAuth 2.1 server built for claude
 
 = Connect from ChatGPT with the same URL (beta) =
 
-claude.ai identifies itself with a fixed metadata URL the plugin already trusts. ChatGPT instead registers itself dynamically per connector (RFC 7591), so it needs its own door: turn on **ChatGPT & Other OAuth Connectors** on the Connection tab and list the callback URLs a connector is allowed to send users back to. Add the same MCP server URL in ChatGPT → Settings → Connectors and the normal login-and-consent flow takes over.
+claude.ai identifies itself with a fixed metadata URL the plugin already trusts. ChatGPT instead registers itself dynamically per connector (RFC 7591), so it needs its own door: turn on **ChatGPT & Other OAuth Connectors** on the Connection tab and list the callback URLs a connector is allowed to send users back to. In ChatGPT, turn on Developer mode (available on paid plans) and create a connector with the same MCP server URL; the normal login-and-consent flow takes over.
 
 * Opt-in and off by default — with the toggle off the discovery document drops `registration_endpoint`, `/oauth/register` refuses every request, and the claude.ai connector behaves exactly as before
 * A connector may only ever return a user to a **callback URL you listed**, re-checked on every authorization request — remove one and clients that registered while it was allowed are blocked immediately
@@ -238,7 +238,7 @@ In almost every reported case the OAuth flow is fine and the request never reach
 
 = How do I connect ChatGPT? =
 
-Turn on the OAuth server on the Connection tab, then turn on **ChatGPT & Other OAuth Connectors** below it. Check the **Allowed callback URLs** box — it is prefilled with the callbacks ChatGPT is commonly seen to use, so confirm the exact one your connector screen shows and delete the rest. Save, then add the same MCP server URL in ChatGPT → Settings → Connectors. ChatGPT reads the discovery document, finds `registration_endpoint`, registers itself, and runs the normal login-and-consent flow. The callback allowlist is the security boundary: a self-registered client can only ever return a user to a URL you listed.
+Turn on the OAuth server on the Connection tab, then turn on **ChatGPT & Other OAuth Connectors** below it. Check the **Allowed callback URLs** box — it is prefilled with the callbacks ChatGPT is commonly seen to use, so confirm the exact one your connector screen shows and delete the rest. Save, then in ChatGPT turn on Developer mode (available on paid plans) and create a connector with the same MCP server URL. ChatGPT reads the discovery document, finds `registration_endpoint`, registers itself, and runs the normal login-and-consent flow. The callback allowlist is the security boundary: a self-registered client can only ever return a user to a URL you listed.
 
 = The OAuth discovery documents return a 301 redirect or 404 — is that a problem? =
 

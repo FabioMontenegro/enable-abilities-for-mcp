@@ -574,7 +574,7 @@ function ewpa_render_settings_page(): void {
 						<?php endif; ?>
 
 						<p class="description" style="margin: 0 0 6px;">
-							<?php esc_html_e( 'Add a connector in ChatGPT → Settings → Connectors with this MCP server URL:', 'enable-abilities-for-mcp' ); ?>
+							<?php esc_html_e( 'In ChatGPT, turn on Developer mode (paid plans only) and create a connector with this MCP server URL:', 'enable-abilities-for-mcp' ); ?>
 						</p>
 						<div style="display: flex; align-items: center; gap: 8px; margin-bottom: 18px;">
 							<code id="ewpa-conn-url" style="display: block; flex: 1; padding: 8px 12px; background: #f6f7f7; border: 1px solid #dcdcde; word-break: break-all;"><?php echo esc_url( $ewpa_oauth_url ); ?></code>

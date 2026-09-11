@@ -82,7 +82,7 @@ The **Connection tab** includes ready-to-copy configuration for every client:
 | Client | Config | Transport |
 |---|---|---|
 | claude.ai (web / mobile / desktop) | Settings → Connectors → add the OAuth URL | remote MCP over HTTPS (OAuth 2.1 + CIMD) |
-| ChatGPT (web) | Settings → Connectors → add the same OAuth URL | remote MCP over HTTPS (OAuth 2.1 + RFC 7591) |
+| ChatGPT (web, paid plans) | Turn on Developer mode → create a connector with the same OAuth URL | remote MCP over HTTPS (OAuth 2.1 + RFC 7591) |
 | Claude Desktop / Claude Code | `claude_desktop_config.json` | `npx mcp-remote` (stdio) |
 | OpenAI Codex CLI | `~/.codex/config.toml` | `npx mcp-remote` (stdio) |
 | Google Antigravity | `mcp_config.json` (Agent panel → MCP Servers) | direct `serverUrl` + `headers` — no npx |
@@ -123,7 +123,8 @@ pieces without changing anything about how Claude connects.
 1. Turn on the OAuth server, then turn on **ChatGPT & Other OAuth Connectors** below it.
 2. Check the **Allowed callback URLs** box. It is prefilled with the callbacks ChatGPT is
    commonly seen to use — confirm the exact one your connector screen shows, and delete the rest.
-3. Save, then add the same MCP server URL in ChatGPT → **Settings → Connectors**.
+3. Save, then in ChatGPT turn on **Developer mode** (paid plans: Plus, Pro, Business, Enterprise
+   or Edu) and create a connector with the same MCP server URL.
 
 ChatGPT reads `/.well-known/oauth-authorization-server`, finds `registration_endpoint`, registers
 itself at `/oauth/register`, and then runs the normal login-and-consent flow. Each user logs in
