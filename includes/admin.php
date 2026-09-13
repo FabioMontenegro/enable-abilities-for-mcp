@@ -428,6 +428,8 @@ function ewpa_render_settings_page(): void {
 
 		<?php settings_errors( 'ewpa_settings' ); ?>
 
+		<?php ewpa_snippets_render_activation_screen(); ?>
+
 		<?php /* ── Tab navigation ──────────────────────────────────────────── */ ?>
 		<nav class="ewpa-tabs-nav nav-tab-wrapper" role="tablist">
 			<button class="ewpa-tab-btn nav-tab" data-tab="connection" role="tab">

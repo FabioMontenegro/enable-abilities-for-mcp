@@ -2,8 +2,8 @@
 /**
  * Plugin Name:       Enable Abilities for MCP
  * Plugin URI:        https://mcp.fabiomontenegro.com/
- * Description:       Connect Claude, ChatGPT & any MCP client to WordPress. 108 abilities: content, SEO, WooCommerce, FSE, LMS & more. Free & self-hosted.
- * Version:           2.10.1
+ * Description:       Connect Claude, ChatGPT & any MCP client to WordPress. 112 abilities: content, SEO, WooCommerce, FSE, LMS & more. Free & self-hosted.
+ * Version:           2.11.0
  * Requires at least: 6.9
  * Requires PHP:      8.0
  * Author:            Fabio Montenegro
@@ -19,7 +19,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'EWPA_VERSION', '2.10.1' );
+define( 'EWPA_VERSION', '2.11.0' );
 define( 'EWPA_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'EWPA_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 define( 'EWPA_OPTION_KEY', 'ewpa_enabled_abilities' );
@@ -44,6 +44,7 @@ require_once EWPA_PLUGIN_DIR . 'includes/activity-log.php';
 require_once EWPA_PLUGIN_DIR . 'includes/auth.php';
 require_once EWPA_PLUGIN_DIR . 'includes/admin.php';
 require_once EWPA_PLUGIN_DIR . 'includes/multilanguage.php';
+require_once EWPA_PLUGIN_DIR . 'includes/code-snippets.php';
 require_once EWPA_PLUGIN_DIR . 'includes/abilities.php';
 require_once EWPA_PLUGIN_DIR . 'includes/thirdparty.php';
 require_once EWPA_PLUGIN_DIR . 'includes/oauth-connectors.php';
@@ -227,13 +228,13 @@ function ewpa_maybe_upgrade(): void {
 /**
  * Plugin activation callback.
  *
- * Sets all abilities as enabled on first install.
+ * Enables every ability except the opt-in ones on first install.
  *
  * @return void
  */
 function ewpa_activate() {
 	if ( false === get_option( EWPA_OPTION_KEY ) ) {
-		update_option( EWPA_OPTION_KEY, ewpa_get_all_ability_keys() );
+		update_option( EWPA_OPTION_KEY, ewpa_get_default_ability_keys() );
 	}
 
 	// Auto-enable Bearer token for existing installs that already have a key.
@@ -308,6 +309,9 @@ add_action( 'plugins_loaded', 'ewpa_maybe_migrate_keys_v281' );
 
 // Adds the Linguator-aware multilanguage abilities introduced in v2.10.0 to existing installs.
 add_action( 'plugins_loaded', 'ewpa_maybe_migrate_keys_v2100' );
+
+// Adds the read-only Code Snippets abilities introduced in v2.11.0 to existing installs.
+add_action( 'plugins_loaded', 'ewpa_maybe_migrate_keys_v2110' );
 
 
 /*
@@ -978,6 +982,44 @@ function ewpa_maybe_migrate_keys_v2100(): void {
 }
 
 /**
+ * Adds the read-only Code Snippets abilities introduced in v2.11.0 to existing installs.
+ *
+ * The write abilities, ewpa/update-code-snippet and ewpa/set-code-snippet-active, are opt-in and stay off.
+ *
+ * @return void
+ */
+function ewpa_maybe_migrate_keys_v2110(): void {
+	if ( get_option( 'ewpa_keys_migrated_v2110' ) ) {
+		return;
+	}
+
+	$enabled = get_option( EWPA_OPTION_KEY );
+	if ( ! is_array( $enabled ) ) {
+		update_option( 'ewpa_keys_migrated_v2110', true );
+		return;
+	}
+
+	$new_abilities = array(
+		'ewpa/get-code-snippets',
+		'ewpa/get-code-snippet',
+	);
+
+	$changed = false;
+	foreach ( $new_abilities as $ability ) {
+		if ( ! in_array( $ability, $enabled, true ) ) {
+			$enabled[] = $ability;
+			$changed   = true;
+		}
+	}
+
+	if ( $changed ) {
+		update_option( EWPA_OPTION_KEY, $enabled );
+	}
+
+	update_option( 'ewpa_keys_migrated_v2110', true );
+}
+
+/**
  * Runs all ability key migrations in order.
  *
  * Called at the start of ewpa_register_custom_abilities() so every migration
@@ -995,6 +1037,7 @@ function ewpa_run_migrations(): void {
 	ewpa_maybe_migrate_keys_v280();
 	ewpa_maybe_migrate_keys_v281();
 	ewpa_maybe_migrate_keys_v2100();
+	ewpa_maybe_migrate_keys_v2110();
 }
 
 /**
@@ -1249,16 +1292,19 @@ function ewpa_get_abilities_registry() {
 					'desc'  => __( 'Updates the title, custom URL, parent, or position of one menu item.', 'enable-abilities-for-mcp' ),
 				),
 				'ewpa/remove-menu-item'     => array(
-					'label' => __( 'Remove Menu Item', 'enable-abilities-for-mcp' ),
-					'desc'  => __( 'Permanently removes one item from a menu. Destructive — opt-in required.', 'enable-abilities-for-mcp' ),
+					'label'   => __( 'Remove Menu Item', 'enable-abilities-for-mcp' ),
+					'desc'    => __( 'Permanently removes one item from a menu. Destructive — opt-in required.', 'enable-abilities-for-mcp' ),
+					'default' => false,
 				),
 				'ewpa/assign-menu-location' => array(
-					'label' => __( 'Assign Menu Location', 'enable-abilities-for-mcp' ),
-					'desc'  => __( 'Assigns a menu to a theme location. Changes site-wide navigation — opt-in required.', 'enable-abilities-for-mcp' ),
+					'label'   => __( 'Assign Menu Location', 'enable-abilities-for-mcp' ),
+					'desc'    => __( 'Assigns a menu to a theme location. Changes site-wide navigation — opt-in required.', 'enable-abilities-for-mcp' ),
+					'default' => false,
 				),
 				'ewpa/delete-menu'          => array(
-					'label' => __( 'Delete Menu', 'enable-abilities-for-mcp' ),
-					'desc'  => __( 'Permanently deletes a menu and all of its items. Destructive — opt-in required.', 'enable-abilities-for-mcp' ),
+					'label'   => __( 'Delete Menu', 'enable-abilities-for-mcp' ),
+					'desc'    => __( 'Permanently deletes a menu and all of its items. Destructive — opt-in required.', 'enable-abilities-for-mcp' ),
+					'default' => false,
 				),
 			),
 		),
@@ -1295,14 +1341,32 @@ function ewpa_get_abilities_registry() {
 		),
 		'code-snippets' => array(
 				'section_label'  => __( 'Code Snippets', 'enable-abilities-for-mcp' ),
-				'section_desc'   => __( 'Create PHP code snippets via the Code Snippets plugin. Requires manage_options. Snippets are always created as inactive — they must be activated manually from wp-admin › Snippets.', 'enable-abilities-for-mcp' ),
+				'section_desc'   => __( 'Create, read, and update PHP code snippets via the Code Snippets plugin. Requires manage_options. New snippets are saved inactive, and activating one always needs an administrator to review the code and confirm it in wp-admin.', 'enable-abilities-for-mcp' ),
 				'section_icon'   => 'dashicons-editor-code',
 				'section_badge'  => 'danger',
 				'section_notice' => 'ewpa_section_notice_code_snippets',
 				'abilities'      => array(
-					'ewpa/create-code-snippet' => array(
+					'ewpa/create-code-snippet'     => array(
 						'label' => __( 'Create Code Snippet', 'enable-abilities-for-mcp' ),
 						'desc'  => __( 'Creates a PHP snippet (always inactive). Validates syntax, blocks dangerous functions (eval, exec, shell_exec, etc.), and fires an audit action hook.', 'enable-abilities-for-mcp' ),
+					),
+					'ewpa/get-code-snippets'       => array(
+						'label' => __( 'List Code Snippets', 'enable-abilities-for-mcp' ),
+						'desc'  => __( 'List snippets with name, type, scope, active state, and tags. The code itself is not included.', 'enable-abilities-for-mcp' ),
+					),
+					'ewpa/get-code-snippet'        => array(
+						'label' => __( 'Get Code Snippet', 'enable-abilities-for-mcp' ),
+						'desc'  => __( 'Read one snippet by ID, including its code.', 'enable-abilities-for-mcp' ),
+					),
+					'ewpa/update-code-snippet'     => array(
+						'label'   => __( 'Update Code Snippet', 'enable-abilities-for-mcp' ),
+						'desc'    => __( 'Change a PHP snippet\'s name, description, code, scope, or tags. New code is validated; an active snippet whose code changes is deactivated. Opt-in required.', 'enable-abilities-for-mcp' ),
+						'default' => false,
+					),
+					'ewpa/set-code-snippet-active' => array(
+						'label'   => __( 'Set Code Snippet Active', 'enable-abilities-for-mcp' ),
+						'desc'    => __( 'Deactivate a snippet, or request its activation. Activation is never automatic: an administrator must review the code and confirm it in wp-admin. Opt-in required.', 'enable-abilities-for-mcp' ),
+						'default' => false,
 					),
 				),
 			),
@@ -1692,6 +1756,26 @@ function ewpa_get_all_ability_keys() {
 }
 
 /**
+ * Returns the ability keys enabled on a fresh install.
+ *
+ * Abilities flagged 'default' => false in the registry are opt-in: destructive or
+ * high-impact actions an administrator has to switch on deliberately.
+ *
+ * @return string[]
+ */
+function ewpa_get_default_ability_keys() {
+	$keys = array();
+	foreach ( ewpa_get_abilities_registry() as $section ) {
+		foreach ( $section['abilities'] as $key => $ability ) {
+			if ( ! ( array_key_exists( 'default', $ability ) && false === $ability['default'] ) ) {
+				$keys[] = $key;
+			}
+		}
+	}
+	return $keys;
+}
+
+/**
  * Checks if a specific ability is enabled.
  *
  * @param string $ability_key The ability key to check.
@@ -1700,9 +1784,13 @@ function ewpa_get_all_ability_keys() {
 function ewpa_is_ability_enabled( $ability_key ) {
 	$enabled = get_option( EWPA_OPTION_KEY, null );
 
-	// First install: all enabled by default.
+	// Not saved yet: fall back to the defaults, which leave opt-in abilities off.
 	if ( null === $enabled ) {
-		return true;
+		static $defaults = null;
+		if ( null === $defaults ) {
+			$defaults = ewpa_get_default_ability_keys();
+		}
+		return in_array( $ability_key, $defaults, true );
 	}
 
 	return in_array( $ability_key, (array) $enabled, true );
@@ -1895,9 +1983,7 @@ function ewpa_section_notice_tec() {
  * @return string
  */
 function ewpa_section_notice_code_snippets() {
-	$plugin_active = function_exists( 'save_snippet' )
-		|| class_exists( '\Code_Snippets\Snippet' )
-		|| class_exists( 'Snippet' );
+	$plugin_active = ewpa_snippets_available();
 
 	$out = '';
 

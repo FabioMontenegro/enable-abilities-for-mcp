@@ -7,7 +7,7 @@
 
 Let AI assistants like Claude manage your WordPress site through the [Model Context Protocol](https://modelcontextprotocol.io/) — with full control over exactly what they can and cannot do.
 
-**108 abilities in 21 categories**, each one individually toggleable from the dashboard: content, SEO (Rank Math / SEOPress / Yoast), navigation menus, WooCommerce, Elementor, LearnDash, Tutor LMS, JetEngine (Options Pages + Query Builder), multilanguage, `llms.txt`, FSE block templates, accessibility (WCAG), cache purge, and more.
+**112 abilities in 21 categories**, each one individually toggleable from the dashboard: content, SEO (Rank Math / SEOPress / Yoast), navigation menus, WooCommerce, Elementor, LearnDash, Tutor LMS, JetEngine (Options Pages + Query Builder), multilanguage, `llms.txt`, FSE block templates, accessibility (WCAG), cache purge, and more.
 
 ## How it works
 
@@ -17,11 +17,11 @@ This plugin completes the stack:
 
 ```
 Claude / MCP client  ──►  MCP Adapter  ──►  Abilities API  ──►  Enable Abilities for MCP
-                                                                (108 abilities + per-ability toggles
+                                                                (112 abilities + per-ability toggles
                                                                  + auth + activity log)
 ```
 
-1. It **registers 105 content-management abilities** (plus exposing the 3 native WordPress core ones to MCP).
+1. It **registers 109 content-management abilities** (plus exposing the 3 native WordPress core ones to MCP).
 2. It gives you an **admin dashboard** to enable or disable each ability individually — expose only what you need.
 3. It provides **authentication** (claude.ai OAuth custom connector, Application Passwords, or single-admin Bearer token) and an **activity log** of every ability executed.
 4. It also governs **third-party abilities**: anything other MCP-ready plugins (Fluent Forms, …) register shows up in the same dashboard, grouped by plugin, with the same toggles — disabling one removes it from every MCP server on the site.
@@ -42,7 +42,7 @@ Claude / MCP client  ──►  MCP Adapter  ──►  Abilities API  ──►
 | **Custom Post Types** | 11 | Discover and CRUD any CPT with taxonomy and meta support, including reading/writing term meta and core term fields (name, slug, description, parent) |
 | **WooCommerce** | 7 | Products, orders, customers — native WC API, HPOS-compatible |
 | **The Events Calendar** | 4 | List/get/create/update events with venue and organizer |
-| **Code Snippets** | 1 | Create PHP snippets (always inactive, syntax-validated, dangerous functions blocked) |
+| **Code Snippets** | 5 | Create, list, read, and update PHP snippets (syntax-validated, dangerous functions blocked); deactivate or request activation — activation always needs an administrator to review the code and confirm it in wp-admin |
 | **JetEngine — Options Pages** | 3 | Read/write Options Pages fields, including repeaters |
 | **JetEngine — Query Builder** | 3 | List, read, and update Query Builder queries via JetEngine's internal data layer — the missing edit/get/list counterpart to JetEngine's own native "Add Query" MCP tool |
 | **Elementor** | 3 | Read the element tree, edit element settings by id (single or batch), bind widget settings to dynamic tags |
@@ -52,7 +52,7 @@ Claude / MCP client  ──►  MCP Adapter  ──►  Abilities API  ──►
 | **Accessibility (WCAG)** | 1 | Scan the media library for images missing alt text (WCAG 1.1.1), paginated. Full contrast/ARIA/keyboard-nav auditing is left to browser-based tools (e.g. Lighthouse) |
 | **FSE Block Templates** | 3 | List and read `wp_template` / `wp_template_part` entries for the active theme (merges theme-file defaults with database overrides), write new block markup — auto-creates a database override when needed. Requires a theme with block-templates support |
 
-Write abilities validate per-post permissions (`edit_post`, `read_post`) and destructive or high-impact abilities are **opt-in** (disabled by default): Elementor edits, LearnDash and Tutor LMS enrollment, Options Pages writes, `llms.txt` writes, FSE template writes, code snippets, and removing/deleting menu items or menus.
+Write abilities validate per-post permissions (`edit_post`, `read_post`) and destructive or high-impact abilities are **opt-in** (disabled by default): Elementor edits, LearnDash and Tutor LMS enrollment, Options Pages and Query Builder writes, `llms.txt` writes, FSE template writes, code snippet updates and activation requests, and removing/deleting menu items or menus.
 
 ## Quick start
 

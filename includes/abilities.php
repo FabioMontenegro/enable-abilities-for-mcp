@@ -3756,7 +3756,7 @@ function ewpa_register_custom_abilities(): void {
 			'ewpa/create-code-snippet',
 			array(
 				'label'               => __( 'Create Code Snippet', 'enable-abilities-for-mcp' ),
-				'description'         => __( 'Creates a PHP code snippet via the Code Snippets plugin. The snippet is always saved as inactive — it must be activated manually from wp-admin › Snippets. Validates PHP syntax, blocks dangerous functions, and fires an audit action hook after saving.', 'enable-abilities-for-mcp' ),
+				'description'         => __( 'Creates a PHP code snippet via the Code Snippets plugin. The snippet is always saved as inactive: activating it needs an administrator to confirm it in wp-admin (see ewpa/set-code-snippet-active). Validates PHP syntax, blocks dangerous functions, and fires an audit action hook after saving.', 'enable-abilities-for-mcp' ),
 				'category'            => 'content-management',
 				'input_schema'        => array(
 					'type'       => 'object',
@@ -3776,8 +3776,8 @@ function ewpa_register_custom_abilities(): void {
 						),
 						'scope'       => array(
 							'type'        => 'string',
-							'enum'        => array( 'global', 'admin', 'frontend' ),
-							'description' => 'Where the snippet runs: global (frontend + admin), admin, or frontend. Defaults to global.',
+							'enum'        => array( 'global', 'admin', 'front-end', 'frontend' ),
+							'description' => 'Where the snippet runs: global (front-end and admin), admin, or front-end ("frontend" is accepted as an alias). Defaults to global.',
 							'default'     => 'global',
 						),
 						'tags'        => array(
@@ -3795,7 +3795,7 @@ function ewpa_register_custom_abilities(): void {
 						'scope'      => array( 'type' => 'string' ),
 						'active'     => array(
 							'type'        => 'boolean',
-							'description' => 'Always false. Activate manually from wp-admin.',
+							'description' => 'Always false. Activation needs an administrator to confirm it in wp-admin.',
 						),
 						'edit_url'   => array( 'type' => 'string' ),
 						'message'    => array( 'type' => 'string' ),
@@ -3805,62 +3805,31 @@ function ewpa_register_custom_abilities(): void {
 					return current_user_can( 'manage_options' );
 				},
 				'execute_callback'    => function ( $input ) {
-					// Requires Code Snippets 2.x or 3.x.
-					// 3.x places save_snippet() in the Code_Snippets namespace; 2.x in global.
-					$save_fn = function_exists( '\Code_Snippets\save_snippet' )
-						? '\Code_Snippets\save_snippet'
-						: ( function_exists( 'save_snippet' ) ? 'save_snippet' : null );
-
+					$save_fn = ewpa_snippets_function( 'save_snippet' );
 					if ( null === $save_fn ) {
-						return new WP_Error( 'plugin_inactive', 'Code Snippets plugin is not active or save_snippet() is unavailable.' );
+						return ewpa_snippets_unavailable_error();
 					}
 
 					$title       = sanitize_text_field( $input['title'] );
 					$code        = $input['code']; // Raw PHP — must not be sanitized.
 					$description = isset( $input['description'] ) ? sanitize_textarea_field( $input['description'] ) : '';
-					$scope       = isset( $input['scope'] ) ? sanitize_key( $input['scope'] ) : 'global';
+					$scope       = ewpa_snippets_normalize_scope( $input['scope'] ?? 'global' );
 					$tags        = isset( $input['tags'] ) && is_array( $input['tags'] )
 						? array_map( 'sanitize_text_field', $input['tags'] )
 						: array();
 
-					if ( ! in_array( $scope, array( 'global', 'admin', 'frontend' ), true ) ) {
-						$scope = 'global';
+					if ( '' === $scope ) {
+						return new WP_Error( 'invalid_scope', 'Invalid scope. Use global, admin, or front-end.' );
 					}
 
-					// 1. PHP syntax check — TOKEN_PARSE throws ParseError on invalid syntax.
-					try {
-						token_get_all( '<?php ' . $code, TOKEN_PARSE );
-					} catch ( \ParseError $e ) {
-						return new WP_Error( 'syntax_error', 'PHP syntax error: ' . $e->getMessage() );
+					$valid = ewpa_snippets_validate_php( (string) $code );
+					if ( is_wp_error( $valid ) ) {
+						return $valid;
 					}
 
-					// 2. Blocklist: reject dangerous function calls.
-					$blocked = array(
-						'eval', 'exec', 'system', 'passthru', 'shell_exec',
-						'popen', 'proc_open', 'base64_decode', 'file_put_contents',
-						'unlink', 'chmod',
-					);
-					foreach ( $blocked as $fn ) {
-						if ( preg_match( '/\b' . preg_quote( $fn, '/' ) . '\s*\(/i', $code ) ) {
-							return new WP_Error(
-								'blocked_function',
-								/* translators: %s: function name */
-								sprintf( __( "The function '%s' is not allowed in code snippets for security reasons.", 'enable-abilities-for-mcp' ), $fn )
-							);
-						}
-					}
-
-					// 3. Instantiate Snippet — supports Code Snippets 2.x, 3.0–3.9.x, and 3.10+.
-					// 3.10.0's PSR-4 refactor moved the class from Code_Snippets\Snippet to
-					// Code_Snippets\Model\Snippet (confirmed against the plugin's own source).
-					if ( class_exists( '\Code_Snippets\Model\Snippet' ) ) {
-						$snippet = new \Code_Snippets\Model\Snippet();
-					} elseif ( class_exists( '\Code_Snippets\Snippet' ) ) {
-						$snippet = new \Code_Snippets\Snippet();
-					} elseif ( class_exists( 'Snippet' ) ) {
-						$snippet = new Snippet(); // phpcs:ignore WordPress.WP.GlobalVariablesOverride
-					} else {
-						return new WP_Error( 'plugin_error', 'Cannot instantiate Snippet class. Ensure Code Snippets 2.x or 3.x is active.' );
+					$snippet = ewpa_snippets_new_snippet();
+					if ( is_wp_error( $snippet ) ) {
+						return $snippet;
 					}
 
 					$snippet->name   = $title;
@@ -3868,7 +3837,7 @@ function ewpa_register_custom_abilities(): void {
 					$snippet->desc   = $description;
 					$snippet->scope  = $scope;
 					$snippet->tags   = $tags;
-					$snippet->active = false; // Always inactive — must be activated manually.
+					$snippet->active = false; // Always inactive — activation needs a human.
 
 					$saved = $save_fn( $snippet );
 					if ( ! $saved || empty( $saved->id ) ) {
@@ -3882,16 +3851,434 @@ function ewpa_register_custom_abilities(): void {
 					return array(
 						'snippet_id' => (int) $saved->id,
 						'title'      => $title,
-						'scope'      => $scope,
+						'scope'      => (string) $saved->scope,
 						'active'     => false,
 						'edit_url'   => $edit_url,
 						'message'    => sprintf(
 							/* translators: 1: snippet title, 2: snippet ID, 3: edit URL */
-							__( "Snippet '%1\$s' (ID %2\$d) created as INACTIVE. Activate manually from: %3\$s", 'enable-abilities-for-mcp' ),
+							__( "Snippet '%1\$s' (ID %2\$d) created as INACTIVE. An administrator can activate it from %3\$s, or you can request activation with ewpa/set-code-snippet-active.", 'enable-abilities-for-mcp' ),
 							$title,
 							(int) $saved->id,
 							$edit_url
 						),
+					);
+				},
+				'meta'                => array(
+					'show_in_rest' => true,
+					'mcp'          => array(
+						'public' => true,
+					),
+				),
+			)
+		);
+	}
+
+	// ── CS2: List Code Snippets ─────────────────────────────────────────
+	if ( ewpa_is_ability_enabled( 'ewpa/get-code-snippets' ) ) {
+		ewpa_register_ability_with_log(
+			'ewpa/get-code-snippets',
+			array(
+				'label'               => __( 'List Code Snippets', 'enable-abilities-for-mcp' ),
+				'description'         => __( 'Lists the snippets stored by the Code Snippets plugin with ID, name, description, type, scope, active state, tags, and priority. The code itself is not included; use ewpa/get-code-snippet to read one snippet. Snippets in the trash are skipped.', 'enable-abilities-for-mcp' ),
+				'category'            => 'content-management',
+				'input_schema'        => array(
+					'type'       => 'object',
+					'properties' => array(
+						'search' => array(
+							'type'        => 'string',
+							'description' => 'Optional text to match against the snippet name, description, or tags.',
+						),
+						'active' => array(
+							'type'        => 'boolean',
+							'description' => 'Optional. true lists only active snippets, false only inactive ones.',
+						),
+					),
+				),
+				'output_schema'       => array(
+					'type'  => 'array',
+					'items' => array(
+						'type'       => 'object',
+						'properties' => array(
+							'snippet_id'  => array( 'type' => 'integer' ),
+							'name'        => array( 'type' => 'string' ),
+							'description' => array( 'type' => 'string' ),
+							'type'        => array( 'type' => 'string' ),
+							'scope'       => array( 'type' => 'string' ),
+							'active'      => array( 'type' => 'boolean' ),
+							'tags'        => array(
+								'type'  => 'array',
+								'items' => array( 'type' => 'string' ),
+							),
+							'priority'    => array( 'type' => 'integer' ),
+							'locked'      => array( 'type' => 'boolean' ),
+							'modified'    => array( 'type' => 'string' ),
+							'edit_url'    => array( 'type' => 'string' ),
+						),
+					),
+				),
+				'permission_callback' => function () {
+					return current_user_can( 'manage_options' );
+				},
+				'execute_callback'    => function ( $input = null ) {
+					$list_fn = ewpa_snippets_function( 'get_snippets' );
+					if ( null === $list_fn ) {
+						return ewpa_snippets_unavailable_error();
+					}
+
+					$input  = is_array( $input ) ? $input : array();
+					$search = isset( $input['search'] ) ? strtolower( trim( (string) $input['search'] ) ) : '';
+					$out    = array();
+
+					foreach ( (array) $list_fn() as $snippet ) {
+						if ( ! is_object( $snippet ) || empty( $snippet->id ) || ewpa_snippets_is_trashed( $snippet ) ) {
+							continue;
+						}
+						if ( isset( $input['active'] ) && (bool) $input['active'] !== (bool) $snippet->active ) {
+							continue;
+						}
+						if ( '' !== $search ) {
+							$haystack = strtolower( $snippet->name . ' ' . $snippet->desc . ' ' . implode( ' ', (array) $snippet->tags ) );
+							if ( false === strpos( $haystack, $search ) ) {
+								continue;
+							}
+						}
+						$out[] = ewpa_snippets_summarize( $snippet, false );
+					}
+
+					return $out;
+				},
+				'meta'                => array(
+					'annotations'  => array(
+						'readonly' => true,
+					),
+					'show_in_rest' => true,
+					'mcp'          => array(
+						'public' => true,
+					),
+				),
+			)
+		);
+	}
+
+	// ── CS3: Get Code Snippet ───────────────────────────────────────────
+	if ( ewpa_is_ability_enabled( 'ewpa/get-code-snippet' ) ) {
+		ewpa_register_ability_with_log(
+			'ewpa/get-code-snippet',
+			array(
+				'label'               => __( 'Get Code Snippet', 'enable-abilities-for-mcp' ),
+				'description'         => __( 'Returns one snippet from the Code Snippets plugin by ID, including its code, type, scope, active state, tags, and priority.', 'enable-abilities-for-mcp' ),
+				'category'            => 'content-management',
+				'input_schema'        => array(
+					'type'       => 'object',
+					'required'   => array( 'snippet_id' ),
+					'properties' => array(
+						'snippet_id' => array(
+							'type'        => 'integer',
+							'description' => 'ID of the snippet to read.',
+						),
+					),
+				),
+				'output_schema'       => array(
+					'type'       => 'object',
+					'properties' => array(
+						'snippet_id'  => array( 'type' => 'integer' ),
+						'name'        => array( 'type' => 'string' ),
+						'description' => array( 'type' => 'string' ),
+						'type'        => array( 'type' => 'string' ),
+						'scope'       => array( 'type' => 'string' ),
+						'active'      => array( 'type' => 'boolean' ),
+						'tags'        => array(
+							'type'  => 'array',
+							'items' => array( 'type' => 'string' ),
+						),
+						'priority'    => array( 'type' => 'integer' ),
+						'locked'      => array( 'type' => 'boolean' ),
+						'modified'    => array( 'type' => 'string' ),
+						'edit_url'    => array( 'type' => 'string' ),
+						'code'        => array( 'type' => 'string' ),
+					),
+				),
+				'permission_callback' => function () {
+					return current_user_can( 'manage_options' );
+				},
+				'execute_callback'    => function ( $input ) {
+					$snippet = ewpa_snippets_get( absint( $input['snippet_id'] ?? 0 ) );
+					if ( is_wp_error( $snippet ) ) {
+						return $snippet;
+					}
+					return ewpa_snippets_summarize( $snippet, true );
+				},
+				'meta'                => array(
+					'annotations'  => array(
+						'readonly' => true,
+					),
+					'show_in_rest' => true,
+					'mcp'          => array(
+						'public' => true,
+					),
+				),
+			)
+		);
+	}
+
+	// ── CS4: Update Code Snippet ────────────────────────────────────────
+	if ( ewpa_is_ability_enabled( 'ewpa/update-code-snippet' ) ) {
+		ewpa_register_ability_with_log(
+			'ewpa/update-code-snippet',
+			array(
+				'label'               => __( 'Update Code Snippet', 'enable-abilities-for-mcp' ),
+				'description'         => __( 'Updates an existing PHP snippet of the Code Snippets plugin. Only the fields you pass are changed: name, description, code, scope, or tags. New code is validated like ewpa/create-code-snippet. If the snippet is active and its code changes, it is deactivated and needs a new, human-confirmed activation. Opt-in, disabled by default.', 'enable-abilities-for-mcp' ),
+				'category'            => 'content-management',
+				'input_schema'        => array(
+					'type'       => 'object',
+					'required'   => array( 'snippet_id' ),
+					'properties' => array(
+						'snippet_id'  => array(
+							'type'        => 'integer',
+							'description' => 'ID of the snippet to update.',
+						),
+						'name'        => array(
+							'type'        => 'string',
+							'description' => 'New display name.',
+						),
+						'description' => array(
+							'type'        => 'string',
+							'description' => 'New description.',
+						),
+						'code'        => array(
+							'type'        => 'string',
+							'description' => 'New PHP code, without the opening <?php tag.',
+						),
+						'scope'       => array(
+							'type'        => 'string',
+							'enum'        => array( 'global', 'admin', 'front-end', 'frontend' ),
+							'description' => 'Where the snippet runs: global, admin, or front-end ("frontend" is accepted as an alias).',
+						),
+						'tags'        => array(
+							'type'        => 'array',
+							'items'       => array( 'type' => 'string' ),
+							'description' => 'Replacement list of tags.',
+						),
+					),
+				),
+				'output_schema'       => array(
+					'type'       => 'object',
+					'properties' => array(
+						'snippet_id'  => array( 'type' => 'integer' ),
+						'updated'     => array(
+							'type'  => 'array',
+							'items' => array( 'type' => 'string' ),
+						),
+						'active'      => array( 'type' => 'boolean' ),
+						'deactivated' => array( 'type' => 'boolean' ),
+						'scope'       => array( 'type' => 'string' ),
+						'edit_url'    => array( 'type' => 'string' ),
+						'message'     => array( 'type' => 'string' ),
+					),
+				),
+				'permission_callback' => function () {
+					return current_user_can( 'manage_options' );
+				},
+				'execute_callback'    => function ( $input ) {
+					$save_fn = ewpa_snippets_function( 'save_snippet' );
+					if ( null === $save_fn ) {
+						return ewpa_snippets_unavailable_error();
+					}
+
+					$snippet = ewpa_snippets_get( absint( $input['snippet_id'] ?? 0 ) );
+					if ( is_wp_error( $snippet ) ) {
+						return $snippet;
+					}
+					if ( ewpa_snippets_is_trashed( $snippet ) ) {
+						return new WP_Error( 'snippet_trashed', 'This snippet is in the trash. Restore it in wp-admin before editing it.' );
+					}
+					if ( 'php' !== ewpa_snippets_type( $snippet ) ) {
+						return new WP_Error( 'unsupported_type', 'Only PHP snippets can be updated through this ability.' );
+					}
+
+					$updated = array();
+
+					if ( isset( $input['code'] ) ) {
+						if ( ! empty( $snippet->locked ) ) {
+							return new WP_Error( 'snippet_locked', 'This snippet is locked in Code Snippets, so its code cannot be changed.' );
+						}
+						$valid = ewpa_snippets_validate_php( (string) $input['code'] );
+						if ( is_wp_error( $valid ) ) {
+							return $valid;
+						}
+					}
+					if ( isset( $input['name'] ) && ! empty( $snippet->locked ) ) {
+						return new WP_Error( 'snippet_locked', 'This snippet is locked in Code Snippets, so its name cannot be changed.' );
+					}
+
+					if ( isset( $input['scope'] ) ) {
+						$scope = ewpa_snippets_normalize_scope( $input['scope'] );
+						if ( '' === $scope ) {
+							return new WP_Error( 'invalid_scope', 'Invalid scope. Use global, admin, or front-end.' );
+						}
+						if ( $scope !== $snippet->scope ) {
+							$snippet->scope = $scope;
+							$updated[]      = 'scope';
+						}
+					}
+					if ( isset( $input['name'] ) ) {
+						$snippet->name = sanitize_text_field( $input['name'] );
+						$updated[]     = 'name';
+					}
+					if ( isset( $input['description'] ) ) {
+						$snippet->desc = sanitize_textarea_field( $input['description'] );
+						$updated[]     = 'description';
+					}
+					if ( isset( $input['tags'] ) && is_array( $input['tags'] ) ) {
+						$snippet->tags = array_map( 'sanitize_text_field', $input['tags'] );
+						$updated[]     = 'tags';
+					}
+
+					$deactivated = false;
+					if ( isset( $input['code'] ) && (string) $input['code'] !== (string) $snippet->code ) {
+						$snippet->code = (string) $input['code']; // Raw PHP — must not be sanitized.
+						$updated[]     = 'code';
+						// Changed code must be reviewed again before it runs.
+						if ( ! empty( $snippet->active ) ) {
+							$snippet->active = false;
+							$deactivated     = true;
+						}
+					}
+
+					if ( empty( $updated ) ) {
+						return new WP_Error( 'nothing_to_update', 'Nothing to update. Pass at least one changed field: name, description, code, scope, or tags.' );
+					}
+
+					$saved = $save_fn( $snippet );
+					if ( ! $saved || empty( $saved->id ) ) {
+						return new WP_Error( 'save_failed', 'Code Snippets plugin could not save the snippet.' );
+					}
+
+					do_action( 'ewpa_after_update_code_snippet', (int) $saved->id, $updated );
+
+					return array(
+						'snippet_id'  => (int) $saved->id,
+						'updated'     => $updated,
+						'active'      => (bool) $saved->active,
+						'deactivated' => $deactivated,
+						'scope'       => (string) $saved->scope,
+						'edit_url'    => admin_url( 'admin.php?page=edit-snippet&id=' . (int) $saved->id ),
+						'message'     => $deactivated
+							? sprintf( 'Snippet %d was updated and deactivated because its code changed. Request a new activation with ewpa/set-code-snippet-active; an administrator has to confirm it.', (int) $saved->id )
+							: sprintf( 'Snippet %d was updated.', (int) $saved->id ),
+					);
+				},
+				'meta'                => array(
+					'show_in_rest' => true,
+					'mcp'          => array(
+						'public' => true,
+					),
+				),
+			)
+		);
+	}
+
+	// ── CS5: Set Code Snippet Active ────────────────────────────────────
+	if ( ewpa_is_ability_enabled( 'ewpa/set-code-snippet-active' ) ) {
+		ewpa_register_ability_with_log(
+			'ewpa/set-code-snippet-active',
+			array(
+				'label'               => __( 'Set Code Snippet Active', 'enable-abilities-for-mcp' ),
+				'description'         => __( 'Deactivates a Code Snippets snippet immediately, or requests its activation. Activation is never done directly: it returns a confirmation link in wp-admin where an administrator reviews the code and approves or rejects it. Share that link with the site administrator. Opt-in, disabled by default.', 'enable-abilities-for-mcp' ),
+				'category'            => 'content-management',
+				'input_schema'        => array(
+					'type'       => 'object',
+					'required'   => array( 'snippet_id', 'active' ),
+					'properties' => array(
+						'snippet_id' => array(
+							'type'        => 'integer',
+							'description' => 'ID of the snippet.',
+						),
+						'active'     => array(
+							'type'        => 'boolean',
+							'description' => 'false deactivates the snippet now; true files an activation request that an administrator must confirm in wp-admin.',
+						),
+					),
+				),
+				'output_schema'       => array(
+					'type'       => 'object',
+					'properties' => array(
+						'snippet_id'  => array( 'type' => 'integer' ),
+						'status'      => array(
+							'type' => 'string',
+							'enum' => array( 'deactivated', 'already_inactive', 'already_active', 'pending_confirmation' ),
+						),
+						'active'      => array( 'type' => 'boolean' ),
+						'confirm_url' => array( 'type' => 'string' ),
+						'expires_at'  => array( 'type' => 'string' ),
+						'message'     => array( 'type' => 'string' ),
+					),
+				),
+				'permission_callback' => function () {
+					return current_user_can( 'manage_options' );
+				},
+				'execute_callback'    => function ( $input ) {
+					$snippet = ewpa_snippets_get( absint( $input['snippet_id'] ?? 0 ) );
+					if ( is_wp_error( $snippet ) ) {
+						return $snippet;
+					}
+
+					$snippet_id = (int) $snippet->id;
+
+					if ( empty( $input['active'] ) ) {
+						if ( empty( $snippet->active ) ) {
+							return array(
+								'snippet_id' => $snippet_id,
+								'status'     => 'already_inactive',
+								'active'     => false,
+								'message'    => sprintf( 'Snippet %d was already inactive.', $snippet_id ),
+							);
+						}
+
+						$deactivate = ewpa_snippets_function( 'deactivate_snippet' );
+						if ( null === $deactivate || ! $deactivate( $snippet_id ) ) {
+							return new WP_Error( 'deactivation_failed', 'Code Snippets could not deactivate the snippet.' );
+						}
+
+						do_action( 'ewpa_after_deactivate_code_snippet', $snippet_id, get_current_user_id() );
+
+						return array(
+							'snippet_id' => $snippet_id,
+							'status'     => 'deactivated',
+							'active'     => false,
+							'message'    => sprintf( 'Snippet %d was deactivated.', $snippet_id ),
+						);
+					}
+
+					if ( ! empty( $snippet->active ) ) {
+						return array(
+							'snippet_id' => $snippet_id,
+							'status'     => 'already_active',
+							'active'     => true,
+							'message'    => sprintf( 'Snippet %d is already active.', $snippet_id ),
+						);
+					}
+					if ( ewpa_snippets_is_trashed( $snippet ) || 'php' !== ewpa_snippets_type( $snippet ) ) {
+						return new WP_Error( 'not_activatable', 'Only PHP snippets that are not in the trash can be activated through this ability.' );
+					}
+
+					$valid = ewpa_snippets_validate_php( (string) $snippet->code );
+					if ( is_wp_error( $valid ) ) {
+						return $valid;
+					}
+
+					$request = ewpa_snippets_create_activation_request( $snippet, get_current_user_id() );
+					$url     = ewpa_snippets_confirmation_url( $request['token'] );
+
+					do_action( 'ewpa_code_snippet_activation_requested', $snippet_id, get_current_user_id() );
+
+					return array(
+						'snippet_id'  => $snippet_id,
+						'status'      => 'pending_confirmation',
+						'active'      => false,
+						'confirm_url' => $url,
+						'expires_at'  => gmdate( 'c', (int) $request['expires_at'] ),
+						'message'     => sprintf( 'Snippet %d is still inactive. Activation needs a human: ask a site administrator to open %s, review the code, and click "Activate snippet". The request expires in 24 hours and is cancelled if the code changes.', $snippet_id, $url ),
 					);
 				},
 				'meta'                => array(

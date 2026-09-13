@@ -5,11 +5,11 @@ Tags: mcp, ai, rest-api, content-management, woocommerce
 Requires at least: 6.9
 Tested up to: 7.1
 Requires PHP: 8.0
-Stable tag: 2.10.1
+Stable tag: 2.11.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
-Connect Claude, ChatGPT & any MCP client to WordPress. 108 abilities: content, SEO, WooCommerce, FSE, LMS & more. Free & self-hosted.
+Connect Claude, ChatGPT & any MCP client to WordPress. 112 abilities: content, SEO, WooCommerce, FSE, LMS & more. Free & self-hosted.
 
 == Description ==
 
@@ -40,7 +40,7 @@ Prefer tokens? Application Passwords (per-user) and a single-admin Bearer token 
 
 = Features =
 
-* **108 abilities** organized in 21 categories: Core, Read, Write, SEO (Rank Math), SEO (SEOPress), SEO (Yoast), Navigation Menus, Utility, Multilanguage, Custom Post Types, WooCommerce, The Events Calendar, Code Snippets, JetEngine Options Pages, JetEngine Query Builder, Elementor, LearnDash, Tutor LMS, AI Agent Readiness (llms.txt), FSE Block Templates, and Accessibility (WCAG)
+* **112 abilities** organized in 21 categories: Core, Read, Write, SEO (Rank Math), SEO (SEOPress), SEO (Yoast), Navigation Menus, Utility, Multilanguage, Custom Post Types, WooCommerce, The Events Calendar, Code Snippets, JetEngine Options Pages, JetEngine Query Builder, Elementor, LearnDash, Tutor LMS, AI Agent Readiness (llms.txt), FSE Block Templates, and Accessibility (WCAG)
 * **WooCommerce integration** — dedicated abilities to manage products, orders, and customers using the native WooCommerce API (HPOS-compatible, formally declared)
 * **The Events Calendar integration** — list, get, create, and update events with venue, organizer, and date filters
 * **claude.ai OAuth custom connector** — connect from claude.ai (web, mobile, or desktop) with zero local setup: an embedded OAuth 2.1 server with Client ID Metadata Document (CIMD) support lets each user log in with their own WordPress account and role
@@ -167,7 +167,10 @@ Prefer tokens? Application Passwords (per-user) and a single-admin Bearer token 
 
 **Code Snippets:**
 
-* Create a PHP code snippet via the Code Snippets plugin — always saved as inactive, activate manually from wp-admin. Validates PHP syntax and blocks dangerous functions (`eval`, `exec`, `shell_exec`, and more)
+* Create a PHP code snippet via the Code Snippets plugin — always saved as inactive. Validates PHP syntax and blocks dangerous functions (`eval`, `exec`, `shell_exec`, and more)
+* List snippets (without their code) and read one snippet by ID, including its code
+* Update a PHP snippet's name, description, code, scope, or tags (opt-in); new code is validated, and an active snippet whose code changes is deactivated
+* Deactivate a snippet, or request its activation (opt-in). Activation is never automatic: the request returns a wp-admin link where an administrator reviews the code and confirms it. The confirmation is bound to the exact code and expires after 24 hours
 
 **AI Agent Readiness (llms.txt):**
 
@@ -252,6 +255,16 @@ Yes — strict OAuth clients require a direct `200` on `/.well-known/oauth-autho
 1. Admin settings page showing all abilities organized by category with toggle switches.
 
 == Changelog ==
+
+= 2.11.0 =
+* New: `ewpa/get-code-snippets` and `ewpa/get-code-snippet` (Code Snippets section, enabled by default) list the snippets stored by the Code Snippets plugin (without their code) and read one snippet by ID, including its code. Requires manage_options.
+* New: `ewpa/update-code-snippet` (opt-in) changes a PHP snippet's name, description, code, scope, or tags, leaving every other field untouched. New code goes through the same syntax check and blocked-function list as `ewpa/create-code-snippet`; an active snippet whose code changes is deactivated so the new code is reviewed before it runs.
+* New: `ewpa/set-code-snippet-active` (opt-in) deactivates a snippet immediately, but never activates one directly. Asking for activation files a request and returns a wp-admin link where an administrator reads the code and approves or rejects it. The approval form needs a WordPress login nonce, which MCP credentials cannot produce; the request is bound to a hash of the code, expires after 24 hours, and every check runs again at approval time. Pending requests are announced with an admin notice. Suggested by @torontotoph.
+* Fix: `ewpa/create-code-snippet` stored snippets created with `scope: frontend` as global, because Code Snippets names that scope `front-end` and silently falls back to `global` for values it does not know, so a snippet meant for the front end also ran in wp-admin. Both spellings are now accepted and stored as `front-end`.
+* Fix: abilities marked opt-in (disabled by default) were enabled on fresh installs, because the first activation enabled every ability. New installs now leave them off; existing installs keep their current settings. `ewpa/remove-menu-item`, `ewpa/assign-menu-location`, and `ewpa/delete-menu` are now flagged opt-in too, matching their descriptions.
+* Fix: the Code Snippets section showed "plugin is not active" with Code Snippets 3.10 or later, whose API moved into a namespace.
+* New: Regression suite for the Code Snippets helpers and the confirmation flow (`tests/code-snippets-test.php`, 33 checks). Runs without WordPress: `php tests/code-snippets-test.php`.
+* Updated: Total abilities: 112 in 21 categories.
 
 = 2.10.1 =
 * Fix: `ewpa/duplicate-post` copied the internal translation-group taxonomies of Polylang and Linguator AI along with regular terms, so on a multilingual site the duplicate joined the original's translation group and its language switcher and translation links pointed at the original's translations. The duplicate now keeps the source language but gets its own group.
