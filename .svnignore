@@ -20,6 +20,7 @@ phpcs.xml
 phpcs.xml.dist
 README.md
 sync-to-svn.ps1
+build-release-zip.php
 *.zip
 *.tar.gz
 dist
