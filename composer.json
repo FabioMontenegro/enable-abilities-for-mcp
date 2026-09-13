@@ -10,5 +10,9 @@
     },
     "require": {
         "wp-media/mcp-oauth": "1.0.3"
+    },
+    "replace": {
+        "wordpress/mcp-adapter": "*",
+        "wordpress/php-mcp-schema": "*"
     }
 }

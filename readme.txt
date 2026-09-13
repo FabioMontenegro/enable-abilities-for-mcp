@@ -5,7 +5,7 @@ Tags: mcp, ai, rest-api, content-management, woocommerce
 Requires at least: 6.9
 Tested up to: 7.1
 Requires PHP: 8.0
-Stable tag: 2.11.0
+Stable tag: 2.11.1
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -256,6 +256,10 @@ Yes — strict OAuth clients require a direct `200` on `/.well-known/oauth-autho
 
 == Changelog ==
 
+= 2.11.1 =
+* Fix: the plugin no longer ships its own copy of MCP Adapter. The OAuth library pulled MCP Adapter 0.5.0 into `vendor/` as a dependency. Development builds of MCP Adapter check for a copy loaded before them; because this plugin loads first, they found that copy, showed "Another version of MCP Adapter is already loaded", and ran the bundled 0.5.0 instead of themselves. The MCP Adapter plugin you install is now the only copy this plugin provides. Reported by @donbowman.
+* Fix: the "requires the MCP Adapter plugin" notice now detects the MCP Adapter plugin itself, so it no longer appears when the plugin is active but installed in a folder with a different name.
+
 = 2.11.0 =
 * New: `ewpa/get-code-snippets` and `ewpa/get-code-snippet` (Code Snippets section, enabled by default) list the snippets stored by the Code Snippets plugin (without their code) and read one snippet by ID, including its code. Requires manage_options.
 * New: `ewpa/update-code-snippet` (opt-in) changes a PHP snippet's name, description, code, scope, or tags, leaving every other field untouched. New code goes through the same syntax check and blocked-function list as `ewpa/create-code-snippet`; an active snippet whose code changes is deactivated so the new code is reviewed before it runs.
@@ -366,6 +370,9 @@ Yes — strict OAuth clients require a direct `200` on `/.well-known/oauth-autho
 * See [changelog.txt](https://plugins.trac.wordpress.org/browser/enable-abilities-for-mcp/trunk/changelog.txt) for the full history of older versions.
 
 == Upgrade Notice ==
+
+= 2.11.1 =
+Fix: removes the bundled copy of MCP Adapter that triggers "Another version of MCP Adapter is already loaded" on newer MCP Adapter builds. Keep the MCP Adapter plugin installed and active.
 
 = 2.0.9 =
 Fix: `ewpa/update-rankmath-schema` was not discoverable by MCP adapters due to an invalid object schema. Update immediately if you use this ability.

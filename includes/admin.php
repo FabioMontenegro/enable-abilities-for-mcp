@@ -34,11 +34,10 @@ function ewpa_admin_notice_mcp_adapter(): void {
 		return;
 	}
 
-	if ( ! function_exists( 'is_plugin_active' ) ) {
-		include_once ABSPATH . 'wp-admin/includes/plugin.php';
-	}
-
-	if ( is_plugin_active( 'mcp-adapter/mcp-adapter.php' ) ) {
+	// Only the MCP Adapter plugin defines WP_MCP_VERSION, whatever folder it was
+	// installed in. Copies bundled by other plugins (WooCommerce ships 0.3.0) do
+	// not, so they are not mistaken for it.
+	if ( defined( 'WP_MCP_VERSION' ) ) {
 		return;
 	}
 
