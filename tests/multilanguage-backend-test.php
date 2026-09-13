@@ -56,6 +56,12 @@ $cases = array(
 	'rejects_term_translation_when_source_has_no_language',
 	'rejects_term_link_across_taxonomies',
 	'creates_polylang_term_translation_by_duplicating',
+	'preserves_backslashes_in_copied_post_meta',
+	'preserves_backslashes_in_copied_term_meta',
+	'preserves_backslashes_in_duplicated_term',
+	'preserves_backslashes_in_linguator_term',
+	'preserves_backslashes_when_updating_linguator_term',
+	'keeps_existing_linguator_term_fields_when_updating',
 );
 
 $failures = 0;
@@ -182,6 +188,10 @@ function ewpa_bootstrap_case( string $case ): void {
 	);
 	$GLOBALS['ewpa_linguator_term_languages'] = array( 5 => 'en' );
 	$GLOBALS['ewpa_linguator_term_translations'] = array( 'en' => 5 );
+	$GLOBALS['ewpa_pll_post_languages']          = array(
+		10 => 'en',
+		20 => 'it',
+	);
 	$GLOBALS['ewpa_pll_term_languages']       = array( 5 => 'en' );
 	$GLOBALS['ewpa_pll_term_translations']    = array( 'en' => 5 );
 	$GLOBALS['ewpa_inserted_terms']           = array();
@@ -191,8 +201,12 @@ function ewpa_bootstrap_case( string $case ): void {
 	$GLOBALS['ewpa_updated_posts']            = array();
 	$GLOBALS['ewpa_copied_posts']             = array();
 	$GLOBALS['ewpa_next_post_id']             = 30;
+	$GLOBALS['ewpa_post_meta']                   = array( 10 => array( '_elementor_data' => array( ewpa_backslash_content() ) ) );
+	$GLOBALS['ewpa_term_meta']                   = array( 5 => array( 'schema' => array( ewpa_backslash_content() ) ) );
+	$GLOBALS['ewpa_added_post_meta']             = array();
+	$GLOBALS['ewpa_added_term_meta']             = array();
 
-	if ( in_array( $case, array( 'detects_polylang', 'keeps_polylang_precedence_over_linguator', 'creates_polylang_translation_by_duplicating', 'creates_polylang_term_translation_by_duplicating', 'preserves_backslashes_when_copying_source_content', 'preserves_backslashes_in_translated_content', 'preserves_backslashes_when_updating_existing_translation' ), true ) ) {
+	if ( in_array( $case, array( 'detects_polylang', 'keeps_polylang_precedence_over_linguator', 'creates_polylang_translation_by_duplicating', 'creates_polylang_term_translation_by_duplicating', 'preserves_backslashes_when_copying_source_content', 'preserves_backslashes_in_translated_content', 'preserves_backslashes_when_updating_existing_translation', 'preserves_backslashes_in_copied_post_meta', 'preserves_backslashes_in_copied_term_meta', 'preserves_backslashes_in_duplicated_term' ), true ) ) {
 		require_once __DIR__ . '/doubles/polylang.php';
 	}
 
@@ -243,7 +257,7 @@ function ewpa_bootstrap_case( string $case ): void {
 		$GLOBALS['ewpa_linguator_term_languages'] = array();
 	}
 
-	if ( 'updates_existing_linguator_term_translation' === $case ) {
+	if ( in_array( $case, array( 'updates_existing_linguator_term_translation', 'preserves_backslashes_when_updating_linguator_term', 'keeps_existing_linguator_term_fields_when_updating' ), true ) ) {
 		$GLOBALS['ewpa_linguator_term_translations'] = array(
 			'en' => 5,
 			'it' => 6,
@@ -528,6 +542,54 @@ function ewpa_run_case( string $case ): void {
 			ewpa_assert_same( 'Latest news', $GLOBALS['ewpa_inserted_terms'][0]['args']['description'] );
 			ewpa_assert_same( $result['term_id'], $GLOBALS['ewpa_pll_term_translations']['it'] );
 			break;
+		case 'preserves_backslashes_in_copied_post_meta':
+			$result = ewpa_multilanguage_create_post_translation( 10, 'it', array( 'title' => 'Ciao mondo' ) );
+			ewpa_assert_true( ! $result instanceof WP_Error, ewpa_describe( $result ) );
+			ewpa_assert_same( ewpa_backslash_content(), $GLOBALS['ewpa_added_post_meta'][ $result['post_id'] ]['_elementor_data'][0] ?? null );
+			break;
+		case 'preserves_backslashes_in_copied_term_meta':
+			$result = ewpa_multilanguage_create_term_translation( 5, 'it', array( 'name' => 'Notizie' ) );
+			ewpa_assert_true( ! $result instanceof WP_Error, ewpa_describe( $result ) );
+			ewpa_assert_same( ewpa_backslash_content(), $GLOBALS['ewpa_added_term_meta'][ $result['term_id'] ]['schema'][0] ?? null );
+			break;
+		case 'preserves_backslashes_in_duplicated_term':
+		case 'preserves_backslashes_in_linguator_term':
+			$result = ewpa_multilanguage_create_term_translation(
+				5,
+				'it',
+				array(
+					'name'        => 'Notizie',
+					'description' => ewpa_backslash_translation(),
+				)
+			);
+			ewpa_assert_true( ! $result instanceof WP_Error, ewpa_describe( $result ) );
+			ewpa_assert_same( true, $result['created'] );
+			ewpa_assert_same( ewpa_backslash_translation(), $GLOBALS['ewpa_terms'][ $result['term_id'] ]->description );
+			break;
+		case 'preserves_backslashes_when_updating_linguator_term':
+			$result = ewpa_multilanguage_create_term_translation(
+				5,
+				'it',
+				array(
+					'name'        => 'Notiziario',
+					'description' => ewpa_backslash_translation(),
+				)
+			);
+			ewpa_assert_true( ! $result instanceof WP_Error, ewpa_describe( $result ) );
+			ewpa_assert_same( false, $result['created'] );
+			ewpa_assert_same( ewpa_backslash_translation(), $GLOBALS['ewpa_terms'][6]->description );
+			break;
+		case 'keeps_existing_linguator_term_fields_when_updating':
+			// Only the description is supplied: name and slug of the existing
+			// translation must survive instead of reverting to the source term's.
+			$result = ewpa_multilanguage_create_term_translation( 5, 'it', array( 'description' => 'Ultime notizie' ) );
+			ewpa_assert_true( ! $result instanceof WP_Error, ewpa_describe( $result ) );
+			ewpa_assert_same( false, $result['created'] );
+			ewpa_assert_same( 'Notizie', $GLOBALS['ewpa_terms'][6]->name );
+			ewpa_assert_same( 'notizie', $GLOBALS['ewpa_terms'][6]->slug );
+			ewpa_assert_same( 'Ultime notizie', $GLOBALS['ewpa_terms'][6]->description );
+			ewpa_assert_same( array( 'description' ), array_keys( $GLOBALS['ewpa_updated_terms'][0]['args'] ) );
+			break;
 		default:
 			throw new RuntimeException( 'Unknown case: ' . $case );
 	}
@@ -661,10 +723,12 @@ function wp_delete_post( $post_id, $force = false ) {
 }
 
 function get_post_meta( $post_id, $key = '', $single = false ) {
-	return array();
+	return $GLOBALS['ewpa_post_meta'][ $post_id ] ?? array();
 }
 
 function add_post_meta( $post_id, $key, $value, $unique = false ) {
+	// Core's add_metadata() unslashes the value before storing it.
+	$GLOBALS['ewpa_added_post_meta'][ $post_id ][ $key ][] = wp_unslash( $value );
 	return true;
 }
 
@@ -702,10 +766,12 @@ function get_taxonomy( $taxonomy ) {
 }
 
 function get_term_meta( $term_id, $key = '', $single = false ) {
-	return array();
+	return $GLOBALS['ewpa_term_meta'][ $term_id ] ?? array();
 }
 
 function add_term_meta( $term_id, $key, $value, $unique = false ) {
+	// Core's add_metadata() unslashes the value before storing it.
+	$GLOBALS['ewpa_added_term_meta'][ $term_id ][ $key ][] = wp_unslash( $value );
 	return true;
 }
 
@@ -730,6 +796,11 @@ function ewpa_test_store_term( $name, $taxonomy, $args ) {
 }
 
 function wp_insert_term( $name, $taxonomy, $args = array() ) {
+	// Core unslashes the name and description before the write.
+	$name = wp_unslash( $name );
+	if ( isset( $args['description'] ) ) {
+		$args['description'] = wp_unslash( $args['description'] );
+	}
 	$term_id = ewpa_test_store_term( $name, $taxonomy, $args );
 
 	$GLOBALS['ewpa_inserted_terms'][] = array(
@@ -743,6 +814,12 @@ function wp_insert_term( $name, $taxonomy, $args = array() ) {
 }
 
 function wp_update_term( $term_id, $taxonomy, $args = array() ) {
+	// Core unslashes the name and description before the write.
+	foreach ( array( 'name', 'description' ) as $field ) {
+		if ( isset( $args[ $field ] ) ) {
+			$args[ $field ] = wp_unslash( $args[ $field ] );
+		}
+	}
 	$GLOBALS['ewpa_updated_terms'][] = array(
 		'term_id'  => $term_id,
 		'taxonomy' => $taxonomy,

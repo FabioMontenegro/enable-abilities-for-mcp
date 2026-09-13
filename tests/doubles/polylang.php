@@ -10,7 +10,8 @@ function pll_set_post_language( $post_id, $language ) {
 }
 
 function pll_get_post_language( $post_id, $field = 'slug' ) {
-	return $GLOBALS['ewpa_pll_post_languages'][ $post_id ] ?? 'en';
+	// Polylang returns false for a post that has no language yet.
+	return $GLOBALS['ewpa_pll_post_languages'][ $post_id ] ?? false;
 }
 
 function pll_get_post_translations( $post_id ) {
@@ -18,6 +19,16 @@ function pll_get_post_translations( $post_id ) {
 }
 
 function pll_save_post_translations( $translations ) {
+	// PLL_Translated_Object::validate_translations() silently drops every entry
+	// whose object does not already carry that language.
+	$translations = array_filter(
+		$translations,
+		static function ( $post_id, $lang ) {
+			return ( $GLOBALS['ewpa_pll_post_languages'][ $post_id ] ?? null ) === $lang;
+		},
+		ARRAY_FILTER_USE_BOTH
+	);
+
 	$GLOBALS['ewpa_pll_translations'] = $translations;
 
 	return $translations;
@@ -36,6 +47,15 @@ function pll_get_term_translations( $term_id ) {
 }
 
 function pll_save_term_translations( $translations ) {
+	// Same validation as for posts: a term without that language is dropped.
+	$translations = array_filter(
+		$translations,
+		static function ( $term_id, $lang ) {
+			return ( $GLOBALS['ewpa_pll_term_languages'][ $term_id ] ?? null ) === $lang;
+		},
+		ARRAY_FILTER_USE_BOTH
+	);
+
 	$GLOBALS['ewpa_pll_term_translations'] = $translations;
 
 	return $translations;

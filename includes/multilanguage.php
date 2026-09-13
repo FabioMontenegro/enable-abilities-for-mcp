@@ -981,6 +981,13 @@ function ewpa_multilanguage_duplicate_post_translation( int $source_id, string $
 		set_post_thumbnail( $translated_id, $thumbnail_id );
 	}
 
+	// Polylang only links posts that already carry the matching language; its
+	// validate_translations() drops the rest without an error. WPML sets the
+	// language in the link call itself and Linguator's link helper assigns it.
+	if ( 'polylang' === $plugin ) {
+		pll_set_post_language( $translated_id, $target );
+	}
+
 	$linked = ewpa_multilanguage_link_post_translation( $source_id, $translated_id, $target );
 	if ( $linked instanceof WP_Error ) {
 		wp_delete_post( $translated_id, true );
@@ -1030,7 +1037,9 @@ function ewpa_multilanguage_copy_post_meta( int $source_id, int $translated_id )
 			continue;
 		}
 		foreach ( (array) $values as $value ) {
-			add_post_meta( $translated_id, $key, maybe_unserialize( $value ) );
+			// add_metadata() unslashes the value, so slash it or JSON meta such as
+			// _elementor_data loses its backslashes.
+			add_post_meta( $translated_id, $key, wp_slash( maybe_unserialize( $value ) ) );
 		}
 	}
 }
@@ -1552,6 +1561,32 @@ function ewpa_multilanguage_normalize_term_overrides( array $overrides, $source 
 }
 
 /**
+ * Sanitizes only the term fields the caller actually supplied.
+ *
+ * Used when updating an existing translation, where missing fields must keep the
+ * translation's current values rather than fall back to the source term.
+ *
+ * @param array $overrides Raw overrides.
+ * @return array
+ */
+function ewpa_multilanguage_supplied_term_overrides( array $overrides ): array {
+	$clean = array();
+
+	$name = isset( $overrides['name'] ) ? sanitize_text_field( (string) $overrides['name'] ) : '';
+	if ( '' !== $name ) {
+		$clean['name'] = $name;
+	}
+	if ( isset( $overrides['slug'] ) && '' !== (string) $overrides['slug'] ) {
+		$clean['slug'] = sanitize_title( (string) $overrides['slug'] );
+	}
+	if ( isset( $overrides['description'] ) && '' !== (string) $overrides['description'] ) {
+		$clean['description'] = wp_kses_post( (string) $overrides['description'] );
+	}
+
+	return $clean;
+}
+
+/**
  * Creates (or updates) the translation of a term in the target language.
  *
  * @param int    $term_id         Source term ID.
@@ -1601,13 +1636,15 @@ function ewpa_multilanguage_create_term_translation( int $term_id, string $targe
 		);
 	}
 
-	$fields = ewpa_multilanguage_normalize_term_overrides( $overrides, $source );
-
 	$existing_map = ewpa_multilanguage_get_term_translations_map( $term_id, $plugin );
 	$existing_id  = ewpa_absint( $existing_map[ $target ] ?? 0 );
 	if ( $existing_id && $existing_id !== $term_id && ! is_wp_error( get_term( $existing_id ) ) && get_term( $existing_id ) ) {
-		return ewpa_multilanguage_update_term_translation( $term_id, $existing_id, $target, $plugin, $fields );
+		// Update only what was supplied, as the post path does: falling back to the
+		// source term here would overwrite the translation with source-language text.
+		return ewpa_multilanguage_update_term_translation( $term_id, $existing_id, $target, $plugin, ewpa_multilanguage_supplied_term_overrides( $overrides ) );
 	}
+
+	$fields = ewpa_multilanguage_normalize_term_overrides( $overrides, $source );
 
 	// Keep the hierarchy: attach to the target-language counterpart of the parent.
 	$parent_id = 0;
@@ -1636,17 +1673,23 @@ function ewpa_multilanguage_create_term_translation( int $term_id, string $targe
 function ewpa_multilanguage_update_term_translation( int $source_id, int $translated_id, string $target, string $plugin, array $fields ) {
 	$taxonomy = ewpa_multilanguage_get_term_taxonomy( $translated_id );
 
-	$updated = wp_update_term(
-		$translated_id,
-		$taxonomy,
-		array(
-			'name'        => $fields['name'],
-			'slug'        => $fields['slug'],
-			'description' => $fields['description'],
-		)
-	);
-	if ( is_wp_error( $updated ) ) {
-		return $updated;
+	$args = array();
+	if ( isset( $fields['name'] ) ) {
+		// wp_update_term() unslashes the name and description before the write.
+		$args['name'] = wp_slash( $fields['name'] );
+	}
+	if ( isset( $fields['slug'] ) ) {
+		$args['slug'] = $fields['slug'];
+	}
+	if ( isset( $fields['description'] ) ) {
+		$args['description'] = wp_slash( $fields['description'] );
+	}
+
+	if ( $args ) {
+		$updated = wp_update_term( $translated_id, $taxonomy, $args );
+		if ( is_wp_error( $updated ) ) {
+			return $updated;
+		}
 	}
 
 	return ewpa_multilanguage_term_translation_result( $source_id, $translated_id, $target, $plugin, false );
@@ -1663,16 +1706,18 @@ function ewpa_multilanguage_update_term_translation( int $source_id, int $transl
  * @return array|WP_Error
  */
 function ewpa_linguator_create_term_translation( $source, string $target, array $fields, int $parent_id, array $translations ) {
+	// linguator_insert_term() passes these straight to wp_insert_term(), which
+	// unslashes the name and description before the write.
 	$args = array(
 		'slug'         => $fields['slug'],
-		'description'  => $fields['description'],
+		'description'  => wp_slash( $fields['description'] ),
 		'translations' => $translations,
 	);
 	if ( $parent_id ) {
 		$args['parent'] = $parent_id;
 	}
 
-	$created = linguator_insert_term( $fields['name'], $source->taxonomy, $target, $args );
+	$created = linguator_insert_term( wp_slash( $fields['name'] ), $source->taxonomy, $target, $args );
 	if ( is_wp_error( $created ) ) {
 		return $created;
 	}
@@ -1710,15 +1755,16 @@ function ewpa_linguator_create_term_translation( $source, string $target, array 
  * @return array|WP_Error
  */
 function ewpa_multilanguage_duplicate_term_translation( $source, string $target, string $plugin, array $fields, int $parent_id ) {
+	// wp_insert_term() unslashes the name and description before the write.
 	$args = array(
 		'slug'        => $fields['slug'],
-		'description' => $fields['description'],
+		'description' => wp_slash( $fields['description'] ),
 	);
 	if ( $parent_id ) {
 		$args['parent'] = $parent_id;
 	}
 
-	$created = wp_insert_term( $fields['name'], $source->taxonomy, $args );
+	$created = wp_insert_term( wp_slash( $fields['name'] ), $source->taxonomy, $args );
 	if ( is_wp_error( $created ) ) {
 		return $created;
 	}
@@ -1732,6 +1778,11 @@ function ewpa_multilanguage_duplicate_term_translation( $source, string $target,
 	}
 
 	ewpa_multilanguage_copy_term_meta( (int) $source->term_id, $translated_id );
+
+	// Same Polylang rule as for posts: the term needs its language before linking.
+	if ( 'polylang' === $plugin && function_exists( 'pll_set_term_language' ) ) {
+		pll_set_term_language( $translated_id, $target );
+	}
 
 	$linked = ewpa_multilanguage_link_term_translation( (int) $source->term_id, $translated_id, $target );
 	if ( $linked instanceof WP_Error ) {
@@ -1798,7 +1849,8 @@ function ewpa_multilanguage_copy_term_meta( int $source_id, int $translated_id )
 			continue;
 		}
 		foreach ( (array) $values as $value ) {
-			add_term_meta( $translated_id, $key, maybe_unserialize( $value ) );
+			// add_metadata() unslashes the value; slash it to keep backslashes intact.
+			add_term_meta( $translated_id, $key, wp_slash( maybe_unserialize( $value ) ) );
 		}
 	}
 }

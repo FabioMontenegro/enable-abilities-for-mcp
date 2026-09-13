@@ -87,6 +87,11 @@ function linguator_insert_term( $name, $taxonomy, $language, $args = array() ) {
 		return new WP_Error( 'invalid_language', 'Please provide a valid language.' );
 	}
 
+	// The real API hands straight to wp_insert_term(), which unslashes these.
+	$name = wp_unslash( $name );
+	if ( isset( $args['description'] ) ) {
+		$args['description'] = wp_unslash( $args['description'] );
+	}
 	$term_id = ewpa_test_store_term( $name, $taxonomy, $args );
 
 	$GLOBALS['ewpa_inserted_terms'][] = array(
