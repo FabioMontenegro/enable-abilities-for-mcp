@@ -7302,7 +7302,7 @@ function ewpa_register_custom_abilities(): void {
 			'ewpa/create-post-translation',
 			array(
 				'label'               => __( 'Create Post Translation', 'enable-abilities-for-mcp' ),
-				'description'         => __( 'Creates the translation of an existing post in a target language and links it to the source post. Translate the source text yourself and pass the result in "title", "content" and "excerpt" — this ability does not call any translation service. Taxonomies, custom fields and the featured image are copied from the source; on Linguator AI the plugin\'s own duplication engine is used, so the result matches what its bulk translation screen produces. Fields left empty keep the source value. If a translation already exists in that language it is updated instead of duplicated. Use ewpa/list-languages to discover the available language slugs.', 'enable-abilities-for-mcp' ),
+				'description'         => __( 'Creates the translation of an existing post in a target language and links it to the source post. Translate the source text yourself and pass the result in "title", "content" and "excerpt" — this ability does not call any translation service. Taxonomies, custom fields and the featured image are copied from the source; on Linguator AI the plugin\'s own duplication engine is used, so the result matches what its bulk translation screen produces. Fields left empty keep the source value. If a translation already exists in that language it is updated instead of duplicated, and only the fields you pass are changed. Use ewpa/list-languages to discover the available language slugs.', 'enable-abilities-for-mcp' ),
 				'category'            => 'multilanguage',
 				'input_schema'        => array(
 					'type'       => 'object',
@@ -7570,7 +7570,7 @@ function ewpa_register_custom_abilities(): void {
 			'ewpa/create-term-translation',
 			array(
 				'label'               => __( 'Create Term Translation', 'enable-abilities-for-mcp' ),
-				'description'         => __( 'Creates the translation of a taxonomy term (category, tag, or custom taxonomy) in a target language and links it to the source term. Translate the source strings yourself and pass them in "name" and "description" — this ability does not call any translation service. Term meta is copied from the source and the parent term is remapped to its target-language counterpart when one exists. Fields left empty keep the source value. If a translation already exists in that language it is updated instead of duplicated. Use ewpa/list-languages to discover the available language slugs.', 'enable-abilities-for-mcp' ),
+				'description'         => __( 'Creates the translation of a taxonomy term (category, tag, or custom taxonomy) in a target language and links it to the source term. Translate the source strings yourself and pass them in "name" and "description" — this ability does not call any translation service. Term meta is copied from the source and the parent term is remapped to its target-language counterpart when one exists. Fields left empty keep the source value. If a translation already exists in that language it is updated instead of duplicated, and only the fields you pass are changed. Use ewpa/list-languages to discover the available language slugs.', 'enable-abilities-for-mcp' ),
 				'category'            => 'multilanguage',
 				'input_schema'        => array(
 					'type'       => 'object',

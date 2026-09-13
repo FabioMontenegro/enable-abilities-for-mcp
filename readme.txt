@@ -5,7 +5,7 @@ Tags: mcp, ai, rest-api, content-management, woocommerce
 Requires at least: 6.9
 Tested up to: 7.1
 Requires PHP: 8.0
-Stable tag: 2.9.0
+Stable tag: 2.10.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -132,11 +132,14 @@ Prefer tokens? Application Passwords (per-user) and a single-admin Bearer token 
 * Get a user's quiz attempt results, optionally filtered to a single quiz
 * Enroll a user in a course, and unenroll them (both opt-in, `manage_options` only)
 
-**Multilanguage:**
+**Multilanguage (Polylang, WPML, or Linguator AI):**
 
-* Assign a language to an existing post via Polylang or WPML
-* Link two posts as translations of each other in the same translation group
-* Get the full translation map for a post: language, post ID, title, permalink, and status for each translation
+* List the languages configured on the site
+* Create the translation of a post or page in a target language, linked to the source: the AI supplies the translated title, content, and excerpt; taxonomies, custom fields, and the featured image are copied over, and an existing translation is updated instead of duplicated
+* Create the translation of a category, tag, or custom taxonomy term: translated name and description, term meta copied, parent remapped to its target-language counterpart
+* Assign a language to an existing post or taxonomy term
+* Link two posts, or two terms, as translations of each other in the same translation group
+* Get the full translation map for a post or a term
 
 **LearnDash:**
 
@@ -249,6 +252,14 @@ Yes — strict OAuth clients require a direct `200` on `/.well-known/oauth-autho
 1. Admin settings page showing all abilities organized by category with toggle switches.
 
 == Changelog ==
+
+= 2.10.0 =
+* New: Linguator AI support in the Multilanguage section, alongside Polylang and WPML: detection, languages, post and term languages, and translation groups through Linguator's public API. Contributed by @drbelt27.
+* New: `ewpa/create-post-translation` (Multilanguage, enabled by default) creates the translation of a post or page in a target language and links it to the source. The AI supplies the translated title, content, and excerpt; the ability never calls a translation service. Taxonomies, custom fields, and the featured image are copied, with backslashes preserved so JSON meta such as Elementor's `_elementor_data` survives intact; on Linguator AI the plugin's own duplication engine is used. If a translation already exists in that language it is updated instead of duplicated. Contributed by @drbelt27.
+* New: `ewpa/create-term-translation` (enabled by default) does the same for categories, tags, and custom taxonomy terms: translated name and description, term meta copied, and the parent remapped to its target-language counterpart. Updating an existing translation changes only the supplied fields. Contributed by @drbelt27.
+* New: `ewpa/list-languages`, `ewpa/set-term-language`, `ewpa/link-term-translation`, and `ewpa/get-term-translations` (enabled by default) list the configured languages and manage term languages and translation groups. Contributed by @drbelt27.
+* New: Regression suite for the multilanguage backend (`tests/multilanguage-backend-test.php`, 42 cases), with test doubles that unslash like WordPress core and validate languages like Polylang. Runs without WordPress: `php tests/multilanguage-backend-test.php`.
+* Updated: Total abilities: 108 in 21 categories.
 
 = 2.9.0 =
 * New: ChatGPT & Other OAuth Connectors (beta, opt-in, off by default) — RFC 7591 dynamic client registration at `/oauth/register`, so ChatGPT and other self-registering clients connect through the same login-and-consent flow as the claude.ai connector. The security boundary is an administrator-managed callback allowlist, enforced at registration and re-checked on every authorization request, so removing a URL immediately blocks clients that registered while it was allowed. The same list gates which client metadata documents are fetched (`wp_safe_remote_get`, no redirects). Consent, code issuance, PKCE, token signing and refresh rotation stay in the bundled wp-media/mcp-oauth library; with the toggle off, the claude.ai connector is unchanged. Contributed by @keyvansolha.

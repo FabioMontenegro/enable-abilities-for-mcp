@@ -3,7 +3,7 @@
  * Plugin Name:       Enable Abilities for MCP
  * Plugin URI:        https://mcp.fabiomontenegro.com/
  * Description:       Connect Claude, ChatGPT & any MCP client to WordPress. 108 abilities: content, SEO, WooCommerce, FSE, LMS & more. Free & self-hosted.
- * Version:           2.9.0
+ * Version:           2.10.0
  * Requires at least: 6.9
  * Requires PHP:      8.0
  * Author:            Fabio Montenegro
@@ -19,7 +19,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'EWPA_VERSION', '2.9.0' );
+define( 'EWPA_VERSION', '2.10.0' );
 define( 'EWPA_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'EWPA_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 define( 'EWPA_OPTION_KEY', 'ewpa_enabled_abilities' );
@@ -306,8 +306,8 @@ add_action( 'plugins_loaded', 'ewpa_maybe_migrate_keys_v280' );
 // Adds ewpa/assign-post-terms introduced in v2.8.1 to existing installs.
 add_action( 'plugins_loaded', 'ewpa_maybe_migrate_keys_v281' );
 
-// Adds the Linguator-aware multilanguage abilities introduced in v2.9.1 to existing installs.
-add_action( 'plugins_loaded', 'ewpa_maybe_migrate_keys_v291' );
+// Adds the Linguator-aware multilanguage abilities introduced in v2.10.0 to existing installs.
+add_action( 'plugins_loaded', 'ewpa_maybe_migrate_keys_v2100' );
 
 
 /*
@@ -938,18 +938,18 @@ function ewpa_maybe_migrate_keys_v281(): void {
 }
 
 /**
- * Adds the multilanguage abilities introduced in v2.9.1 (list-languages, create-post-translation and the term/taxonomy set) to existing installs.
+ * Adds the multilanguage abilities introduced in v2.10.0 (list-languages, create-post-translation and the term/taxonomy set) to existing installs.
  *
  * @return void
  */
-function ewpa_maybe_migrate_keys_v291(): void {
-	if ( get_option( 'ewpa_keys_migrated_v291' ) ) {
+function ewpa_maybe_migrate_keys_v2100(): void {
+	if ( get_option( 'ewpa_keys_migrated_v2100' ) ) {
 		return;
 	}
 
 	$enabled = get_option( EWPA_OPTION_KEY );
 	if ( ! is_array( $enabled ) ) {
-		update_option( 'ewpa_keys_migrated_v291', true );
+		update_option( 'ewpa_keys_migrated_v2100', true );
 		return;
 	}
 
@@ -974,7 +974,7 @@ function ewpa_maybe_migrate_keys_v291(): void {
 		update_option( EWPA_OPTION_KEY, $enabled );
 	}
 
-	update_option( 'ewpa_keys_migrated_v291', true );
+	update_option( 'ewpa_keys_migrated_v2100', true );
 }
 
 /**
@@ -994,7 +994,7 @@ function ewpa_run_migrations(): void {
 	ewpa_maybe_migrate_keys_v272();
 	ewpa_maybe_migrate_keys_v280();
 	ewpa_maybe_migrate_keys_v281();
-	ewpa_maybe_migrate_keys_v291();
+	ewpa_maybe_migrate_keys_v2100();
 }
 
 /**
