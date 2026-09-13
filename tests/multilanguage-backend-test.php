@@ -62,6 +62,13 @@ $cases = array(
 	'preserves_backslashes_in_linguator_term',
 	'preserves_backslashes_when_updating_linguator_term',
 	'keeps_existing_linguator_term_fields_when_updating',
+	'lists_polylang_languages_with_term_ids',
+	'links_polylang_post_translation_assigning_language',
+	'reports_polylang_post_link_that_did_not_persist',
+	'links_polylang_term_translation_assigning_language',
+	'reports_polylang_term_link_that_did_not_persist',
+	'copies_post_language_without_translation_group',
+	'lists_language_taxonomies_of_every_backend',
 );
 
 $failures = 0;
@@ -206,7 +213,7 @@ function ewpa_bootstrap_case( string $case ): void {
 	$GLOBALS['ewpa_added_post_meta']             = array();
 	$GLOBALS['ewpa_added_term_meta']             = array();
 
-	if ( in_array( $case, array( 'detects_polylang', 'keeps_polylang_precedence_over_linguator', 'creates_polylang_translation_by_duplicating', 'creates_polylang_term_translation_by_duplicating', 'preserves_backslashes_when_copying_source_content', 'preserves_backslashes_in_translated_content', 'preserves_backslashes_when_updating_existing_translation', 'preserves_backslashes_in_copied_post_meta', 'preserves_backslashes_in_copied_term_meta', 'preserves_backslashes_in_duplicated_term' ), true ) ) {
+	if ( in_array( $case, array( 'detects_polylang', 'keeps_polylang_precedence_over_linguator', 'creates_polylang_translation_by_duplicating', 'creates_polylang_term_translation_by_duplicating', 'preserves_backslashes_when_copying_source_content', 'preserves_backslashes_in_translated_content', 'preserves_backslashes_when_updating_existing_translation', 'preserves_backslashes_in_copied_post_meta', 'preserves_backslashes_in_copied_term_meta', 'preserves_backslashes_in_duplicated_term', 'lists_polylang_languages_with_term_ids', 'links_polylang_post_translation_assigning_language', 'reports_polylang_post_link_that_did_not_persist', 'links_polylang_term_translation_assigning_language', 'reports_polylang_term_link_that_did_not_persist', 'copies_post_language_without_translation_group' ), true ) ) {
 		require_once __DIR__ . '/doubles/polylang.php';
 	}
 
@@ -244,6 +251,14 @@ function ewpa_bootstrap_case( string $case ): void {
 			'en' => 10,
 			'it' => 20,
 		);
+	}
+
+	if ( in_array( $case, array( 'links_polylang_post_translation_assigning_language', 'reports_polylang_post_link_that_did_not_persist' ), true ) ) {
+		unset( $GLOBALS['ewpa_pll_post_languages'][20] );
+	}
+
+	if ( in_array( $case, array( 'reports_polylang_post_link_that_did_not_persist', 'reports_polylang_term_link_that_did_not_persist' ), true ) ) {
+		$GLOBALS['ewpa_pll_refuse_save'] = true;
 	}
 
 	if ( 'preserves_backslashes_when_updating_existing_translation' === $case ) {
@@ -589,6 +604,59 @@ function ewpa_run_case( string $case ): void {
 			ewpa_assert_same( 'notizie', $GLOBALS['ewpa_terms'][6]->slug );
 			ewpa_assert_same( 'Ultime notizie', $GLOBALS['ewpa_terms'][6]->description );
 			ewpa_assert_same( array( 'description' ), array_keys( $GLOBALS['ewpa_updated_terms'][0]['args'] ) );
+			break;
+		case 'lists_polylang_languages_with_term_ids':
+			$languages = ewpa_multilanguage_list_languages();
+			ewpa_assert_same( 'en', $languages[0]['slug'] );
+			ewpa_assert_same( 201, $languages[0]['term_id'] );
+			ewpa_assert_same( 202, $languages[1]['term_id'] );
+			break;
+		case 'links_polylang_post_translation_assigning_language':
+			// Post 20 has no language yet; Polylang would drop the link without one.
+			$result = ewpa_multilanguage_link_post_translation( 10, 20, 'it' );
+			ewpa_assert_true( ! $result instanceof WP_Error, ewpa_describe( $result ) );
+			ewpa_assert_same( 'it', $GLOBALS['ewpa_pll_post_languages'][20] ?? null );
+			ewpa_assert_same( 20, $GLOBALS['ewpa_pll_translations']['it'] ?? null );
+			break;
+		case 'reports_polylang_post_link_that_did_not_persist':
+			$result = ewpa_multilanguage_link_post_translation( 10, 20, 'it' );
+			ewpa_assert_true( $result instanceof WP_Error, ewpa_describe( $result ) );
+			ewpa_assert_same( 'translation_not_linked', $result->get_error_code() );
+			break;
+		case 'links_polylang_term_translation_assigning_language':
+			$result = ewpa_multilanguage_link_term_translation( 5, 6, 'it' );
+			ewpa_assert_true( ! $result instanceof WP_Error, ewpa_describe( $result ) );
+			ewpa_assert_same( 'it', $GLOBALS['ewpa_pll_term_languages'][6] ?? null );
+			ewpa_assert_same( 6, $GLOBALS['ewpa_pll_term_translations']['it'] ?? null );
+			break;
+		case 'reports_polylang_term_link_that_did_not_persist':
+			$result = ewpa_multilanguage_link_term_translation( 5, 6, 'it' );
+			ewpa_assert_true( $result instanceof WP_Error, ewpa_describe( $result ) );
+			ewpa_assert_same( 'translation_not_linked', $result->get_error_code() );
+			break;
+		case 'copies_post_language_without_translation_group':
+			$GLOBALS['ewpa_pll_translations'] = array(
+				'en' => 10,
+				'it' => 20,
+			);
+
+			$duplicate = wp_insert_post( array( 'post_title' => 'Hello (Copy)' ) );
+			ewpa_multilanguage_copy_post_language( 10, $duplicate );
+			// Same language as the source, but the source's group is untouched.
+			ewpa_assert_same( 'en', $GLOBALS['ewpa_pll_post_languages'][ $duplicate ] ?? null );
+			ewpa_assert_same(
+				array(
+					'en' => 10,
+					'it' => 20,
+				),
+				$GLOBALS['ewpa_pll_translations']
+			);
+			break;
+		case 'lists_language_taxonomies_of_every_backend':
+			$taxonomies = ewpa_multilanguage_language_taxonomies();
+			foreach ( array( 'language', 'post_translations', 'term_language', 'term_translations', 'lmat_language', 'lmat_post_translations', 'lmat_term_language', 'lmat_term_translations' ) as $taxonomy ) {
+				ewpa_assert_true( in_array( $taxonomy, $taxonomies, true ), 'missing ' . $taxonomy );
+			}
 			break;
 		default:
 			throw new RuntimeException( 'Unknown case: ' . $case );

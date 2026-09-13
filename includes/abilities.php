@@ -2491,12 +2491,20 @@ function ewpa_register_custom_abilities(): void {
 
 					if ( $copy_terms ) {
 						foreach ( get_object_taxonomies( $post->post_type ) as $taxonomy ) {
+							// Language and translation-group taxonomies are handled below.
+							if ( in_array( $taxonomy, ewpa_multilanguage_language_taxonomies(), true ) ) {
+								continue;
+							}
 							$terms = wp_get_object_terms( $post_id, $taxonomy, array( 'fields' => 'ids' ) );
 							if ( ! is_wp_error( $terms ) && ! empty( $terms ) ) {
 								wp_set_object_terms( $new_id, $terms, $taxonomy );
 							}
 						}
 					}
+
+					// Keep the source language, but outside its translation group: copying the
+					// group taxonomy would make deleting the duplicate unlink the original.
+					ewpa_multilanguage_copy_post_language( $post_id, (int) $new_id );
 
 					return array(
 						'new_post_id' => $new_id,

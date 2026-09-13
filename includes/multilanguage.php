@@ -174,17 +174,18 @@ function ewpa_multilanguage_list_languages() {
 	}
 
 	if ( 'polylang' === $plugin && function_exists( 'pll_languages_list' ) ) {
-		$slugs   = pll_languages_list( array( 'fields' => 'slug' ) );
-		$names   = pll_languages_list( array( 'fields' => 'name' ) );
-		$locales = pll_languages_list( array( 'fields' => 'locale' ) );
-		$out     = array();
+		$slugs    = pll_languages_list( array( 'fields' => 'slug' ) );
+		$names    = pll_languages_list( array( 'fields' => 'name' ) );
+		$locales  = pll_languages_list( array( 'fields' => 'locale' ) );
+		$term_ids = pll_languages_list( array( 'fields' => 'term_id' ) );
+		$out      = array();
 
 		foreach ( (array) $slugs as $index => $slug ) {
 			$out[] = array(
 				'slug'    => (string) $slug,
 				'locale'  => isset( $locales[ $index ] ) ? (string) $locales[ $index ] : '',
 				'name'    => isset( $names[ $index ] ) ? (string) $names[ $index ] : (string) $slug,
-				'term_id' => 0,
+				'term_id' => isset( $term_ids[ $index ] ) ? (int) $term_ids[ $index ] : 0,
 			);
 		}
 
@@ -536,9 +537,21 @@ function ewpa_multilanguage_link_post_translation( int $original_id, int $transl
 	}
 
 	if ( 'polylang' === $plugin ) {
+		// Polylang silently drops translations whose object does not already carry
+		// that language, so assign it first, as the WPML and Linguator AI paths do.
+		pll_set_post_language( $translated_id, $lang );
+
 		$translations          = function_exists( 'pll_get_post_translations' ) ? pll_get_post_translations( $original_id ) : array();
 		$translations[ $lang ] = $translated_id;
 		pll_save_post_translations( $translations );
+
+		$saved = function_exists( 'pll_get_post_translations' ) ? (array) pll_get_post_translations( $original_id ) : array();
+		if ( ewpa_absint( $saved[ $lang ] ?? 0 ) !== $translated_id ) {
+			return ewpa_multilanguage_error(
+				'translation_not_linked',
+				sprintf( 'Polylang did not link post %d as the "%s" translation of post %d. Check that both posts use a translated post type and that post %d has a language assigned.', $translated_id, $lang, $original_id, $original_id )
+			);
+		}
 	} elseif ( 'wpml' === $plugin ) {
 		$trid            = apply_filters( 'wpml_element_trid', null, $original_id, 'post_' . get_post_type( $original_id ) );
 		$source_language = ewpa_multilanguage_get_post_language( $original_id );
@@ -981,13 +994,6 @@ function ewpa_multilanguage_duplicate_post_translation( int $source_id, string $
 		set_post_thumbnail( $translated_id, $thumbnail_id );
 	}
 
-	// Polylang only links posts that already carry the matching language; its
-	// validate_translations() drops the rest without an error. WPML sets the
-	// language in the link call itself and Linguator's link helper assigns it.
-	if ( 'polylang' === $plugin ) {
-		pll_set_post_language( $translated_id, $target );
-	}
-
 	$linked = ewpa_multilanguage_link_post_translation( $source_id, $translated_id, $target );
 	if ( $linked instanceof WP_Error ) {
 		wp_delete_post( $translated_id, true );
@@ -1045,6 +1051,45 @@ function ewpa_multilanguage_copy_post_meta( int $source_id, int $translated_id )
 }
 
 /**
+ * Taxonomies multilanguage plugins use internally for languages and translation groups.
+ *
+ * Copying them like regular terms would put a copy inside the source's translation
+ * group (Polylang, Linguator AI). WPML keeps this data in its own table instead.
+ *
+ * @return string[]
+ */
+function ewpa_multilanguage_language_taxonomies(): array {
+	return array(
+		'language',
+		'post_translations',
+		'term_language',
+		'term_translations',
+		'lmat_language',
+		'lmat_post_translations',
+		'lmat_term_language',
+		'lmat_term_translations',
+	);
+}
+
+/**
+ * Gives a copied post the source post's language without joining its translation group.
+ *
+ * @param int $source_id Source post ID.
+ * @param int $copy_id   Copied post ID.
+ * @return void
+ */
+function ewpa_multilanguage_copy_post_language( int $source_id, int $copy_id ): void {
+	if ( ! ewpa_get_translation_plugin() ) {
+		return;
+	}
+
+	$language = ewpa_multilanguage_get_post_language( $source_id );
+	if ( '' !== $language ) {
+		ewpa_multilanguage_set_post_language( $copy_id, $language );
+	}
+}
+
+/**
  * Copies taxonomy terms from the source post to the translated post.
  *
  * Language taxonomies are skipped; translated terms are remapped to the target
@@ -1057,7 +1102,7 @@ function ewpa_multilanguage_copy_post_meta( int $source_id, int $translated_id )
  * @return void
  */
 function ewpa_multilanguage_copy_post_terms( int $source_id, int $translated_id, string $target, string $plugin ): void {
-	$language_taxonomies = array( 'language', 'post_translations', 'term_language', 'term_translations', 'lmat_language', 'lmat_post_translations' );
+	$language_taxonomies = ewpa_multilanguage_language_taxonomies();
 
 	foreach ( get_object_taxonomies( get_post_type( $source_id ) ) as $taxonomy ) {
 		if ( in_array( $taxonomy, $language_taxonomies, true ) ) {
@@ -1467,9 +1512,22 @@ function ewpa_multilanguage_link_term_translation( int $original_id, int $transl
 	}
 
 	if ( 'polylang' === $plugin ) {
+		// Same Polylang rule as for posts: the term needs its language before linking.
+		if ( function_exists( 'pll_set_term_language' ) ) {
+			pll_set_term_language( $translated_id, $lang );
+		}
+
 		$translations          = function_exists( 'pll_get_term_translations' ) ? pll_get_term_translations( $original_id ) : array();
 		$translations[ $lang ] = $translated_id;
 		pll_save_term_translations( $translations );
+
+		$saved = function_exists( 'pll_get_term_translations' ) ? (array) pll_get_term_translations( $original_id ) : array();
+		if ( ewpa_absint( $saved[ $lang ] ?? 0 ) !== $translated_id ) {
+			return ewpa_multilanguage_error(
+				'translation_not_linked',
+				sprintf( 'Polylang did not link term %d as the "%s" translation of term %d. Check that the taxonomy is translated and that term %d has a language assigned.', $translated_id, $lang, $original_id, $original_id )
+			);
+		}
 	} elseif ( 'wpml' === $plugin ) {
 		$element_type    = 'tax_' . $original->taxonomy;
 		$trid            = apply_filters( 'wpml_element_trid', null, $original_id, $element_type );
@@ -1778,11 +1836,6 @@ function ewpa_multilanguage_duplicate_term_translation( $source, string $target,
 	}
 
 	ewpa_multilanguage_copy_term_meta( (int) $source->term_id, $translated_id );
-
-	// Same Polylang rule as for posts: the term needs its language before linking.
-	if ( 'polylang' === $plugin && function_exists( 'pll_set_term_language' ) ) {
-		pll_set_term_language( $translated_id, $target );
-	}
 
 	$linked = ewpa_multilanguage_link_term_translation( (int) $source->term_id, $translated_id, $target );
 	if ( $linked instanceof WP_Error ) {

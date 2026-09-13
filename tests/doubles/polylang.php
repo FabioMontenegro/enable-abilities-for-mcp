@@ -19,6 +19,10 @@ function pll_get_post_translations( $post_id ) {
 }
 
 function pll_save_post_translations( $translations ) {
+	if ( ! empty( $GLOBALS['ewpa_pll_refuse_save'] ) ) {
+		return array();
+	}
+
 	// PLL_Translated_Object::validate_translations() silently drops every entry
 	// whose object does not already carry that language.
 	$translations = array_filter(
@@ -47,6 +51,10 @@ function pll_get_term_translations( $term_id ) {
 }
 
 function pll_save_term_translations( $translations ) {
+	if ( ! empty( $GLOBALS['ewpa_pll_refuse_save'] ) ) {
+		return array();
+	}
+
 	// Same validation as for posts: a term without that language is dropped.
 	$translations = array_filter(
 		$translations,
@@ -63,9 +71,10 @@ function pll_save_term_translations( $translations ) {
 
 function pll_languages_list( $args = array() ) {
 	$languages = array(
-		'slug'   => array( 'en', 'it' ),
-		'name'   => array( 'English', 'Italiano' ),
-		'locale' => array( 'en_US', 'it_IT' ),
+		'slug'    => array( 'en', 'it' ),
+		'name'    => array( 'English', 'Italiano' ),
+		'locale'  => array( 'en_US', 'it_IT' ),
+		'term_id' => array( 201, 202 ),
 	);
 
 	return $languages[ $args['fields'] ?? 'slug' ] ?? $languages['slug'];

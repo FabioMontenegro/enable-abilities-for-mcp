@@ -5,7 +5,7 @@ Tags: mcp, ai, rest-api, content-management, woocommerce
 Requires at least: 6.9
 Tested up to: 7.1
 Requires PHP: 8.0
-Stable tag: 2.10.0
+Stable tag: 2.10.1
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -252,6 +252,11 @@ Yes — strict OAuth clients require a direct `200` on `/.well-known/oauth-autho
 1. Admin settings page showing all abilities organized by category with toggle switches.
 
 == Changelog ==
+
+= 2.10.1 =
+* Fix: `ewpa/duplicate-post` copied the internal translation-group taxonomies of Polylang and Linguator AI along with regular terms, so on a multilingual site the duplicate joined the original's translation group and its language switcher and translation links pointed at the original's translations. The duplicate now keeps the source language but gets its own group.
+* Fix: `ewpa/link-post-translation` and `ewpa/link-term-translation` reported success on Polylang even when Polylang discarded the link because the translated post or term did not already carry the target language. They now assign that language first, as the WPML and Linguator AI backends already did, and return a `translation_not_linked` error if the link still does not persist.
+* Fix: `ewpa/list-languages` returned `term_id` 0 for every Polylang language; it now returns each language's term ID.
 
 = 2.10.0 =
 * New: Linguator AI support in the Multilanguage section, alongside Polylang and WPML: detection, languages, post and term languages, and translation groups through Linguator's public API. Contributed by @drbelt27.
