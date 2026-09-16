@@ -1,9 +1,9 @@
 msgid ""
 msgstr ""
-"Project-Id-Version: Enable Abilities for MCP 2.11.0\n"
+"Project-Id-Version: Enable Abilities for MCP 2.12.0\n"
 "Report-Msgid-Bugs-To: https://wordpress.org/support/plugin/enable-abilities-"
 "for-mcp\n"
-"POT-Creation-Date: 2026-09-13T16:08:19+00:00\n"
+"POT-Creation-Date: 2026-09-16T16:34:55+00:00\n"
 "PO-Revision-Date: 2026-09-12 00:00+0000\n"
 "Last-Translator: Fabio Montenegro <fabiomontenegro1987@gmail.com>\n"
 "Language-Team: Spanish (Spain) <https://translate.wordpress.org/locale/es/>\n"
@@ -4037,7 +4037,7 @@ msgid "WP Abilities"
 msgstr "WP Abilities"
 
 #. translators: %1$s: opening <a> tag, %2$s: closing </a> tag
-#: includes/admin.php:52
+#: includes/admin.php:51
 #, php-format
 msgid ""
 "Enable Abilities for MCP requires the MCP Adapter plugin to work. "
@@ -4046,7 +4046,7 @@ msgstr ""
 "Enable Abilities for MCP requiere el plugin MCP Adapter para funcionar. "
 "%1$sDescargar MCP Adapter%2$s"
 
-#: includes/admin.php:81
+#: includes/admin.php:80
 msgid ""
 "Ability keys updated to English for internationalization. Your settings have "
 "been preserved."
@@ -4054,23 +4054,23 @@ msgstr ""
 "Las claves de capacidad se han actualizado al inglés para la "
 "internacionalización. Tu configuración se ha conservado."
 
-#: includes/admin.php:137
+#: includes/admin.php:136
 msgid "API Key active"
 msgstr "Clave de API activa"
 
-#: includes/admin.php:138 includes/admin.php:1002
+#: includes/admin.php:137 includes/admin.php:1002
 msgid "Regenerate API Key"
 msgstr "Regenerar clave de API"
 
-#: includes/admin.php:139 includes/admin.php:1005
+#: includes/admin.php:138 includes/admin.php:1005
 msgid "Revoke API Key"
 msgstr "Revocar clave de API"
 
-#: includes/admin.php:140
+#: includes/admin.php:139
 msgid "This will invalidate the previous key. Continue?"
 msgstr "Esto invalidará la clave anterior. ¿Continuar?"
 
-#: includes/admin.php:141
+#: includes/admin.php:140
 msgid ""
 "Are you sure you want to revoke the API Key? External connections will stop "
 "working."
@@ -4078,45 +4078,45 @@ msgstr ""
 "¿Estás seguro de que quieres revocar la clave de API? Las conexiones "
 "externas dejarán de funcionar."
 
-#: includes/admin.php:142 includes/admin.php:482 includes/admin.php:515
+#: includes/admin.php:141 includes/admin.php:482 includes/admin.php:515
 #: includes/admin.php:559 includes/admin.php:743 includes/admin.php:956
 msgid "Enabled"
 msgstr "Activado"
 
-#: includes/admin.php:143 includes/admin.php:482 includes/admin.php:515
+#: includes/admin.php:142 includes/admin.php:482 includes/admin.php:515
 #: includes/admin.php:559 includes/admin.php:743 includes/admin.php:956
 msgid "Disabled"
 msgstr "Desactivado"
 
-#: includes/admin.php:144 includes/admin.php:892
+#: includes/admin.php:143 includes/admin.php:892
 msgid "Show"
 msgstr "Mostrar"
 
-#: includes/admin.php:145
+#: includes/admin.php:144
 msgid "Hide"
 msgstr "Ocultar"
 
-#: includes/admin.php:146
+#: includes/admin.php:145
 msgid "Could not encode credentials. Please check your username and password."
 msgstr ""
 "No se han podido codificar las credenciales. Comprueba tu nombre de usuario "
 "y contraseña."
 
-#: includes/admin.php:147
+#: includes/admin.php:146
 msgid "Clear all activity logs? This cannot be undone."
 msgstr ""
 "¿Borrar todos los registros de actividad? Esta acción no se puede deshacer."
 
-#: includes/admin.php:148
+#: includes/admin.php:147
 msgid "Clear logs for this user? This cannot be undone."
 msgstr ""
 "¿Borrar los registros de este usuario? Esta acción no se puede deshacer."
 
-#: includes/admin.php:149
+#: includes/admin.php:148
 msgid "Logs cleared."
 msgstr "Registros borrados."
 
-#: includes/admin.php:150
+#: includes/admin.php:149
 msgid "Copied!"
 msgstr "¡Copiado!"
 
@@ -4177,7 +4177,7 @@ msgstr ""
 msgid "Connection"
 msgstr "Conexión"
 
-#: includes/admin.php:441 includes/admin.php:1321
+#: includes/admin.php:441 includes/admin.php:1378
 msgid "Activity Log"
 msgstr "Registro de actividad"
 
@@ -4665,20 +4665,20 @@ msgstr "Activar todas"
 msgid "Disable All"
 msgstr "Desactivar todas"
 
-#: includes/admin.php:1178
+#: includes/admin.php:1182
 msgid "Caution"
 msgstr "Precaución"
 
-#: includes/admin.php:1187 includes/admin.php:1256
+#: includes/admin.php:1192 includes/admin.php:1266
 msgid "All"
 msgstr "Todas"
 
-#: includes/admin.php:1240
+#: includes/admin.php:1249
 msgid "Third-party"
 msgstr "De terceros"
 
 #. translators: %s: ability namespace
-#: includes/admin.php:1247
+#: includes/admin.php:1256
 #, php-format
 msgid ""
 "Abilities registered by another plugin (namespace \"%s\"). Disabling one "
@@ -4687,31 +4687,43 @@ msgstr ""
 "Capacidades registradas por otro plugin (espacio de nombres \"%s\"). "
 "Desactivar una la elimina de todos los servidores MCP de este sitio."
 
-#: includes/admin.php:1284
+#: includes/admin.php:1294
 msgid "Save Changes"
 msgstr "Guardar cambios"
 
-#: includes/admin.php:1323
+#. translators: %s: abilities section name
+#: includes/admin.php:1316
+#, php-format
+msgid "Show or hide the %s abilities"
+msgstr "Mostrar u ocultar las capacidades de %s"
+
+#. translators: 1: abilities enabled in the section, 2: abilities in the section
+#: includes/admin.php:1347
+#, php-format
+msgid "%1$d of %2$d abilities enabled"
+msgstr "%1$d de %2$d capacidades activadas"
+
+#: includes/admin.php:1380
 msgid "MCP ability executions per user — last 30 days."
 msgstr "Ejecuciones de capacidades MCP por usuario — últimos 30 días."
 
-#: includes/admin.php:1335
+#: includes/admin.php:1392
 msgid "User:"
 msgstr "Usuario:"
 
-#: includes/admin.php:1339
+#: includes/admin.php:1396
 msgid "All users"
 msgstr "Todos los usuarios"
 
-#: includes/admin.php:1352
+#: includes/admin.php:1409
 msgid "Clear logs for this user"
 msgstr "Borrar registros de este usuario"
 
-#: includes/admin.php:1357
+#: includes/admin.php:1414
 msgid "Clear all logs"
 msgstr "Borrar todos los registros"
 
-#: includes/admin.php:1366
+#: includes/admin.php:1423
 msgid ""
 "No activity recorded yet. Logs will appear here once users start calling "
 "abilities via MCP."
@@ -4719,36 +4731,36 @@ msgstr ""
 "No se ha registrado ninguna actividad todavía. Los registros aparecerán aquí "
 "cuando los usuarios empiecen a llamar a las capacidades a través de MCP."
 
-#: includes/admin.php:1372
+#: includes/admin.php:1429
 msgid "Date / Time"
 msgstr "Fecha / Hora"
 
-#: includes/admin.php:1373
+#: includes/admin.php:1430
 msgid "User"
 msgstr "Usuario"
 
-#: includes/admin.php:1374
+#: includes/admin.php:1431
 msgid "Ability"
 msgstr "Capacidad"
 
-#: includes/admin.php:1375
+#: includes/admin.php:1432
 msgid "Status"
 msgstr "Estado"
 
-#: includes/admin.php:1390
+#: includes/admin.php:1447
 msgid "Unknown"
 msgstr "Desconocido"
 
-#: includes/admin.php:1398
+#: includes/admin.php:1455
 msgid "Success"
 msgstr "Correcto"
 
-#: includes/admin.php:1400
+#: includes/admin.php:1457
 msgid "Error"
 msgstr "Error"
 
 #. translators: %d: total entries
-#: includes/admin.php:1416
+#: includes/admin.php:1473
 #, php-format
 msgid "%d entry"
 msgid_plural "%d entries"
@@ -4756,7 +4768,7 @@ msgstr[0] "%d entrada"
 msgstr[1] "%d entradas"
 
 #. translators: %s: number of ability executions logged.
-#: includes/admin.php:1596
+#: includes/admin.php:1653
 #, php-format
 msgid ""
 "Your AI assistant has already run %s actions on this site through Enable "
@@ -4765,7 +4777,7 @@ msgstr ""
 "Tu asistente de IA ya ha ejecutado %s acciones en este sitio a través de "
 "Enable Abilities for MCP. 🚀"
 
-#: includes/admin.php:1603
+#: includes/admin.php:1660
 msgid ""
 "If the plugin is making your workflow easier, a 5-star review helps other "
 "WordPress + AI users find it — and keeps this free, open-source project "
@@ -4775,15 +4787,15 @@ msgstr ""
 "a que otros usuarios de WordPress + IA lo encuentren — y mantiene en marcha "
 "este proyecto gratuito y de código abierto."
 
-#: includes/admin.php:1608
+#: includes/admin.php:1665
 msgid "Leave a review ★"
 msgstr "Dejar una reseña ★"
 
-#: includes/admin.php:1611
+#: includes/admin.php:1668
 msgid "Maybe later"
 msgstr "Quizás más tarde"
 
-#: includes/admin.php:1614
+#: includes/admin.php:1671
 msgid "Already reviewed / don&#8217;t show again"
 msgstr "Ya la escribí / no mostrar de nuevo"
 
@@ -4857,8 +4869,12 @@ msgid ""
 msgid_plural ""
 "%d code snippet activation requests are waiting for an administrator to "
 "review them."
-msgstr[0] "%d solicitud de activación de fragmento de código espera que un administrador la revise."
-msgstr[1] "%d solicitudes de activación de fragmentos de código esperan que un administrador las revise."
+msgstr[0] ""
+"%d solicitud de activación de fragmento de código espera que un "
+"administrador la revise."
+msgstr[1] ""
+"%d solicitudes de activación de fragmentos de código esperan que un "
+"administrador las revise."
 
 #: includes/code-snippets.php:502
 msgid "Review the latest request"

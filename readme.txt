@@ -5,7 +5,7 @@ Tags: mcp, ai, rest-api, content-management, woocommerce
 Requires at least: 6.9
 Tested up to: 7.1
 Requires PHP: 8.0
-Stable tag: 2.11.1
+Stable tag: 2.12.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -255,6 +255,10 @@ Yes — strict OAuth clients require a direct `200` on `/.well-known/oauth-autho
 1. Admin settings page showing all abilities organized by category with toggle switches.
 
 == Changelog ==
+
+= 2.12.0 =
+* New: ability sections in Settings › WP Abilities collapse like an accordion. Click a section header to open or close it; the "All" checkbox keeps working without toggling the section. Sections start collapsed, and the ones you open stay open in that browser.
+* New: each ability section shows how many of its abilities are enabled (for example, 2/3), updated as you change the toggles.
 
 = 2.11.1 =
 * Fix: the plugin no longer ships its own copy of MCP Adapter. The OAuth library pulled MCP Adapter 0.5.0 into `vendor/` as a dependency. Development builds of MCP Adapter check for a copy loaded before them; because this plugin loads first, they found that copy, showed "Another version of MCP Adapter is already loaded", and ran the bundled 0.5.0 instead of themselves. The MCP Adapter plugin you install is now the only copy this plugin provides. Reported by @donbowman.

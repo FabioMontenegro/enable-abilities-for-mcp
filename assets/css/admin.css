@@ -93,6 +93,88 @@
 	margin: 0;
 }
 
+/* Collapsible ability sections */
+.ewpa-collapsible .ewpa-section-header {
+	cursor: pointer;
+	gap: 12px;
+}
+
+.ewpa-collapsible .ewpa-section-title {
+	flex: 1;
+	min-width: 0;
+}
+
+.ewpa-section-expand {
+	flex-shrink: 0;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 28px;
+	height: 28px;
+	padding: 0;
+	border: 0;
+	border-radius: 4px;
+	background: transparent;
+	color: #50575e;
+	cursor: pointer;
+}
+
+.ewpa-section-expand:hover {
+	background: #f0f0f1;
+	color: #1d2327;
+}
+
+.ewpa-section-expand:focus-visible {
+	outline: 2px solid #2271b1;
+	outline-offset: 1px;
+}
+
+.ewpa-section-expand .dashicons {
+	transition: transform .15s ease;
+}
+
+.ewpa-collapsible.is-collapsed .ewpa-section-expand .dashicons {
+	transform: rotate(-90deg);
+}
+
+.ewpa-collapsible.is-collapsed .ewpa-section-header {
+	border-bottom: 0;
+	border-radius: 4px;
+}
+
+.ewpa-collapsible.is-collapsed .ewpa-section-body {
+	display: none;
+}
+
+.ewpa-section-count {
+	flex-shrink: 0;
+	min-width: 44px;
+	padding: 2px 8px;
+	border-radius: 10px;
+	background: #f0f6fc;
+	color: #0a4b78;
+	font-size: 12px;
+	font-weight: 600;
+	text-align: center;
+	font-variant-numeric: tabular-nums;
+}
+
+.ewpa-section-count.is-all {
+	background: #edfaef;
+	color: #00631a;
+}
+
+.ewpa-section-count.is-none {
+	background: #f0f0f1;
+	color: #646970;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.ewpa-section-expand .dashicons {
+		transition: none;
+	}
+}
+
 /* Badge */
 .ewpa-badge {
 	display: inline-block;

@@ -257,6 +257,21 @@
 		var count = 0;
 		checkboxes.forEach( function ( cb ) { if ( cb.checked ) count++; } );
 		if ( countEl ) countEl.textContent = count;
+		sectionChecks.forEach( function ( sc ) { updateSectionCount( sc.getAttribute( 'data-section' ) ); } );
+	}
+
+	function updateSectionCount( section ) {
+		var counter = document.querySelector( '.ewpa-section-count[data-section="' + section + '"]' );
+		if ( ! counter ) return;
+		var items   = document.querySelectorAll( '.ewpa-ability-check[data-section="' + section + '"]' );
+		var enabled = 0;
+		items.forEach( function ( cb ) { if ( cb.checked ) enabled++; } );
+		counter.textContent = enabled + '/' + items.length;
+		counter.classList.toggle( 'is-none', 0 === enabled );
+		counter.classList.toggle( 'is-all', enabled === items.length );
+		if ( ewpaAdmin.i18n.sectionCount ) {
+			counter.title = ewpaAdmin.i18n.sectionCount.replace( '%1$d', enabled ).replace( '%2$d', items.length );
+		}
 	}
 
 	function updateSectionCheck( section ) {
@@ -303,6 +318,51 @@
 
 	updateCount();
 	sectionChecks.forEach( function ( sc ) { updateSectionCheck( sc.getAttribute( 'data-section' ) ); } );
+
+	/* ── Collapsible ability sections ───────────────────────────────── */
+	// Sections start collapsed; the ones a viewer opens are remembered in
+	// this browser only. Without JavaScript every section stays open.
+	var expandedKey = 'ewpaExpandedSections';
+	var expanded    = [];
+	try {
+		expanded = JSON.parse( window.localStorage.getItem( expandedKey ) || '[]' );
+		if ( ! Array.isArray( expanded ) ) expanded = [];
+	} catch ( err ) {
+		expanded = [];
+	}
+
+	function setExpanded( sectionEl, open ) {
+		sectionEl.classList.toggle( 'is-collapsed', ! open );
+		var btn = sectionEl.querySelector( '.ewpa-section-expand' );
+		if ( btn ) btn.setAttribute( 'aria-expanded', open ? 'true' : 'false' );
+	}
+
+	function saveExpanded() {
+		try {
+			window.localStorage.setItem( expandedKey, JSON.stringify( expanded ) );
+		} catch ( err ) {
+			// Storage unavailable (private mode, blocked site data): state is not kept.
+		}
+	}
+
+	function toggleSection( sectionEl ) {
+		var key  = sectionEl.getAttribute( 'data-section' );
+		var open = sectionEl.classList.contains( 'is-collapsed' );
+		setExpanded( sectionEl, open );
+		expanded = expanded.filter( function ( k ) { return k !== key; } );
+		if ( open ) expanded.push( key );
+		saveExpanded();
+	}
+
+	document.querySelectorAll( '.ewpa-collapsible' ).forEach( function ( sectionEl ) {
+		setExpanded( sectionEl, -1 !== expanded.indexOf( sectionEl.getAttribute( 'data-section' ) ) );
+
+		sectionEl.querySelector( '.ewpa-section-header' ).addEventListener( 'click', function ( e ) {
+			// The "All" checkbox keeps its own behavior.
+			if ( e.target.closest( '.ewpa-section-toggle' ) ) return;
+			toggleSection( sectionEl );
+		} );
+	} );
 	} // end ewpaAdminInit
 
 	// Run now if DOM is ready, otherwise wait — handles defer/async/bundled scripts.

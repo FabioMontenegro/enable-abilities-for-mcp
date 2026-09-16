@@ -2,14 +2,14 @@
 # This file is distributed under the GPL v2 or later.
 msgid ""
 msgstr ""
-"Project-Id-Version: Enable Abilities for MCP 2.11.0\n"
+"Project-Id-Version: Enable Abilities for MCP 2.11.1\n"
 "Report-Msgid-Bugs-To: https://wordpress.org/support/plugin/enable-abilities-for-mcp\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"POT-Creation-Date: 2026-09-13T16:08:19+00:00\n"
+"POT-Creation-Date: 2026-09-16T16:34:55+00:00\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "X-Generator: WP-CLI 2.12.0\n"
 "X-Domain: enable-abilities-for-mcp\n"
@@ -2837,38 +2837,38 @@ msgid "WP Abilities"
 msgstr ""
 
 #. translators: %1$s: opening <a> tag, %2$s: closing </a> tag
-#: includes/admin.php:52
+#: includes/admin.php:51
 #, php-format
 msgid "Enable Abilities for MCP requires the MCP Adapter plugin to work. %1$sDownload MCP Adapter%2$s"
 msgstr ""
 
-#: includes/admin.php:81
+#: includes/admin.php:80
 msgid "Ability keys updated to English for internationalization. Your settings have been preserved."
 msgstr ""
 
-#: includes/admin.php:137
+#: includes/admin.php:136
 msgid "API Key active"
 msgstr ""
 
-#: includes/admin.php:138
+#: includes/admin.php:137
 #: includes/admin.php:1002
 msgid "Regenerate API Key"
 msgstr ""
 
-#: includes/admin.php:139
+#: includes/admin.php:138
 #: includes/admin.php:1005
 msgid "Revoke API Key"
 msgstr ""
 
-#: includes/admin.php:140
+#: includes/admin.php:139
 msgid "This will invalidate the previous key. Continue?"
 msgstr ""
 
-#: includes/admin.php:141
+#: includes/admin.php:140
 msgid "Are you sure you want to revoke the API Key? External connections will stop working."
 msgstr ""
 
-#: includes/admin.php:142
+#: includes/admin.php:141
 #: includes/admin.php:482
 #: includes/admin.php:515
 #: includes/admin.php:559
@@ -2877,7 +2877,7 @@ msgstr ""
 msgid "Enabled"
 msgstr ""
 
-#: includes/admin.php:143
+#: includes/admin.php:142
 #: includes/admin.php:482
 #: includes/admin.php:515
 #: includes/admin.php:559
@@ -2886,32 +2886,32 @@ msgstr ""
 msgid "Disabled"
 msgstr ""
 
-#: includes/admin.php:144
+#: includes/admin.php:143
 #: includes/admin.php:892
 msgid "Show"
 msgstr ""
 
-#: includes/admin.php:145
+#: includes/admin.php:144
 msgid "Hide"
 msgstr ""
 
-#: includes/admin.php:146
+#: includes/admin.php:145
 msgid "Could not encode credentials. Please check your username and password."
 msgstr ""
 
-#: includes/admin.php:147
+#: includes/admin.php:146
 msgid "Clear all activity logs? This cannot be undone."
 msgstr ""
 
-#: includes/admin.php:148
+#: includes/admin.php:147
 msgid "Clear logs for this user? This cannot be undone."
 msgstr ""
 
-#: includes/admin.php:149
+#: includes/admin.php:148
 msgid "Logs cleared."
 msgstr ""
 
-#: includes/admin.php:150
+#: includes/admin.php:149
 msgid "Copied!"
 msgstr ""
 
@@ -2981,7 +2981,7 @@ msgid "Connection"
 msgstr ""
 
 #: includes/admin.php:441
-#: includes/admin.php:1321
+#: includes/admin.php:1378
 msgid "Activity Log"
 msgstr ""
 
@@ -3323,83 +3323,95 @@ msgstr ""
 msgid "Disable All"
 msgstr ""
 
-#: includes/admin.php:1178
+#: includes/admin.php:1182
 msgid "Caution"
 msgstr ""
 
-#: includes/admin.php:1187
-#: includes/admin.php:1256
+#: includes/admin.php:1192
+#: includes/admin.php:1266
 msgid "All"
 msgstr ""
 
-#: includes/admin.php:1240
+#: includes/admin.php:1249
 msgid "Third-party"
 msgstr ""
 
 #. translators: %s: ability namespace
-#: includes/admin.php:1247
+#: includes/admin.php:1256
 #, php-format
 msgid "Abilities registered by another plugin (namespace \"%s\"). Disabling one removes it from every MCP server on this site."
 msgstr ""
 
-#: includes/admin.php:1284
+#: includes/admin.php:1294
 msgid "Save Changes"
 msgstr ""
 
-#: includes/admin.php:1323
+#. translators: %s: abilities section name
+#: includes/admin.php:1316
+#, php-format
+msgid "Show or hide the %s abilities"
+msgstr ""
+
+#. translators: 1: abilities enabled in the section, 2: abilities in the section
+#: includes/admin.php:1347
+#, php-format
+msgid "%1$d of %2$d abilities enabled"
+msgstr ""
+
+#: includes/admin.php:1380
 msgid "MCP ability executions per user — last 30 days."
 msgstr ""
 
-#: includes/admin.php:1335
+#: includes/admin.php:1392
 msgid "User:"
 msgstr ""
 
-#: includes/admin.php:1339
+#: includes/admin.php:1396
 msgid "All users"
 msgstr ""
 
-#: includes/admin.php:1352
+#: includes/admin.php:1409
 msgid "Clear logs for this user"
 msgstr ""
 
-#: includes/admin.php:1357
+#: includes/admin.php:1414
 msgid "Clear all logs"
 msgstr ""
 
-#: includes/admin.php:1366
+#: includes/admin.php:1423
 msgid "No activity recorded yet. Logs will appear here once users start calling abilities via MCP."
 msgstr ""
 
-#: includes/admin.php:1372
+#: includes/admin.php:1429
 msgid "Date / Time"
 msgstr ""
 
-#: includes/admin.php:1373
+#: includes/admin.php:1430
 msgid "User"
 msgstr ""
 
-#: includes/admin.php:1374
+#: includes/admin.php:1431
 msgid "Ability"
 msgstr ""
 
-#: includes/admin.php:1375
+#: includes/admin.php:1432
 msgid "Status"
 msgstr ""
 
-#: includes/admin.php:1390
+#: includes/admin.php:1447
 msgid "Unknown"
 msgstr ""
 
-#: includes/admin.php:1398
+#: includes/admin.php:1455
 msgid "Success"
 msgstr ""
 
-#: includes/admin.php:1400
+#: includes/admin.php:1457
 msgid "Error"
 msgstr ""
 
 #. translators: %d: total entries
-#: includes/admin.php:1416
+#: includes/admin.php:1473
 #, php-format
 msgid "%d entry"
 msgid_plural "%d entries"
@@ -3407,24 +3419,24 @@ msgstr[0] ""
 msgstr[1] ""
 
 #. translators: %s: number of ability executions logged.
-#: includes/admin.php:1596
+#: includes/admin.php:1653
 #, php-format
 msgid "Your AI assistant has already run %s actions on this site through Enable Abilities for MCP. 🚀"
 msgstr ""
 
-#: includes/admin.php:1603
+#: includes/admin.php:1660
 msgid "If the plugin is making your workflow easier, a 5-star review helps other WordPress + AI users find it — and keeps this free, open-source project moving."
 msgstr ""
 
-#: includes/admin.php:1608
+#: includes/admin.php:1665
 msgid "Leave a review ★"
 msgstr ""
 
-#: includes/admin.php:1611
+#: includes/admin.php:1668
 msgid "Maybe later"
 msgstr ""
 
-#: includes/admin.php:1614
+#: includes/admin.php:1671
 msgid "Already reviewed / don&#8217;t show again"
 msgstr ""
 

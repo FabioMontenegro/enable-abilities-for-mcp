@@ -147,6 +147,7 @@ function ewpa_enqueue_admin_assets( $hook_suffix ) {
 				'confirmClearUser'  => __( 'Clear logs for this user? This cannot be undone.', 'enable-abilities-for-mcp' ),
 				'cleared'           => __( 'Logs cleared.', 'enable-abilities-for-mcp' ),
 				'copied'            => __( 'Copied!', 'enable-abilities-for-mcp' ),
+				'sectionCount'      => ewpa_section_count_label(),
 				'copy'              => __( 'Copy', 'enable-abilities-for-mcp' ),
 			),
 		)
@@ -1165,8 +1166,12 @@ function ewpa_render_settings_page(): void {
 			</div>
 
 			<?php foreach ( $registry as $section_key => $section ) : ?>
-				<div class="ewpa-section" data-section="<?php echo esc_attr( $section_key ); ?>">
+				<?php
+				$ewpa_section_enabled = count( array_filter( array_keys( $section['abilities'] ), 'ewpa_is_ability_enabled' ) );
+				?>
+				<div class="ewpa-section ewpa-collapsible" data-section="<?php echo esc_attr( $section_key ); ?>">
 					<div class="ewpa-section-header">
+						<?php ewpa_render_section_expand_button( $section_key, $section['section_label'] ); ?>
 						<div class="ewpa-section-title">
 							<span class="dashicons <?php echo esc_attr( $section['section_icon'] ); ?>"></span>
 							<div>
@@ -1181,12 +1186,13 @@ function ewpa_render_settings_page(): void {
 								<p class="ewpa-section-desc"><?php echo esc_html( $section['section_desc'] ); ?></p>
 							</div>
 						</div>
+						<?php ewpa_render_section_count( $section_key, $ewpa_section_enabled, count( $section['abilities'] ) ); ?>
 						<label class="ewpa-section-toggle">
 							<input type="checkbox" class="ewpa-section-check" data-section="<?php echo esc_attr( $section_key ); ?>">
 							<span><?php esc_html_e( 'All', 'enable-abilities-for-mcp' ); ?></span>
 						</label>
 					</div>
-					<div class="ewpa-section-body">
+					<div class="ewpa-section-body" id="ewpa-section-body-<?php echo esc_attr( $section_key ); ?>">
 						<?php
 						if ( ! empty( $section['section_notice'] ) && is_callable( $section['section_notice'] ) ) {
 							$notice_html = call_user_func( $section['section_notice'] );
@@ -1228,8 +1234,12 @@ function ewpa_render_settings_page(): void {
 			$ewpa_tp_disabled = ewpa_tp_get_disabled();
 			?>
 			<?php foreach ( $ewpa_tp_sections as $tp_ns => $tp_abilities ) : ?>
-				<div class="ewpa-section" data-section="tp-<?php echo esc_attr( $tp_ns ); ?>">
+				<?php
+				$ewpa_tp_enabled = count( array_diff( array_keys( $tp_abilities ), $ewpa_tp_disabled ) );
+				?>
+				<div class="ewpa-section ewpa-collapsible" data-section="tp-<?php echo esc_attr( $tp_ns ); ?>">
 					<div class="ewpa-section-header">
+						<?php ewpa_render_section_expand_button( 'tp-' . $tp_ns, ucfirst( $tp_ns ) ); ?>
 						<div class="ewpa-section-title">
 							<span class="dashicons dashicons-admin-plugins"></span>
 							<div>
@@ -1250,12 +1260,13 @@ function ewpa_render_settings_page(): void {
 								</p>
 							</div>
 						</div>
+						<?php ewpa_render_section_count( 'tp-' . $tp_ns, $ewpa_tp_enabled, count( $tp_abilities ) ); ?>
 						<label class="ewpa-section-toggle">
 							<input type="checkbox" class="ewpa-section-check" data-section="tp-<?php echo esc_attr( $tp_ns ); ?>">
 							<span><?php esc_html_e( 'All', 'enable-abilities-for-mcp' ); ?></span>
 						</label>
 					</div>
-					<div class="ewpa-section-body">
+					<div class="ewpa-section-body" id="ewpa-section-body-tp-<?php echo esc_attr( $tp_ns ); ?>">
 						<?php foreach ( $tp_abilities as $tp_key => $tp_info ) : ?>
 							<div class="ewpa-ability">
 								<label class="ewpa-switch">
@@ -1287,6 +1298,53 @@ function ewpa_render_settings_page(): void {
 	</div><?php /* /wrap */ ?>
 
 	<?php
+}
+
+/**
+ * Renders the button that expands or collapses an abilities section.
+ *
+ * @param string $section_key   Section key, used to reference the section body.
+ * @param string $section_label Section label, used in the accessible name.
+ */
+function ewpa_render_section_expand_button( string $section_key, string $section_label ): void {
+	?>
+	<button type="button" class="ewpa-section-expand" aria-expanded="true" aria-controls="ewpa-section-body-<?php echo esc_attr( $section_key ); ?>">
+		<span class="dashicons dashicons-arrow-down-alt2" aria-hidden="true"></span>
+		<span class="screen-reader-text">
+			<?php
+			/* translators: %s: abilities section name */
+			echo esc_html( sprintf( __( 'Show or hide the %s abilities', 'enable-abilities-for-mcp' ), $section_label ) );
+			?>
+		</span>
+	</button>
+	<?php
+}
+
+/**
+ * Renders the enabled/total counter of an abilities section.
+ *
+ * @param string $section_key Section key.
+ * @param int    $enabled     Abilities enabled in the section.
+ * @param int    $total       Abilities in the section.
+ */
+function ewpa_render_section_count( string $section_key, int $enabled, int $total ): void {
+	?>
+	<span
+		class="ewpa-section-count"
+		data-section="<?php echo esc_attr( $section_key ); ?>"
+		title="<?php echo esc_attr( sprintf( ewpa_section_count_label(), $enabled, $total ) ); ?>"
+	><?php echo esc_html( $enabled . '/' . $total ); ?></span>
+	<?php
+}
+
+/**
+ * Returns the translatable description of a section counter.
+ *
+ * @return string Format with the enabled count (%1$d) and the total (%2$d).
+ */
+function ewpa_section_count_label(): string {
+	/* translators: 1: abilities enabled in the section, 2: abilities in the section */
+	return __( '%1$d of %2$d abilities enabled', 'enable-abilities-for-mcp' );
 }
 
 /**
