@@ -5,7 +5,7 @@ Tags: mcp, ai, rest-api, content-management, woocommerce
 Requires at least: 6.9
 Tested up to: 7.1
 Requires PHP: 8.0
-Stable tag: 2.12.0
+Stable tag: 2.13.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -256,6 +256,11 @@ Yes — strict OAuth clients require a direct `200` on `/.well-known/oauth-autho
 
 == Changelog ==
 
+= 2.13.0 =
+* New: the CPT abilities can manage post types that are not public, when they are on an explicit allowlist. Tutor LMS `topics` is on it by default when Tutor LMS is active, so an assistant can finally build a course tree: course, topic, lesson. Every other non-public type is still rejected, WordPress built-ins remain unreachable, and all capability checks are unchanged. Site owners can add their own structural types with the new `ewpa_manageable_private_post_types` filter. Reported from a Tutor LMS site.
+* New: `ewpa/update-cpt-item` accepts `post_parent` and `menu_order`, mirroring `ewpa/create-cpt-item`. A hierarchical item created in the wrong place, or a duplicate, can now be re-parented and reordered instead of being stuck. An item cannot be made its own parent, and a missing parent is refused.
+* New: Regression suite for the post type guard and the update path (`tests/cpt-abilities-test.php`, 21 checks). Runs without WordPress: `php tests/cpt-abilities-test.php`.
+
 = 2.12.0 =
 * New: ability sections in Settings › WP Abilities collapse like an accordion. Click a section header to open or close it; the "All" checkbox keeps working without toggling the section. Sections start collapsed, and the ones you open stay open in that browser.
 * New: each ability section shows how many of its abilities are enabled (for example, 2/3), updated as you change the toggles.
@@ -374,6 +379,9 @@ Yes — strict OAuth clients require a direct `200` on `/.well-known/oauth-autho
 * See [changelog.txt](https://plugins.trac.wordpress.org/browser/enable-abilities-for-mcp/trunk/changelog.txt) for the full history of older versions.
 
 == Upgrade Notice ==
+
+= 2.13.0 =
+New: CPT abilities can now manage Tutor LMS topics, so a full course tree can be built over MCP, and `ewpa/update-cpt-item` can re-parent and reorder items.
 
 = 2.11.1 =
 Fix: removes the bundled copy of MCP Adapter that triggers "Another version of MCP Adapter is already loaded" on newer MCP Adapter builds. Keep the MCP Adapter plugin installed and active.

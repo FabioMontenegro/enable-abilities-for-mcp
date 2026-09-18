@@ -220,7 +220,7 @@ vendor/bin/phpcs --standard=WordPress --extensions=php --exclude=WordPress.Files
 vendor/bin/phpcbf --standard=WordPress --extensions=php --exclude=WordPress.Files.FileName .
 ```
 
-Abilities are registered with the standard `wp_register_ability()` API on the `wp_abilities_api_init` hook — you can add your own alongside. Useful hooks: `ewpa_after_update_post_meta` (cache busting after raw meta writes), `ewpa_blocked_meta_keys` (extend the protected-keys blocklist).
+Abilities are registered with the standard `wp_register_ability()` API on the `wp_abilities_api_init` hook — you can add your own alongside. Useful hooks: `ewpa_after_update_post_meta` (cache busting after raw meta writes), `ewpa_blocked_meta_keys` (extend the protected-keys blocklist), `ewpa_manageable_private_post_types` (let the CPT abilities manage a structural post type that is not public — Tutor LMS `topics` is allowed by default; capability checks still apply).
 
 ## Links
 
