@@ -25,6 +25,40 @@ function ewpa_get_meta_string( $post_id, $key, $fallback = '' ) {
 }
 
 /**
+ * Returns the non-public post types that the CPT abilities may still manage.
+ *
+ * `public` and `show_in_rest` describe front-end visibility and REST exposure,
+ * not whether a type is safe to manage. Structural types such as Tutor LMS
+ * topics are deliberately non-public, yet they are the layer between a course
+ * and its lessons, so a course tree cannot be built without them.
+ *
+ * Listing a type here only makes it addressable: every capability check in the
+ * abilities still applies, and built-in WordPress types stay unreachable
+ * because they are rejected before this list is consulted.
+ *
+ * @return string[] Post type slugs.
+ */
+function ewpa_manageable_private_post_types(): array {
+	// `topics` is a generic slug, so it is only allowed when Tutor LMS is active.
+	$default = function_exists( 'tutor_utils' ) ? array( 'topics' ) : array();
+
+	/**
+	 * Filters the non-public post types the CPT abilities may manage.
+	 *
+	 * Built-in WordPress types cannot be added through this filter.
+	 *
+	 * @param string[] $post_types Post type slugs.
+	 */
+	$post_types = apply_filters( 'ewpa_manageable_private_post_types', $default );
+
+	if ( ! is_array( $post_types ) ) {
+		return array();
+	}
+
+	return array_map( 'sanitize_key', $post_types );
+}
+
+/**
  * Validates a post type as a valid custom post type (not built-in).
  *
  * @param string $post_type The post type slug to validate.
@@ -68,7 +102,8 @@ function ewpa_validate_cpt( $post_type ) {
 
 	$cpt_obj = get_post_type_object( $post_type );
 
-	if ( ! $cpt_obj->public && ! $cpt_obj->show_in_rest ) {
+	if ( ! $cpt_obj->public && ! $cpt_obj->show_in_rest
+		&& ! in_array( $post_type, ewpa_manageable_private_post_types(), true ) ) {
 		return new WP_Error(
 			'private_post_type',
 			__( 'This content type is not publicly accessible.', 'enable-abilities-for-mcp' )
@@ -5541,6 +5576,14 @@ function ewpa_register_custom_abilities(): void {
 							'type'        => 'integer',
 							'description' => __( 'Attachment ID for the featured image. Pass 0 to remove.', 'enable-abilities-for-mcp' ),
 						),
+						'post_parent'       => array(
+							'type'        => 'integer',
+							'description' => __( 'New parent item ID for hierarchical CPTs. Pass 0 to detach.', 'enable-abilities-for-mcp' ),
+						),
+						'menu_order'        => array(
+							'type'        => 'integer',
+							'description' => __( 'New menu order value, used to sort items manually.', 'enable-abilities-for-mcp' ),
+						),
 						'slug'              => array(
 							'type'        => 'string',
 							'description' => __( 'New URL slug.', 'enable-abilities-for-mcp' ),
@@ -5603,6 +5646,19 @@ function ewpa_register_custom_abilities(): void {
 					}
 					if ( isset( $input['slug'] ) ) {
 						$post_data['post_name'] = sanitize_title( $input['slug'] );
+					}
+					if ( isset( $input['post_parent'] ) ) {
+						$parent_id = absint( $input['post_parent'] );
+						if ( $parent_id === $post_id ) {
+							return new WP_Error( 'invalid_parent', __( 'An item cannot be its own parent.', 'enable-abilities-for-mcp' ) );
+						}
+						if ( $parent_id && ! get_post( $parent_id ) ) {
+							return new WP_Error( 'invalid_parent', __( 'The parent item does not exist.', 'enable-abilities-for-mcp' ) );
+						}
+						$post_data['post_parent'] = $parent_id;
+					}
+					if ( isset( $input['menu_order'] ) ) {
+						$post_data['menu_order'] = intval( $input['menu_order'] );
 					}
 
 					$result = wp_update_post( $post_data, true );
