@@ -234,8 +234,10 @@ function ewpa_ajax_oauth_toggle(): void {
 		wp_send_json_error( array( 'message' => __( 'You do not have sufficient permissions.', 'enable-abilities-for-mcp' ) ) );
 	}
 
-	$enabled = ! empty( $_POST['enabled'] ) && 'true' === sanitize_text_field( wp_unslash( $_POST['enabled'] ) );
+	$enabled     = ! empty( $_POST['enabled'] ) && 'true' === sanitize_text_field( wp_unslash( $_POST['enabled'] ) );
+	$was_enabled = get_option( 'ewpa_oauth_enabled' );
 	update_option( 'ewpa_oauth_enabled', $enabled );
+	ewpa_oauth_on_toggle( $was_enabled, $enabled );
 
 	// Re-flush rewrite rules so /oauth/* and /.well-known/* routes appear (or vanish)
 	// on the next request, as required by the mcp-oauth library when toggled at runtime.
