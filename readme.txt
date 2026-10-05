@@ -5,7 +5,7 @@ Tags: mcp, ai, rest-api, content-management, woocommerce
 Requires at least: 6.9
 Tested up to: 7.1
 Requires PHP: 8.0
-Stable tag: 2.13.0
+Stable tag: 2.13.1
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -256,6 +256,14 @@ Yes — strict OAuth clients require a direct `200` on `/.well-known/oauth-autho
 
 == Changelog ==
 
+= 2.13.1 =
+* Security fix: turning the "claude.ai OAuth Custom Connector" switch off now ends every existing OAuth connector session on that site. Before, the sessions were only unreachable while the switch was off, so turning it back on let an old connector reconnect on its own for up to 30 days without a new approval.
+* Security fix: the OAuth server now stays off while the switch is off even when another plugin boots the same OAuth library. On some multisite networks the MCP endpoint kept answering, and accepting existing tokens, with the switch off.
+* Security fix: changing a user's password, or using "Log Out Everywhere" on their profile, now also ends that user's OAuth connector sessions. Application Passwords the user created by hand are never touched.
+* Fix: deactivating the plugin ends its OAuth connector sessions, so they cannot come back when it is activated again.
+* Improvement: the Application Password behind each OAuth session is now named "MCP OAuth – <client> – <date>" instead of just the client name, and its "Last Used" and "Last IP" columns are filled in, so you can see what you are revoking under Users › Profile › Application Passwords.
+* New: Regression suite for session revocation (`tests/oauth-sessions-test.php`). Runs without WordPress: `php tests/oauth-sessions-test.php`.
+
 = 2.13.0 =
 * New: the CPT abilities can manage post types that are not public, when they are on an explicit allowlist. Tutor LMS `topics` is on it by default when Tutor LMS is active, so an assistant can finally build a course tree: course, topic, lesson. Every other non-public type is still rejected, WordPress built-ins remain unreachable, and all capability checks are unchanged. Site owners can add their own structural types with the new `ewpa_manageable_private_post_types` filter. Reported from a Tutor LMS site.
 * New: `ewpa/update-cpt-item` accepts `post_parent` and `menu_order`, mirroring `ewpa/create-cpt-item`. A hierarchical item created in the wrong place, or a duplicate, can now be re-parented and reordered instead of being stuck. An item cannot be made its own parent, and a missing parent is refused.
@@ -379,6 +387,9 @@ Yes — strict OAuth clients require a direct `200` on `/.well-known/oauth-autho
 * See [changelog.txt](https://plugins.trac.wordpress.org/browser/enable-abilities-for-mcp/trunk/changelog.txt) for the full history of older versions.
 
 == Upgrade Notice ==
+
+= 2.13.1 =
+Security fix: turning the OAuth connector off, changing a password or logging out everywhere now ends existing OAuth connector sessions. Recommended for every site using the claude.ai or ChatGPT connector.
 
 = 2.13.0 =
 New: CPT abilities can now manage Tutor LMS topics, so a full course tree can be built over MCP, and `ewpa/update-cpt-item` can re-parent and reorder items.
