@@ -38,6 +38,7 @@ add_action( 'profile_update', 'ewpa_oauth_on_profile_update', 10, 2 );
 add_action( 'wp_ajax_destroy-sessions', 'ewpa_oauth_on_destroy_sessions', 1 );
 add_action( 'wp_create_application_password', 'ewpa_oauth_on_session_created', 10, 2 );
 add_filter( 'rest_request_after_callbacks', 'ewpa_oauth_record_usage', 10, 3 );
+add_filter( 'wpmedia_mcp_oauth_server_enabled', 'ewpa_oauth_enforce_switch' );
 
 /*
  * ==========================================================================
@@ -269,6 +270,30 @@ function ewpa_oauth_on_toggle( $was, bool $now ): int {
 	}
 
 	return 0;
+}
+
+/**
+ * Keeps the OAuth server off while this site's switch is off.
+ *
+ * The library is a singleton that any plugin can boot, and it serves the same
+ * route, signing secret and sessions whoever boots it. Without this, a second
+ * consumer keeps /wp-json/mcp/mcp-oauth-server and /oauth/* alive — exposing
+ * this plugin's abilities — after the admin turned the connector off. The
+ * library checks this filter before registering the MCP server, the OAuth
+ * endpoints and the discovery documents.
+ *
+ * A plugin that must keep its own OAuth server running can re-enable it on
+ * the same filter at a later priority.
+ *
+ * @param mixed $enabled Whether the OAuth server is enabled so far.
+ * @return bool
+ */
+function ewpa_oauth_enforce_switch( $enabled ): bool {
+	if ( ! get_option( 'ewpa_oauth_enabled' ) ) {
+		return false;
+	}
+
+	return (bool) $enabled;
 }
 
 /*

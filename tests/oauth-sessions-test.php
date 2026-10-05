@@ -38,6 +38,10 @@ function add_filter( $hook, $callback, $priority = 10, $args = 1 ) {
 	add_action( $hook, $callback, $priority, $args );
 }
 
+function get_option( $name, $default_value = false ) {
+	return $GLOBALS['t_options'][ $name ] ?? $default_value;
+}
+
 function get_user_meta( $user_id, $key = '', $single = false ) {
 	if ( '' === $key ) {
 		return $GLOBALS['t_meta'][ $user_id ] ?? array();
@@ -446,6 +450,26 @@ t_assert( array() === WP_Application_Passwords::$usage, 'usage not recorded when
 
 $bad->header = '';
 t_assert( $response === ewpa_oauth_record_usage( $response, array(), $bad ), 'missing header never breaks the request' );
+
+/*
+ * Switch enforcement on the library's own enable filter.
+ */
+
+$enforced = false;
+foreach ( $GLOBALS['t_hooks']['wpmedia_mcp_oauth_server_enabled'] ?? array() as $hook ) {
+	$enforced = $enforced || 'ewpa_oauth_enforce_switch' === $hook[0];
+}
+t_assert( $enforced, 'switch enforcement is hooked on the library enable filter' );
+
+$GLOBALS['t_options'] = array();
+t_assert( false === ewpa_oauth_enforce_switch( true ), 'OAuth server disabled when the switch was never turned on' );
+
+$GLOBALS['t_options']['ewpa_oauth_enabled'] = '';
+t_assert( false === ewpa_oauth_enforce_switch( true ), 'OAuth server disabled when the switch is off, even if another plugin boots the library' );
+
+$GLOBALS['t_options']['ewpa_oauth_enabled'] = '1';
+t_assert( true === ewpa_oauth_enforce_switch( true ), 'OAuth server stays enabled when the switch is on' );
+t_assert( false === ewpa_oauth_enforce_switch( false ), 'switch on never overrides another filter that disabled the server' );
 
 echo $failures ? "\n$failures FAILED\n" : "\nAll tests passed\n";
 exit( $failures ? 1 : 0 );
