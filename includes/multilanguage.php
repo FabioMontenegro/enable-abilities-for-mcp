@@ -124,6 +124,63 @@ function ewpa_check_author_assignment( int $author_id, string $post_type ) {
 }
 
 /**
+ * Checks that the current user may list posts of a type in a given status.
+ *
+ * Published content is the only listing open to every reader; any other
+ * status (draft, pending, private, trash, any) needs an editing capability of
+ * the post type.
+ *
+ * @param string $status    Requested listing status.
+ * @param string $post_type Post type slug.
+ * @return true|WP_Error
+ */
+function ewpa_check_listing_status( string $status, string $post_type ) {
+	if ( 'publish' === $status || ewpa_user_can_for_type( $post_type, 'edit_posts' ) ) {
+		return true;
+	}
+
+	return new WP_Error( 'forbidden', __( 'You do not have permission to list content that is not published.', 'enable-abilities-for-mcp' ) );
+}
+
+/**
+ * Keeps only the posts the current user may read.
+ *
+ * WP_Query's "perm" => "readable" covers private statuses; this also drops
+ * drafts and pending items that belong to other authors.
+ *
+ * @param array $posts Post objects.
+ * @return array
+ */
+function ewpa_filter_readable_posts( array $posts ): array {
+	return array_values(
+		array_filter(
+			$posts,
+			function ( $post ) {
+				return current_user_can( 'read_post', $post->ID );
+			}
+		)
+	);
+}
+
+/**
+ * Checks that the current user may read the learning records of a user.
+ *
+ * Student records are personal data: they need an administrative capability
+ * (edit_users, like the LearnDash equivalents) unless the user is reading
+ * their own.
+ *
+ * @param int $user_id User whose records are requested.
+ * @return true|WP_Error
+ */
+function ewpa_check_student_record_access( int $user_id ) {
+	if ( current_user_can( 'edit_users' ) || ( $user_id && get_current_user_id() === $user_id ) ) {
+		return true;
+	}
+
+	return new WP_Error( 'forbidden', __( 'You do not have permission to read the records of other users.', 'enable-abilities-for-mcp' ) );
+}
+
+/**
  * Tells whether an object exposes a callable method.
  *
  * Linguator's model routes get_languages_list(), get_language() and friends through

@@ -678,11 +678,18 @@ function ewpa_register_custom_abilities(): void {
 					$order = in_array( $input['order'] ?? 'DESC', $allowed_order, true )
 						? $input['order'] : 'DESC';
 
+					// Anything but published content needs an editing capability of the type.
+					$status_check = ewpa_check_listing_status( $post_status, 'post' );
+					if ( is_wp_error( $status_check ) ) {
+						return $status_check;
+					}
+
 					$args = array(
 						'numberposts' => $numberposts,
 						'post_status' => $post_status,
 						'orderby'     => $orderby,
 						'order'       => $order,
+						'perm'        => 'readable',
 					);
 					if ( ! empty( $input['category_name'] ) ) {
 						$args['category_name'] = sanitize_text_field( $input['category_name'] );
@@ -694,7 +701,7 @@ function ewpa_register_custom_abilities(): void {
 						$args['s'] = sanitize_text_field( $input['s'] );
 					}
 
-					$posts  = get_posts( $args );
+					$posts  = ewpa_filter_readable_posts( get_posts( $args ) );
 					$result = array();
 
 					foreach ( $posts as $post ) {
@@ -1082,13 +1089,22 @@ function ewpa_register_custom_abilities(): void {
 					$post_status = in_array( $input['status'] ?? 'publish', $allowed_status, true )
 						? $input['status'] : 'publish';
 
-					$pages = get_posts(
-						array(
-							'post_type'   => 'page',
-							'numberposts' => $numberposts,
-							'post_status' => $post_status,
-							'orderby'     => 'menu_order',
-							'order'       => 'ASC',
+					// Anything but published content needs an editing capability of the type.
+					$status_check = ewpa_check_listing_status( $post_status, 'page' );
+					if ( is_wp_error( $status_check ) ) {
+						return $status_check;
+					}
+
+					$pages = ewpa_filter_readable_posts(
+						get_posts(
+							array(
+								'post_type'   => 'page',
+								'numberposts' => $numberposts,
+								'post_status' => $post_status,
+								'orderby'     => 'menu_order',
+								'order'       => 'ASC',
+								'perm'        => 'readable',
+							)
 						)
 					);
 					$result = array();
@@ -2360,6 +2376,11 @@ function ewpa_register_custom_abilities(): void {
 						return new WP_Error( 'post_not_found', 'The specified post does not exist.' );
 					}
 
+					// Attaching an image and setting the featured image edit the parent post.
+					if ( $parent_post_id > 0 && ! current_user_can( 'edit_post', $parent_post_id ) ) {
+						return new WP_Error( 'forbidden', __( 'You do not have permission to edit this post.', 'enable-abilities-for-mcp' ) );
+					}
+
 					// Download and sideload the image.
 					$tmp_file = download_url( $url, 30 );
 					if ( is_wp_error( $tmp_file ) ) {
@@ -2631,8 +2652,8 @@ function ewpa_register_custom_abilities(): void {
 						'seo_score'            => array( 'type' => 'integer' ),
 					),
 				),
-				'permission_callback' => function () {
-					return current_user_can( 'edit_posts' );
+				'permission_callback' => function ( $input ) {
+					return ewpa_check_post_permission( $input, 'edit_post' );
 				},
 				'execute_callback'    => function ( $input ) {
 					$post_id = absint( $input['post_id'] );
@@ -3108,8 +3129,8 @@ function ewpa_register_custom_abilities(): void {
 						'twitter_image'       => array( 'type' => 'string' ),
 					),
 				),
-				'permission_callback' => function () {
-					return current_user_can( 'edit_posts' );
+				'permission_callback' => function ( $input ) {
+					return ewpa_check_post_permission( $input, 'edit_post' );
 				},
 				'execute_callback'    => function ( $input ) {
 					$post_id = absint( $input['post_id'] );
@@ -3565,8 +3586,8 @@ function ewpa_register_custom_abilities(): void {
 						'twitter_image'       => array( 'type' => 'string' ),
 					),
 				),
-				'permission_callback' => function () {
-					return current_user_can( 'edit_posts' );
+				'permission_callback' => function ( $input ) {
+					return ewpa_check_post_permission( $input, 'edit_post' );
 				},
 				'execute_callback'    => function ( $input ) {
 					$post_id = absint( $input['post_id'] );
@@ -5124,7 +5145,8 @@ function ewpa_register_custom_abilities(): void {
 						),
 						'status'      => array(
 							'type'        => 'string',
-							'description' => __( 'Filter by status: publish, draft, pending, private, any (default publish).', 'enable-abilities-for-mcp' ),
+							'description' => __( 'Filter by status: publish, draft, pending, private, future, trash, any (default publish). Anything but publish needs an editing capability for the post type.', 'enable-abilities-for-mcp' ),
+							'enum'        => array( 'publish', 'draft', 'pending', 'private', 'future', 'trash', 'any' ),
 						),
 						'orderby'     => array(
 							'type'        => 'string',
@@ -5171,7 +5193,11 @@ function ewpa_register_custom_abilities(): void {
 					}
 
 					$numberposts = min( absint( $input['numberposts'] ?? 20 ), 100 );
-					$post_status = sanitize_text_field( $input['status'] ?? 'publish' );
+					$allowed_status = array( 'publish', 'draft', 'pending', 'private', 'future', 'trash', 'any' );
+					$post_status    = sanitize_text_field( $input['status'] ?? 'publish' );
+					if ( ! in_array( $post_status, $allowed_status, true ) ) {
+						$post_status = 'publish';
+					}
 					$orderby     = sanitize_text_field( $input['orderby'] ?? 'date' );
 					$order       = in_array( strtoupper( $input['order'] ?? 'DESC' ), array( 'ASC', 'DESC' ), true )
 						? strtoupper( $input['order'] )
@@ -5182,12 +5208,19 @@ function ewpa_register_custom_abilities(): void {
 						$orderby = 'date';
 					}
 
+					// Anything but published content needs an editing capability of the type.
+					$status_check = ewpa_check_listing_status( $post_status, $cpt_obj->name );
+					if ( is_wp_error( $status_check ) ) {
+						return $status_check;
+					}
+
 					$args = array(
 						'post_type'   => $cpt_obj->name,
 						'numberposts' => $numberposts,
 						'post_status' => $post_status,
 						'orderby'     => $orderby,
 						'order'       => $order,
+						'perm'        => 'readable',
 						// suppress_filters defaults to true in get_posts(). Do not
 						// set it to false: with third-party pre_get_posts filters
 						// left running, some search-scoping plugins rewrite
@@ -5224,7 +5257,7 @@ function ewpa_register_custom_abilities(): void {
 						}
 					}
 
-					$posts  = get_posts( $args );
+					$posts  = ewpa_filter_readable_posts( get_posts( $args ) );
 					$result = array();
 
 					foreach ( $posts as $p ) {
@@ -5342,11 +5375,15 @@ function ewpa_register_custom_abilities(): void {
 						}
 					}
 
-					// All meta fields.
+					// Meta fields: protected keys (leading underscore, internal data) only for users who can edit the item.
+					$can_edit = current_user_can( 'edit_post', $post_id );
 					$raw_meta = get_post_meta( $post_id );
 					$meta     = array();
 					if ( is_array( $raw_meta ) ) {
 						foreach ( $raw_meta as $key => $values ) {
+							if ( ! $can_edit && is_protected_meta( $key, 'post' ) ) {
+								continue;
+							}
 							$meta[ $key ] = count( $values ) === 1
 								? maybe_unserialize( $values[0] )
 								: array_map( 'maybe_unserialize', $values );
@@ -7275,6 +7312,9 @@ function ewpa_register_custom_abilities(): void {
 
 					if ( ! $post || Tribe__Events__Main::POSTTYPE !== $post->post_type ) {
 						return new WP_Error( 'not_found', __( 'Event not found.', 'enable-abilities-for-mcp' ), array( 'status' => 404 ) );
+					}
+					if ( ! current_user_can( 'read_post', $event_id ) ) {
+						return new WP_Error( 'forbidden', __( 'You do not have permission to read this post.', 'enable-abilities-for-mcp' ) );
 					}
 
 					// Resolve venue details from the linked tribe_venue post.
@@ -9255,6 +9295,9 @@ function ewpa_register_custom_abilities(): void {
 						if ( ! $course || 'sfwd-courses' !== $course->post_type ) {
 							return new WP_Error( 'not_found', __( 'Course not found.', 'enable-abilities-for-mcp' ), array( 'status' => 404 ) );
 						}
+						if ( ! current_user_can( 'read_post', $course_id ) ) {
+							return new WP_Error( 'forbidden', __( 'You do not have permission to read this post.', 'enable-abilities-for-mcp' ) );
+						}
 						$lessons      = learndash_get_course_lessons_list( $course );
 						$lessons_data = array();
 						foreach ( $lessons as $lesson_data ) {
@@ -9936,6 +9979,12 @@ function ewpa_register_custom_abilities(): void {
 						$user_id   = absint( $input['user_id'] ?? 0 );
 						$course_id = absint( $input['course_id'] ?? 0 );
 
+						// Student records: administrators, or a user reading their own data.
+						$access = ewpa_check_student_record_access( $user_id );
+						if ( is_wp_error( $access ) ) {
+							return $access;
+						}
+
 						if ( ! get_userdata( $user_id ) ) {
 							return new WP_Error( 'not_found', 'User not found.' );
 						}
@@ -10001,6 +10050,13 @@ function ewpa_register_custom_abilities(): void {
 					},
 					'execute_callback'    => function ( $input ) {
 						$user_id = absint( $input['user_id'] ?? 0 );
+
+						// Student records: administrators, or a user reading their own data.
+						$access = ewpa_check_student_record_access( $user_id );
+						if ( is_wp_error( $access ) ) {
+							return $access;
+						}
+
 						if ( ! get_userdata( $user_id ) ) {
 							return new WP_Error( 'not_found', 'User not found.' );
 						}
@@ -10777,38 +10833,47 @@ function ewpa_register_custom_abilities(): void {
 					$per_page = isset( $input['per_page'] ) ? max( 1, min( 100, absint( $input['per_page'] ) ) ) : 20;
 					$page     = isset( $input['page'] ) ? max( 1, absint( $input['page'] ) ) : 1;
 
+					// Without edit_others_posts the listing is limited to the user's own uploads.
+					$scope = current_user_can( 'edit_others_posts' ) ? array() : array( 'author' => get_current_user_id() );
+
 					$total_query = new WP_Query(
-						array(
-							'post_type'      => 'attachment',
-							'post_mime_type' => 'image',
-							'post_status'    => 'inherit',
-							'posts_per_page' => 1,
-							'fields'         => 'ids',
-							'no_found_rows'  => false,
+						array_merge(
+							$scope,
+							array(
+								'post_type'      => 'attachment',
+								'post_mime_type' => 'image',
+								'post_status'    => 'inherit',
+								'posts_per_page' => 1,
+								'fields'         => 'ids',
+								'no_found_rows'  => false,
+							)
 						)
 					);
 					$total_images = (int) $total_query->found_posts;
 
 					$missing_query = new WP_Query(
-						array(
-							'post_type'      => 'attachment',
-							'post_mime_type' => 'image',
-							'post_status'    => 'inherit',
-							'posts_per_page' => $per_page,
-							'paged'          => $page,
-							'fields'         => 'ids',
-							'meta_query'     => array( // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_query
-								'relation' => 'OR',
-								array(
-									'key'     => '_wp_attachment_image_alt',
-									'compare' => 'NOT EXISTS',
+						array_merge(
+							$scope,
+							array(
+								'post_type'      => 'attachment',
+								'post_mime_type' => 'image',
+								'post_status'    => 'inherit',
+								'posts_per_page' => $per_page,
+								'paged'          => $page,
+								'fields'         => 'ids',
+								'meta_query'     => array( // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_query
+									'relation' => 'OR',
+									array(
+										'key'     => '_wp_attachment_image_alt',
+										'compare' => 'NOT EXISTS',
+									),
+									array(
+										'key'     => '_wp_attachment_image_alt',
+										'value'   => '',
+										'compare' => '=',
+									),
 								),
-								array(
-									'key'     => '_wp_attachment_image_alt',
-									'value'   => '',
-									'compare' => '=',
-								),
-							),
+							)
 						)
 					);
 
