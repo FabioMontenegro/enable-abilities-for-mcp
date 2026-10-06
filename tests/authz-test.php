@@ -650,6 +650,7 @@ function ewpa_admin_caps(): array {
 		'edit_others_pages',
 		'publish_pages',
 		'edit_users',
+		'manage_options',
 		'upload_files',
 		'manage_categories',
 		'moderate_comments',
@@ -1845,7 +1846,7 @@ $result = ewpa_callback( 'ewpa/update-post-meta' )(
 		'meta_value' => 'SEO',
 	)
 );
-ewpa_check( 'admin_update_post_meta_refuses_a_protected_key_the_site_has_not_authorized', ewpa_is_error( $result, 'protected_meta' ) );
+ewpa_check( 'admin_update_post_meta_writes_a_protected_seo_key_without_a_site_grant', ! is_wp_error( $result ) && 'SEO' === ( $GLOBALS['ewpa_meta'][102]['_genesis_title'] ?? '' ) );
 $result = ewpa_callback( 'ewpa/update-post-meta' )(
 	array(
 		'post_id'    => 102,
@@ -1854,6 +1855,8 @@ $result = ewpa_callback( 'ewpa/update-post-meta' )(
 	)
 );
 ewpa_check( 'admin_update_post_meta_keeps_the_hard_denylist', ewpa_is_error( $result, 'blocked_key' ) );
+// A Contributor has no manage_options, so the site's own authorization is the only way in.
+ewpa_reset();
 $GLOBALS['ewpa_caps'][] = '_genesis_title'; // Models an auth_post_meta_{key} / register_post_meta auth_callback grant.
 $result                 = ewpa_callback( 'ewpa/update-post-meta' )(
 	array(
@@ -1862,7 +1865,19 @@ $result                 = ewpa_callback( 'ewpa/update-post-meta' )(
 		'meta_value' => 'SEO',
 	)
 );
-ewpa_check( 'admin_update_post_meta_writes_a_protected_key_the_site_authorized', ! is_wp_error( $result ) && 'SEO' === ( $GLOBALS['ewpa_meta'][102]['_genesis_title'] ?? '' ) );
+ewpa_check( 'contributor_update_post_meta_writes_a_protected_key_the_site_authorized', ! is_wp_error( $result ) && 'SEO' === ( $GLOBALS['ewpa_meta'][102]['_genesis_title'] ?? '' ) );
+
+// An authorized key is still not a way around the object check.
+ewpa_reset();
+$GLOBALS['ewpa_caps'][] = '_genesis_title';
+$result                 = ewpa_callback( 'ewpa/update-post-meta' )(
+	array(
+		'post_id'    => 110,
+		'meta_key'   => '_genesis_title',
+		'meta_value' => 'SEO',
+	)
+);
+ewpa_check( 'contributor_update_post_meta_still_needs_edit_post_for_an_authorized_key', is_wp_error( $result ) && ! isset( $GLOBALS['ewpa_meta'][110]['_genesis_title'] ) );
 
 ewpa_reset();
 $result = ewpa_callback( 'ewpa/create-cpt-item' )(
@@ -1946,14 +1961,36 @@ $result = ewpa_callback( 'ewpa/update-cpt-item' )(
 	)
 );
 ewpa_check( 'admin_update_cpt_item_writes_unprotected_meta', ! is_wp_error( $result ) && 'B' === $GLOBALS['ewpa_meta'][111]['subtitle'] );
-$GLOBALS['ewpa_caps'][] = '_internal_secret';
-$result                 = ewpa_callback( 'ewpa/update-cpt-item' )(
+$result = ewpa_callback( 'ewpa/update-cpt-item' )(
 	array(
 		'post_id' => 111,
 		'meta'    => array( '_internal_secret' => 'C' ),
 	)
 );
-ewpa_check( 'admin_update_cpt_item_writes_a_protected_key_the_site_authorized', ! is_wp_error( $result ) && 'C' === $GLOBALS['ewpa_meta'][111]['_internal_secret'] );
+ewpa_check( 'admin_update_cpt_item_writes_a_protected_key_without_a_site_grant', ! is_wp_error( $result ) && 'C' === $GLOBALS['ewpa_meta'][111]['_internal_secret'] );
+
+ewpa_reset();
+ewpa_become_admin();
+$result = ewpa_callback( 'ewpa/create-cpt-item' )(
+	array(
+		'post_type' => 'courses',
+		'title'     => 'Admin course',
+		'meta'      => array( '_internal_secret' => 'D' ),
+	)
+);
+ewpa_check( 'admin_create_cpt_item_writes_a_protected_key_without_a_site_grant', ! is_wp_error( $result ) && 'D' === ( $GLOBALS['ewpa_meta'][500]['_internal_secret'] ?? '' ) );
+ewpa_check( 'admin_create_cpt_item_keeps_the_new_post', isset( $GLOBALS['ewpa_posts'][500] ) && array() === $GLOBALS['ewpa_deleted'] );
+
+// A Contributor on their own item still needs the site's grant.
+ewpa_reset();
+$GLOBALS['ewpa_caps'][] = '_internal_secret';
+$result                 = ewpa_callback( 'ewpa/update-cpt-item' )(
+	array(
+		'post_id' => 111,
+		'meta'    => array( '_internal_secret' => 'E' ),
+	)
+);
+ewpa_check( 'contributor_update_cpt_item_writes_a_protected_key_the_site_authorized', ! is_wp_error( $result ) && 'E' === $GLOBALS['ewpa_meta'][111]['_internal_secret'] );
 
 /*
  * ==========================================================================

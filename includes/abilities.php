@@ -261,10 +261,17 @@ function ewpa_resolve_listing_status( $requested ) {
 /**
  * Checks that the current user may write one post meta key.
  *
- * Keys in the denylist are always refused. Protected keys (is_protected_meta())
- * are refused unless WordPress itself lets the user write them
- * (current_user_can( 'edit_post_meta', $post_id, $key )), which a site grants
- * with register_post_meta() auth_callback or the auth_post_meta_{key} filter.
+ * Keys in the denylist are always refused. A protected key (is_protected_meta())
+ * is written only when the user can edit the post and either the site authorized
+ * that key for them (register_post_meta() auth_callback or the
+ * auth_post_meta_{key} filter, i.e. edit_post_meta) or they administer the site
+ * (manage_options, the same capability that enables these abilities).
+ *
+ * The administrator path is deliberate. The documented use of the meta writers is
+ * setting SEO keys such as _genesis_title or _aioseo_title, and no SEO plugin
+ * registers those with an auth_callback. Core is strict there because it cannot
+ * know who is writing; here the writer is the administrator who connected the
+ * agent for exactly that. Every lower role still needs an explicit grant.
  *
  * @param int      $post_id  Post that receives the meta.
  * @param string   $key      Meta key.
@@ -283,15 +290,20 @@ function ewpa_check_meta_write( int $post_id, string $key, array $denylist = arr
 		);
 	}
 
-	if ( is_protected_meta( $key, 'post' ) && ! current_user_can( 'edit_post_meta', $post_id, $key ) ) {
-		return new WP_Error(
-			'protected_meta',
-			sprintf(
-				/* translators: %s: meta key */
-				__( 'The meta key "%s" is protected and you are not allowed to write it.', 'enable-abilities-for-mcp' ),
-				$key
-			)
-		);
+	if ( is_protected_meta( $key, 'post' ) ) {
+		$authorized = current_user_can( 'edit_post', $post_id )
+			&& ( current_user_can( 'edit_post_meta', $post_id, $key ) || current_user_can( 'manage_options' ) );
+
+		if ( ! $authorized ) {
+			return new WP_Error(
+				'protected_meta',
+				sprintf(
+					/* translators: %s: meta key */
+					__( 'The meta key "%s" is protected and you are not allowed to write it.', 'enable-abilities-for-mcp' ),
+					$key
+				)
+			);
+		}
 	}
 
 	return true;
@@ -4788,7 +4800,7 @@ function ewpa_register_custom_abilities(): void {
 			'ewpa/update-post-meta',
 			array(
 				'label'               => __( 'Update Post Meta', 'enable-abilities-for-mcp' ),
-				'description'         => __( 'Writes any post meta field by exact key. Use this when you know the exact meta key required by a specific SEO plugin or custom field (e.g. _genesis_title for The SEO Framework, _seopress_titles_title for SEOPress). Requires edit_post capability on the target post. Protected keys (leading underscore) are refused unless the site authorizes them for the user (register_post_meta auth_callback or the auth_post_meta_{key} filter, i.e. edit_post_meta).', 'enable-abilities-for-mcp' ),
+				'description'         => __( 'Writes any post meta field by exact key. Use this when you know the exact meta key required by a specific SEO plugin or custom field (e.g. _genesis_title for The SEO Framework, _seopress_titles_title for SEOPress). Requires edit_post capability on the target post. Protected keys (leading underscore) require a site administrator, or an explicit authorization of that key for that user (register_post_meta auth_callback or the auth_post_meta_{key} filter).', 'enable-abilities-for-mcp' ),
 				'category'            => 'content-management',
 				'input_schema'        => array(
 					'type'       => 'object',
@@ -4847,7 +4859,7 @@ function ewpa_register_custom_abilities(): void {
 						return new WP_Error( 'blocked_key', 'This meta key is protected and cannot be written via this ability.' );
 					}
 
-					// Protected keys (leading underscore, internal data) need WordPress's own edit_post_meta authorization.
+					// Protected keys (leading underscore, internal data) need an administrator or an explicit edit_post_meta grant.
 					$meta_check = ewpa_check_meta_write( $post_id, $meta_key );
 					if ( is_wp_error( $meta_check ) ) {
 						return $meta_check;
