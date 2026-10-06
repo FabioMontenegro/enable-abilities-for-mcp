@@ -183,6 +183,7 @@ request, and the library's own behaviour is bit-for-bit what it was.
 
 - **Capability checks everywhere** — every ability declares a `permission_callback`; per-post abilities check `read_post`/`edit_post` on the specific target, not just site-wide caps
 - **OAuth 2.1 connector** — opt-in, PKCE S256, Client ID Metadata Documents restricted to trusted publishers (Claude bundled), per-user consent screen, JWT-authenticated transport
+- **Revocable OAuth sessions** — each connector session is a WordPress Application Password named `MCP OAuth – <client> – <date>`, with Last Used and Last IP filled in. Turning the OAuth switch off, changing the user's password, "Log Out Everywhere", revoking the Application Password, or deactivating the plugin ends the session; a revoked connector must be approved again and never reconnects on its own. While the switch is off the OAuth server stays off, even if another plugin boots the same OAuth library
 - **Third-party connectors** — separately opt-in; a self-registering client may only ever return users to a callback URL an administrator has listed, checked again on every authorization request
 - **Bearer token** stored as SHA-256 hash, tied to an admin account, revocable at any time
 - **Per-ability toggles** — anything disabled is simply never registered

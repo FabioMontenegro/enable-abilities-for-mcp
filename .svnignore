@@ -25,6 +25,7 @@ build-release-zip.php
 *.tar.gz
 dist
 tests
+odd
 *.log
 debug.log
 error_log
