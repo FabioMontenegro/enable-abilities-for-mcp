@@ -181,7 +181,7 @@ request, and the library's own behaviour is bit-for-bit what it was.
 
 ## Security model
 
-- **Capability checks everywhere** — every ability declares a `permission_callback`; per-post abilities check `read_post`/`edit_post` on the specific target, not just site-wide caps
+- **Capability checks everywhere** — every ability declares a `permission_callback`; per-post abilities check `read_post`/`edit_post` on the specific target, not just site-wide caps. Publishing requires the publish capability of that post type and is refused with an error rather than degraded to a draft; an author or a parent taken from the input is validated against `edit_others_posts` and against permission on the parent; listing non-published statuses requires an editing capability and the results are filtered per post
 - **OAuth 2.1 connector** — opt-in, PKCE S256, Client ID Metadata Documents restricted to trusted publishers (Claude bundled), per-user consent screen, JWT-authenticated transport
 - **Revocable OAuth sessions** — each connector session is a WordPress Application Password named `MCP OAuth – <client> – <date>`, with Last Used and Last IP filled in. Turning the OAuth switch off, changing the user's password, "Log Out Everywhere", revoking the Application Password, or deactivating the plugin ends the session; a revoked connector must be approved again and never reconnects on its own. While the switch is off the OAuth server stays off, even if another plugin boots the same OAuth library
 - **Third-party connectors** — separately opt-in; a self-registering client may only ever return users to a callback URL an administrator has listed, checked again on every authorization request

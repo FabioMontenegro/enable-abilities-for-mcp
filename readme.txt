@@ -5,7 +5,7 @@ Tags: mcp, ai, rest-api, content-management, woocommerce
 Requires at least: 6.9
 Tested up to: 7.1
 Requires PHP: 8.0
-Stable tag: 2.13.2
+Stable tag: 2.13.3
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -260,6 +260,17 @@ Yes — strict OAuth clients require a direct `200` on `/.well-known/oauth-autho
 
 == Changelog ==
 
+= 2.13.3 =
+* Security: object-level authorization across every ability that reads or writes a post. A capability was checked site-wide (`edit_posts`, `read`, `edit_products`) but never against the specific post, so a Contributor could duplicate another author's draft and publish it keeping the original author, publish their own posts without review, and a Subscriber could list every draft on the site. Every per-post ability now checks `read_post` or `edit_post` on the target, an `author_id` from the input requires `edit_others_posts`, and a `post_parent` from the input requires permission on the parent. Reported privately by an independent security researcher.
+* Security: student records (`ewpa/tutor-get-user-progress`, `ewpa/tutor-get-quiz-results`) require `edit_users`, matching their LearnDash equivalents, instead of `edit_posts`. The SEO readers (Rank Math, SEOPress, Yoast), `ewpa/tec-get-event`, `ewpa/ld-get-course` and `ewpa/get-accessibility-snapshot` now check the object or a capability that matches what they return.
+* Security: `ewpa/upload-image` checks `edit_post` on the parent before attaching an image or setting a featured image.
+* Security: protected meta keys (leading underscore) require `edit_post` on the target plus either `manage_options` or an explicit `register_post_meta()` / `auth_post_meta_{key}` authorization. Writing SEO keys such as `_genesis_title` keeps working for administrators; `ewpa/get-cpt-item` no longer returns protected meta to a user who cannot edit the item.
+* Security: creating a term by name requires the taxonomy's `edit_terms` capability, in `ewpa/assign-post-terms`, `ewpa/assign-cpt-terms` and the `taxonomies` field of the CPT abilities.
+* Fixed: `ewpa/get-posts` and `ewpa/get-pages` no longer emit "Undefined array key" notices for `status`, `orderby` and `order`, which disclosed the server path on any site rendering PHP notices.
+* Fixed: a disabled third-party ability could silently re-enable itself when its plugin happened to be inactive while the settings page rendered, because the denylist was recalculated from whatever that page offered.
+* **Behavior change:** asking for `publish`, `future` or `private` without the publish capability of that post type now returns a `forbidden` error, which is what the WordPress REST API does, instead of silently saving a draft. An agent flow that relied on that silent fallback will receive an error from now on.
+* **Behavior change:** the listing abilities validate `status` against the statuses actually registered on the site and return `invalid_status` for anything else. Custom statuses such as WooCommerce's `wc-processing` now work, and a typo no longer falls back to `date`/`publish` without saying so.
+
 = 2.13.2 =
 * New: FAQ entry for the ChatGPT connector failing with "metadata must advertise PKCE support with code_challenge_methods_supported containing S256". Both Claude and ChatGPT fetch the discovery documents server-side with a `python-httpx` User-Agent, so a WAF blocking it breaks the connector while every browser check keeps passing. Reported by @slavaliutkevich.
 * Updated: the MCP Adapter links now point to its WordPress.org page instead of its GitHub releases. The plugin was published to the directory on 2026-10-02, so it can be installed from the dashboard like any other plugin.
@@ -395,6 +406,9 @@ Yes — strict OAuth clients require a direct `200` on `/.well-known/oauth-autho
 * See [changelog.txt](https://plugins.trac.wordpress.org/browser/enable-abilities-for-mcp/trunk/changelog.txt) for the full history of older versions.
 
 == Upgrade Notice ==
+
+= 2.13.3 =
+Security release, recommended for every site. Closes a privilege escalation: a Contributor could duplicate and publish another author's draft keeping the original author, and a Subscriber could list every draft on the site. Behavior change: requesting `publish`, `future` or `private` without the publish capability now returns an error instead of saving a draft in silence.
 
 = 2.13.2 =
 Documentation only: explains the ChatGPT PKCE error caused by a WAF blocking the discovery requests, and points the MCP Adapter links at its new WordPress.org page.
