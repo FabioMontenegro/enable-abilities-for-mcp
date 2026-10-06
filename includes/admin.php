@@ -41,7 +41,7 @@ function ewpa_admin_notice_mcp_adapter(): void {
 		return;
 	}
 
-	$mcp_url = 'https://github.com/WordPress/mcp-adapter/releases';
+	$mcp_url = 'https://wordpress.org/plugins/mcp-adapter/';
 	?>
 	<div class="notice notice-warning is-dismissible">
 		<p>

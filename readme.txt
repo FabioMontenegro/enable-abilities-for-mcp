@@ -5,7 +5,7 @@ Tags: mcp, ai, rest-api, content-management, woocommerce
 Requires at least: 6.9
 Tested up to: 7.1
 Requires PHP: 8.0
-Stable tag: 2.13.1
+Stable tag: 2.13.2
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -204,7 +204,7 @@ Prefer tokens? Application Passwords (per-user) and a single-admin Bearer token 
 1. In your WordPress dashboard, go to **Plugins > Add New** and search for **Enable Abilities for MCP**.
 2. Click **Install Now**, then **Activate**.
 3. Go to **Settings > WP Abilities** to manage which abilities are active.
-4. Install and configure the [MCP Adapter](https://github.com/WordPress/mcp-adapter/releases) plugin to connect with AI assistants.
+4. Install and configure the [MCP Adapter](https://wordpress.org/plugins/mcp-adapter/) plugin to connect with AI assistants.
 
 == Frequently Asked Questions ==
 
@@ -259,6 +259,10 @@ Yes — strict OAuth clients require a direct `200` on `/.well-known/oauth-autho
 1. Admin settings page showing all abilities organized by category with toggle switches.
 
 == Changelog ==
+
+= 2.13.2 =
+* New: FAQ entry for the ChatGPT connector failing with "metadata must advertise PKCE support with code_challenge_methods_supported containing S256". Both Claude and ChatGPT fetch the discovery documents server-side with a `python-httpx` User-Agent, so a WAF blocking it breaks the connector while every browser check keeps passing. Reported by @slavaliutkevich.
+* Updated: the MCP Adapter links now point to its WordPress.org page instead of its GitHub releases. The plugin was published to the directory on 2026-10-02, so it can be installed from the dashboard like any other plugin.
 
 = 2.13.1 =
 * Security fix: turning the "claude.ai OAuth Custom Connector" switch off now ends every existing OAuth connector session on that site. Before, the sessions were only unreachable while the switch was off, so turning it back on let an old connector reconnect on its own for up to 30 days without a new approval.
@@ -391,6 +395,9 @@ Yes — strict OAuth clients require a direct `200` on `/.well-known/oauth-autho
 * See [changelog.txt](https://plugins.trac.wordpress.org/browser/enable-abilities-for-mcp/trunk/changelog.txt) for the full history of older versions.
 
 == Upgrade Notice ==
+
+= 2.13.2 =
+Documentation only: explains the ChatGPT PKCE error caused by a WAF blocking the discovery requests, and points the MCP Adapter links at its new WordPress.org page.
 
 = 2.13.1 =
 Security fix: turning the OAuth connector off, changing a password or logging out everywhere now ends existing OAuth connector sessions. Recommended for every site using the claude.ai or ChatGPT connector.

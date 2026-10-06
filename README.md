@@ -11,7 +11,7 @@ Let AI assistants like Claude manage your WordPress site through the [Model Cont
 
 ## How it works
 
-WordPress 6.9 introduced the **Abilities API**: a standard way for external tools to discover and execute actions on your site. The official [MCP Adapter](https://github.com/WordPress/mcp-adapter) exposes those abilities to any MCP client.
+WordPress 6.9 introduced the **Abilities API**: a standard way for external tools to discover and execute actions on your site. The official [MCP Adapter](https://wordpress.org/plugins/mcp-adapter/) exposes those abilities to any MCP client.
 
 This plugin completes the stack:
 
@@ -60,7 +60,7 @@ Write abilities validate per-post permissions (`edit_post`, `read_post`) and des
 
 - WordPress 6.9+ · PHP 8.0+
 - Install **[Enable Abilities for MCP](https://wordpress.org/plugins/enable-abilities-for-mcp/)** from the plugin directory
-- Install the **[MCP Adapter](https://github.com/WordPress/mcp-adapter/releases)** plugin
+- Install the **[MCP Adapter](https://wordpress.org/plugins/mcp-adapter/)** plugin
 
 ### 2. Configure access
 
@@ -231,7 +231,7 @@ Abilities are registered with the standard `wp_register_ability()` API on the `w
 - [Plugin on WordPress.org](https://wordpress.org/plugins/enable-abilities-for-mcp/)
 - [Support forum](https://wordpress.org/support/plugin/enable-abilities-for-mcp/)
 - [Changelog](https://wordpress.org/plugins/enable-abilities-for-mcp/#developers)
-- [WordPress Abilities API](https://make.wordpress.org/core/2025/07/17/abilities-api/) · [MCP Adapter](https://github.com/WordPress/mcp-adapter)
+- [WordPress Abilities API](https://make.wordpress.org/core/2025/07/17/abilities-api/) · [MCP Adapter](https://wordpress.org/plugins/mcp-adapter/)
 - Author: [Fabio Montenegro](https://fabiomontenegro.com) · [LinkedIn](https://www.linkedin.com/in/fabio-montenegro/) · [Support on Ko-fi](https://ko-fi.com/fabiomontenegro)
 
 ## License
