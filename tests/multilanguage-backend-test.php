@@ -69,6 +69,15 @@ $cases = array(
 	'reports_polylang_term_link_that_did_not_persist',
 	'copies_post_language_without_translation_group',
 	'lists_language_taxonomies_of_every_backend',
+	'refuses_translation_when_source_is_not_readable',
+	'refuses_translation_into_a_type_the_user_cannot_create',
+	'refuses_to_overwrite_a_translation_the_user_cannot_edit',
+	'refuses_publishing_an_existing_translation_without_publish_capability',
+	'translation_refuses_publish_without_publish_capability',
+	'translation_belongs_to_current_user_without_edit_others',
+	'translation_keeps_source_author_with_edit_others',
+	'linguator_translation_without_edit_others_belongs_to_current_user',
+	'linguator_translation_refuses_publish_without_publish_capability',
 );
 
 $failures = 0;
@@ -213,7 +222,7 @@ function ewpa_bootstrap_case( string $case ): void {
 	$GLOBALS['ewpa_added_post_meta']             = array();
 	$GLOBALS['ewpa_added_term_meta']             = array();
 
-	if ( in_array( $case, array( 'detects_polylang', 'keeps_polylang_precedence_over_linguator', 'creates_polylang_translation_by_duplicating', 'creates_polylang_term_translation_by_duplicating', 'preserves_backslashes_when_copying_source_content', 'preserves_backslashes_in_translated_content', 'preserves_backslashes_when_updating_existing_translation', 'preserves_backslashes_in_copied_post_meta', 'preserves_backslashes_in_copied_term_meta', 'preserves_backslashes_in_duplicated_term', 'lists_polylang_languages_with_term_ids', 'links_polylang_post_translation_assigning_language', 'reports_polylang_post_link_that_did_not_persist', 'links_polylang_term_translation_assigning_language', 'reports_polylang_term_link_that_did_not_persist', 'copies_post_language_without_translation_group' ), true ) ) {
+	if ( in_array( $case, array( 'detects_polylang', 'keeps_polylang_precedence_over_linguator', 'creates_polylang_translation_by_duplicating', 'creates_polylang_term_translation_by_duplicating', 'preserves_backslashes_when_copying_source_content', 'preserves_backslashes_in_translated_content', 'preserves_backslashes_when_updating_existing_translation', 'preserves_backslashes_in_copied_post_meta', 'preserves_backslashes_in_copied_term_meta', 'preserves_backslashes_in_duplicated_term', 'lists_polylang_languages_with_term_ids', 'links_polylang_post_translation_assigning_language', 'reports_polylang_post_link_that_did_not_persist', 'links_polylang_term_translation_assigning_language', 'reports_polylang_term_link_that_did_not_persist', 'copies_post_language_without_translation_group', 'refuses_translation_when_source_is_not_readable', 'refuses_translation_into_a_type_the_user_cannot_create', 'refuses_to_overwrite_a_translation_the_user_cannot_edit', 'refuses_publishing_an_existing_translation_without_publish_capability', 'translation_refuses_publish_without_publish_capability', 'translation_belongs_to_current_user_without_edit_others', 'translation_keeps_source_author_with_edit_others' ), true ) ) {
 		require_once __DIR__ . '/doubles/polylang.php';
 	}
 
@@ -277,6 +286,33 @@ function ewpa_bootstrap_case( string $case ): void {
 			'en' => 5,
 			'it' => 6,
 		);
+	}
+
+	if ( in_array( $case, array( 'refuses_to_overwrite_a_translation_the_user_cannot_edit', 'refuses_publishing_an_existing_translation_without_publish_capability' ), true ) ) {
+		$GLOBALS['ewpa_pll_translations'] = array(
+			'en' => 10,
+			'it' => 20,
+		);
+	}
+
+	if ( 'refuses_translation_when_source_is_not_readable' === $case ) {
+		$GLOBALS['ewpa_denied_caps'] = array( 'read_post:10' );
+	}
+	if ( 'refuses_translation_into_a_type_the_user_cannot_create' === $case ) {
+		$GLOBALS['ewpa_denied_caps'] = array( 'edit_posts' );
+	}
+	if ( 'refuses_to_overwrite_a_translation_the_user_cannot_edit' === $case ) {
+		$GLOBALS['ewpa_denied_caps'] = array( 'edit_post:20' );
+	}
+	if ( 'refuses_publishing_an_existing_translation_without_publish_capability' === $case ) {
+		$GLOBALS['ewpa_denied_caps'] = array( 'publish_post:20' );
+	}
+	if ( in_array( $case, array( 'translation_refuses_publish_without_publish_capability', 'linguator_translation_refuses_publish_without_publish_capability' ), true ) ) {
+		$GLOBALS['ewpa_denied_caps'] = array( 'publish_posts' );
+	}
+	if ( in_array( $case, array( 'translation_belongs_to_current_user_without_edit_others', 'linguator_translation_without_edit_others_belongs_to_current_user' ), true ) ) {
+		$GLOBALS['ewpa_denied_caps']  = array( 'edit_others_posts' );
+		$GLOBALS['ewpa_current_user'] = 2;
 	}
 }
 
@@ -478,6 +514,59 @@ function ewpa_run_case( string $case ): void {
 			ewpa_assert_same( false, $result['created'] );
 			ewpa_assert_same( $translated, $GLOBALS['ewpa_updated_posts'][0]['post_content'] );
 			break;
+		case 'refuses_translation_when_source_is_not_readable':
+			$result = ewpa_multilanguage_create_post_translation( 10, 'it', array( 'title' => 'Ciao' ) );
+			ewpa_assert_true( $result instanceof WP_Error, ewpa_describe( $result ) );
+			ewpa_assert_same( 'forbidden', $result->get_error_code() );
+			ewpa_assert_same( 0, count( $GLOBALS['ewpa_inserted_posts'] ) );
+			break;
+		case 'refuses_translation_into_a_type_the_user_cannot_create':
+			$result = ewpa_multilanguage_create_post_translation( 10, 'it', array( 'title' => 'Ciao' ) );
+			ewpa_assert_true( $result instanceof WP_Error, ewpa_describe( $result ) );
+			ewpa_assert_same( 'forbidden', $result->get_error_code() );
+			ewpa_assert_same( 0, count( $GLOBALS['ewpa_inserted_posts'] ) );
+			break;
+		case 'refuses_to_overwrite_a_translation_the_user_cannot_edit':
+			$result = ewpa_multilanguage_create_post_translation( 10, 'it', array( 'title' => 'Overwritten' ) );
+			ewpa_assert_true( $result instanceof WP_Error, ewpa_describe( $result ) );
+			ewpa_assert_same( 'forbidden', $result->get_error_code() );
+			ewpa_assert_same( 0, count( $GLOBALS['ewpa_updated_posts'] ) );
+			ewpa_assert_same( 'Ciao', $GLOBALS['ewpa_posts'][20]->post_title );
+			break;
+		case 'refuses_publishing_an_existing_translation_without_publish_capability':
+			$result = ewpa_multilanguage_create_post_translation( 10, 'it', array( 'status' => 'publish' ) );
+			ewpa_assert_true( $result instanceof WP_Error, ewpa_describe( $result ) );
+			ewpa_assert_same( 'forbidden', $result->get_error_code() );
+			ewpa_assert_same( 0, count( $GLOBALS['ewpa_updated_posts'] ) );
+			break;
+		case 'translation_refuses_publish_without_publish_capability':
+			$result = ewpa_multilanguage_create_post_translation( 10, 'it', array( 'status' => 'publish' ) );
+			ewpa_assert_true( $result instanceof WP_Error, ewpa_describe( $result ) );
+			ewpa_assert_same( 'forbidden', $result->get_error_code() );
+			ewpa_assert_same( 0, count( $GLOBALS['ewpa_inserted_posts'] ) );
+			break;
+		case 'translation_belongs_to_current_user_without_edit_others':
+			$result = ewpa_multilanguage_create_post_translation( 10, 'it', array( 'title' => 'Ciao' ) );
+			ewpa_assert_true( ! $result instanceof WP_Error, ewpa_describe( $result ) );
+			ewpa_assert_same( 2, (int) $GLOBALS['ewpa_inserted_posts'][0]['post_author'] );
+			break;
+		case 'translation_keeps_source_author_with_edit_others':
+			$result = ewpa_multilanguage_create_post_translation( 10, 'it', array( 'title' => 'Ciao' ) );
+			ewpa_assert_true( ! $result instanceof WP_Error, ewpa_describe( $result ) );
+			ewpa_assert_same( 1, (int) $GLOBALS['ewpa_inserted_posts'][0]['post_author'] );
+			ewpa_assert_same( 'draft', $GLOBALS['ewpa_inserted_posts'][0]['post_status'] );
+			break;
+		case 'linguator_translation_without_edit_others_belongs_to_current_user':
+			$result = ewpa_multilanguage_create_post_translation( 10, 'it', array( 'title' => 'Ciao' ) );
+			ewpa_assert_true( ! $result instanceof WP_Error, ewpa_describe( $result ) );
+			ewpa_assert_same( 2, (int) $GLOBALS['ewpa_posts'][ $result['post_id'] ]->post_author );
+			break;
+		case 'linguator_translation_refuses_publish_without_publish_capability':
+			$result = ewpa_multilanguage_create_post_translation( 10, 'it', array( 'status' => 'publish' ) );
+			ewpa_assert_true( $result instanceof WP_Error, ewpa_describe( $result ) );
+			ewpa_assert_same( 'forbidden', $result->get_error_code() );
+			ewpa_assert_same( 0, count( $GLOBALS['ewpa_copied_posts'] ) );
+			break;
 		case 'sets_linguator_term_language':
 			$result = ewpa_multilanguage_set_term_language( 6, 'it' );
 			ewpa_assert_true( ! $result instanceof WP_Error, ewpa_describe( $result ) );
@@ -668,6 +757,43 @@ function ewpa_run_case( string $case ): void {
  * WORDPRESS FUNCTION DOUBLES
  * ==========================================================================
  */
+
+function __( $text, $domain = '' ) {
+	return $text;
+}
+
+function get_current_user_id() {
+	return $GLOBALS['ewpa_current_user'] ?? 1;
+}
+
+/**
+ * Allows every capability unless the case lists it in ewpa_denied_caps.
+ *
+ * An entry is either a capability ("edit_posts") or a meta capability bound to
+ * one object ("edit_post:20").
+ *
+ * @param string $capability Capability to check.
+ * @param mixed  ...$args    Optional object ID.
+ * @return bool
+ */
+function current_user_can( $capability, ...$args ) {
+	foreach ( $GLOBALS['ewpa_denied_caps'] ?? array() as $denied ) {
+		if ( $denied === $capability || ( isset( $args[0] ) && $denied === $capability . ':' . $args[0] ) ) {
+			return false;
+		}
+	}
+	return true;
+}
+
+function get_post_type_object( $post_type ) {
+	return (object) array(
+		'cap' => (object) array(
+			'create_posts'      => 'edit_posts',
+			'edit_others_posts' => 'edit_others_posts',
+			'publish_posts'     => 'publish_posts',
+		),
+	);
+}
 
 function sanitize_key( $key ) {
 	return strtolower( preg_replace( '/[^a-z0-9_\-]/i', '', (string) $key ) );
