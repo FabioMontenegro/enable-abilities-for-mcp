@@ -1446,8 +1446,8 @@ function ewpa_register_custom_abilities(): void {
 				},
 				'execute_callback'    => function ( $input ) {
 					$allowed_status = array( 'draft', 'publish', 'pending', 'private', 'future' );
-					$status = in_array( $input['status'] ?? 'draft', $allowed_status, true )
-						? $input['status'] : 'draft';
+					$requested      = $input['status'] ?? 'draft';
+					$status         = in_array( $requested, $allowed_status, true ) ? $requested : 'draft';
 
 					$post_data = array(
 						'post_title'   => sanitize_text_field( $input['title'] ),
@@ -1469,7 +1469,11 @@ function ewpa_register_custom_abilities(): void {
 						}
 					}
 					if ( ! empty( $input['author_id'] ) ) {
-						$author_id = absint( $input['author_id'] );
+						$author_id    = absint( $input['author_id'] );
+						$author_check = ewpa_check_author_assignment( $author_id, 'post' );
+						if ( is_wp_error( $author_check ) ) {
+							return $author_check;
+						}
 						if ( get_userdata( $author_id ) ) {
 							$post_data['post_author'] = $author_id;
 						}
@@ -1621,6 +1625,9 @@ function ewpa_register_custom_abilities(): void {
 					if ( isset( $input['status'] ) ) {
 						$allowed_status = array( 'draft', 'publish', 'pending', 'private' );
 						if ( in_array( $input['status'], $allowed_status, true ) ) {
+							if ( $input['status'] !== $post->post_status && ewpa_status_needs_publish_cap( $input['status'] ) && ! current_user_can( 'publish_post', $post_id ) ) {
+								return ewpa_publish_forbidden_error();
+							}
 							$post_data['post_status'] = $input['status'];
 						}
 					}
@@ -2484,9 +2491,15 @@ function ewpa_register_custom_abilities(): void {
 					if ( ! $post || 'revision' === $post->post_type || 'attachment' === $post->post_type ) {
 						return new WP_Error( 'not_found', __( 'Post not found or type cannot be duplicated.', 'enable-abilities-for-mcp' ) );
 					}
+					if ( ! current_user_can( 'read_post', $post_id ) ) {
+						return new WP_Error( 'forbidden', __( 'You do not have permission to read this post.', 'enable-abilities-for-mcp' ) );
+					}
+					if ( ! ewpa_user_can_for_type( $post->post_type, 'create_posts' ) ) {
+						return new WP_Error( 'forbidden', __( 'You do not have permission to create items of this type.', 'enable-abilities-for-mcp' ) );
+					}
 
 					$title      = isset( $input['title'] ) ? sanitize_text_field( $input['title'] ) : $post->post_title . ' (Copy)';
-					$status     = isset( $input['status'] ) ? sanitize_text_field( $input['status'] ) : 'draft';
+					$status     = ewpa_resolve_new_post_status( isset( $input['status'] ) ? sanitize_text_field( $input['status'] ) : 'draft', $post->post_type );
 					$copy_meta  = ! isset( $input['copy_meta'] ) || (bool) $input['copy_meta'];
 					$copy_terms = ! isset( $input['copy_terms'] ) || (bool) $input['copy_terms'];
 
@@ -2498,7 +2511,7 @@ function ewpa_register_custom_abilities(): void {
 								'post_excerpt'   => $post->post_excerpt,
 								'post_status'    => $status,
 								'post_type'      => $post->post_type,
-								'post_author'    => $post->post_author,
+								'post_author'    => ewpa_user_can_for_type( $post->post_type, 'edit_others_posts' ) ? $post->post_author : get_current_user_id(),
 								'post_parent'    => $post->post_parent,
 								'menu_order'     => $post->menu_order,
 								'comment_status' => $post->comment_status,
@@ -5456,10 +5469,10 @@ function ewpa_register_custom_abilities(): void {
 						return new WP_Error( 'forbidden', __( 'You do not have permission to create items of this type.', 'enable-abilities-for-mcp' ) );
 					}
 
+					// Publishing needs the publish capability of this post type; without it the item stays a draft.
 					$allowed_statuses = array( 'draft', 'publish', 'pending', 'private' );
-					$status           = in_array( $input['status'] ?? 'draft', $allowed_statuses, true )
-						? $input['status']
-						: 'draft';
+					$requested        = $input['status'] ?? 'draft';
+					$status           = ewpa_resolve_new_post_status( in_array( $requested, $allowed_statuses, true ) ? $requested : 'draft', $cpt_obj->name );
 
 					$post_data = array(
 						'post_type'   => $cpt_obj->name,
@@ -5473,14 +5486,29 @@ function ewpa_register_custom_abilities(): void {
 					if ( isset( $input['excerpt'] ) ) {
 						$post_data['post_excerpt'] = sanitize_textarea_field( $input['excerpt'] );
 					}
-					if ( isset( $input['post_parent'] ) ) {
-						$post_data['post_parent'] = absint( $input['post_parent'] );
+					if ( ! empty( $input['post_parent'] ) ) {
+						$parent_id = absint( $input['post_parent'] );
+						if ( ! get_post( $parent_id ) ) {
+							return new WP_Error( 'invalid_parent', __( 'The parent item does not exist.', 'enable-abilities-for-mcp' ) );
+						}
+						if ( ! current_user_can( 'edit_post', $parent_id ) ) {
+							return new WP_Error( 'invalid_parent', __( 'You do not have permission to use the selected parent item.', 'enable-abilities-for-mcp' ) );
+						}
+						$post_data['post_parent'] = $parent_id;
 					}
 					if ( isset( $input['menu_order'] ) ) {
 						$post_data['menu_order'] = intval( $input['menu_order'] );
 					}
-					if ( isset( $input['author_id'] ) ) {
-						$post_data['post_author'] = absint( $input['author_id'] );
+					if ( ! empty( $input['author_id'] ) ) {
+						$author_id    = absint( $input['author_id'] );
+						$author_check = ewpa_check_author_assignment( $author_id, $cpt_obj->name );
+						if ( is_wp_error( $author_check ) ) {
+							return $author_check;
+						}
+						if ( ! get_userdata( $author_id ) ) {
+							return new WP_Error( 'invalid_author', __( 'The author does not exist.', 'enable-abilities-for-mcp' ) );
+						}
+						$post_data['post_author'] = $author_id;
 					}
 					if ( isset( $input['slug'] ) ) {
 						$post_data['post_name'] = sanitize_title( $input['slug'] );
@@ -5641,6 +5669,9 @@ function ewpa_register_custom_abilities(): void {
 					if ( isset( $input['status'] ) ) {
 						$allowed_statuses = array( 'draft', 'publish', 'pending', 'private' );
 						if ( in_array( $input['status'], $allowed_statuses, true ) ) {
+							if ( $input['status'] !== $post->post_status && ewpa_status_needs_publish_cap( $input['status'] ) && ! ewpa_user_can_for_type( $cpt_obj->name, 'publish_posts' ) ) {
+								return ewpa_publish_forbidden_error();
+							}
 							$post_data['post_status'] = $input['status'];
 						}
 					}
@@ -5654,6 +5685,9 @@ function ewpa_register_custom_abilities(): void {
 						}
 						if ( $parent_id && ! get_post( $parent_id ) ) {
 							return new WP_Error( 'invalid_parent', __( 'The parent item does not exist.', 'enable-abilities-for-mcp' ) );
+						}
+						if ( $parent_id && ! current_user_can( 'edit_post', $parent_id ) ) {
+							return new WP_Error( 'invalid_parent', __( 'You do not have permission to use the selected parent item.', 'enable-abilities-for-mcp' ) );
 						}
 						$post_data['post_parent'] = $parent_id;
 					}
@@ -7483,6 +7517,9 @@ function ewpa_register_custom_abilities(): void {
 					if ( ! $post || Tribe__Events__Main::POSTTYPE !== $post->post_type ) {
 						return new WP_Error( 'not_found', __( 'Event not found.', 'enable-abilities-for-mcp' ), array( 'status' => 404 ) );
 					}
+					if ( ! current_user_can( 'edit_post', $event_id ) ) {
+						return new WP_Error( 'forbidden', __( 'You do not have permission to edit this post.', 'enable-abilities-for-mcp' ) );
+					}
 
 					$post_args = array( 'ID' => $event_id );
 					if ( isset( $args['title'] ) ) {
@@ -7492,7 +7529,11 @@ function ewpa_register_custom_abilities(): void {
 						$post_args['post_content'] = wp_slash( $args['description'] );
 					}
 					if ( isset( $args['status'] ) ) {
-						$post_args['post_status'] = sanitize_text_field( $args['status'] );
+						$new_status = sanitize_text_field( $args['status'] );
+						if ( $new_status !== $post->post_status && ewpa_status_needs_publish_cap( $new_status ) && ! ewpa_user_can_for_type( $post->post_type, 'publish_posts' ) ) {
+							return ewpa_publish_forbidden_error();
+						}
+						$post_args['post_status'] = $new_status;
 					}
 
 					if ( count( $post_args ) > 1 ) {

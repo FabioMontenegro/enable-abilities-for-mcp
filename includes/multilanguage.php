@@ -36,6 +36,82 @@ function ewpa_absint( $value ): int {
 }
 
 /**
+ * Tells whether a post status needs the publish capability of its post type.
+ *
+ * @param mixed $status Post status.
+ * @return bool
+ */
+function ewpa_status_needs_publish_cap( $status ): bool {
+	return in_array( (string) $status, array( 'publish', 'private', 'future' ), true );
+}
+
+/**
+ * Tells whether the current user holds one capability of a post type.
+ *
+ * Fails closed: an unknown post type or a missing capability name denies.
+ *
+ * @param string $post_type  Post type slug.
+ * @param string $capability Key of the post type capability object.
+ * @return bool
+ */
+function ewpa_user_can_for_type( string $post_type, string $capability ): bool {
+	$type = get_post_type_object( $post_type );
+
+	return $type && isset( $type->cap->$capability ) && current_user_can( $type->cap->$capability );
+}
+
+/**
+ * Resolves the status a new post may be created with.
+ *
+ * A status that publishes content needs the publish capability of the post
+ * type; without it the post is created as a draft.
+ *
+ * @param mixed  $requested Requested status.
+ * @param string $post_type Post type slug.
+ * @return string
+ */
+function ewpa_resolve_new_post_status( $requested, string $post_type ): string {
+	$requested = (string) $requested;
+	$allowed   = array( 'draft', 'publish', 'pending', 'private', 'future' );
+
+	if ( ! in_array( $requested, $allowed, true ) ) {
+		return 'draft';
+	}
+	if ( ewpa_status_needs_publish_cap( $requested ) && ! ewpa_user_can_for_type( $post_type, 'publish_posts' ) ) {
+		return 'draft';
+	}
+
+	return $requested;
+}
+
+/**
+ * Builds the error returned when a status change needs a missing publish capability.
+ *
+ * @return WP_Error
+ */
+function ewpa_publish_forbidden_error() {
+	return new WP_Error( 'forbidden', __( 'You do not have permission to publish this content.', 'enable-abilities-for-mcp' ) );
+}
+
+/**
+ * Checks that the current user may assign posts of a type to another author.
+ *
+ * @param int    $author_id Requested author user ID.
+ * @param string $post_type Post type slug.
+ * @return true|WP_Error
+ */
+function ewpa_check_author_assignment( int $author_id, string $post_type ) {
+	if ( ! $author_id || get_current_user_id() === $author_id ) {
+		return true;
+	}
+	if ( ewpa_user_can_for_type( $post_type, 'edit_others_posts' ) ) {
+		return true;
+	}
+
+	return new WP_Error( 'forbidden', __( 'You do not have permission to assign content to another author.', 'enable-abilities-for-mcp' ) );
+}
+
+/**
  * Tells whether an object exposes a callable method.
  *
  * Linguator's model routes get_languages_list(), get_language() and friends through
@@ -746,6 +822,9 @@ function ewpa_multilanguage_create_post_translation( int $source_id, string $tar
 	if ( true !== $validation ) {
 		return $validation;
 	}
+	if ( ! current_user_can( 'read_post', $source_id ) ) {
+		return ewpa_multilanguage_error( 'forbidden', __( 'You do not have permission to read this post.', 'enable-abilities-for-mcp' ) );
+	}
 
 	$target = ewpa_sanitize_language_slug( $target_language );
 	if ( '' === $target ) {
@@ -790,6 +869,11 @@ function ewpa_multilanguage_create_post_translation( int $source_id, string $tar
 	$existing_id  = ewpa_absint( $existing_map[ $target ] ?? 0 );
 	if ( $existing_id && $existing_id !== $source_id && get_post( $existing_id ) ) {
 		return ewpa_multilanguage_update_post_translation( $source_id, $existing_id, $target, $plugin, $fields );
+	}
+
+	$source_post = get_post( $source_id );
+	if ( ! ewpa_user_can_for_type( (string) $source_post->post_type, 'create_posts' ) ) {
+		return ewpa_multilanguage_error( 'forbidden', __( 'You do not have permission to create items of this type.', 'enable-abilities-for-mcp' ) );
 	}
 
 	if ( 'linguator' === $plugin ) {
@@ -840,6 +924,17 @@ function ewpa_multilanguage_slash_post_fields( array $fields ): array {
  * @return array|WP_Error
  */
 function ewpa_multilanguage_update_post_translation( int $source_id, int $translated_id, string $target, string $plugin, array $fields ) {
+	// The translation may belong to someone else: overwriting it needs edit rights on that post.
+	if ( ! current_user_can( 'edit_post', $translated_id ) ) {
+		return ewpa_multilanguage_error( 'forbidden', __( 'You do not have permission to edit this post.', 'enable-abilities-for-mcp' ) );
+	}
+	if ( isset( $fields['post_status'] )
+		&& ewpa_status_needs_publish_cap( $fields['post_status'] )
+		&& get_post_status( $translated_id ) !== $fields['post_status']
+		&& ! current_user_can( 'publish_post', $translated_id ) ) {
+		return ewpa_publish_forbidden_error();
+	}
+
 	if ( ! empty( $fields ) ) {
 		$update       = $fields;
 		$update['ID'] = $translated_id;
@@ -890,8 +985,13 @@ function ewpa_linguator_create_post_translation( int $source_id, string $source_
 		);
 	}
 
-	// copy_post() forces its own status for new posts; apply ours afterwards.
-	$requested_status = $fields['post_status'] ?? '';
+	// copy_post() forces its own status for new posts; apply ours afterwards,
+	// falling back to a draft when the user cannot publish this post type.
+	$requested_status = '';
+	if ( isset( $fields['post_status'] ) ) {
+		$source_post      = get_post( $source_id );
+		$requested_status = ewpa_resolve_new_post_status( $fields['post_status'], $source_post ? (string) $source_post->post_type : 'post' );
+	}
 	unset( $fields['post_status'] );
 
 	try {
@@ -916,6 +1016,17 @@ function ewpa_linguator_create_post_translation( int $source_id, string $source_
 			array(
 				'ID'          => $translated_id,
 				'post_status' => $requested_status,
+			)
+		);
+	}
+
+	// copy_post() keeps the source author; without edit_others the copy is the current user's.
+	$copy = get_post( $translated_id );
+	if ( $copy && ! ewpa_user_can_for_type( (string) $copy->post_type, 'edit_others_posts' ) && get_current_user_id() !== (int) $copy->post_author ) {
+		wp_update_post(
+			array(
+				'ID'          => $translated_id,
+				'post_author' => get_current_user_id(),
 			)
 		);
 	}
@@ -965,8 +1076,8 @@ function ewpa_multilanguage_duplicate_post_translation( int $source_id, string $
 
 	$args = array(
 		'post_type'      => $source->post_type,
-		'post_author'    => $source->post_author,
-		'post_status'    => $fields['post_status'] ?? 'draft',
+		'post_author'    => ewpa_user_can_for_type( (string) $source->post_type, 'edit_others_posts' ) ? $source->post_author : get_current_user_id(),
+		'post_status'    => ewpa_resolve_new_post_status( $fields['post_status'] ?? 'draft', (string) $source->post_type ),
 		'post_title'     => $fields['post_title'] ?? $source->post_title,
 		'post_content'   => $fields['post_content'] ?? $source->post_content,
 		'post_excerpt'   => $fields['post_excerpt'] ?? $source->post_excerpt,
