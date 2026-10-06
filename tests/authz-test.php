@@ -426,6 +426,17 @@ function ewpa_callback( string $ability ): callable {
 }
 
 /**
+ * Runs the permission callback of a registered ability.
+ *
+ * @param string $ability Ability name.
+ * @param mixed  $input   Ability input.
+ * @return mixed
+ */
+function ewpa_callback_permission( string $ability, $input = array() ) {
+	return $GLOBALS['ewpa_registered'][ $ability ]['permission_callback']( $input );
+}
+
+/**
  * Tells whether a result is a WP_Error with the given code.
  *
  * @param mixed  $result Result to inspect.
@@ -451,21 +462,29 @@ ewpa_check( 'duplicate_refuses_source_the_user_cannot_read', ewpa_is_error( $res
 ewpa_check( 'duplicate_does_not_insert_when_source_is_unreadable', array() === $GLOBALS['ewpa_inserted'] );
 
 ewpa_reset();
-$result = ewpa_callback( 'ewpa/duplicate-post' )(
-	array(
-		'post_id' => 101,
-		'status'  => 'publish',
-	)
-);
+$result = ewpa_callback( 'ewpa/duplicate-post' )( array( 'post_id' => 101 ) );
 ewpa_check( 'duplicate_allows_reading_a_published_source', ! is_wp_error( $result ) );
 ewpa_check(
-	'duplicate_falls_back_to_draft_without_publish_capability',
+	'duplicate_defaults_to_draft',
 	! is_wp_error( $result ) && 'draft' === $GLOBALS['ewpa_posts'][ $result['new_post_id'] ]->post_status && 'draft' === $result['status']
 );
 ewpa_check(
 	'duplicate_belongs_to_current_user_without_edit_others',
 	! is_wp_error( $result ) && 2 === $GLOBALS['ewpa_posts'][ $result['new_post_id'] ]->post_author
 );
+
+// Part A: a refused status is an error, as in the core REST controller, never a silent draft.
+foreach ( array( 'publish', 'private', 'future' ) as $refused_status ) {
+	ewpa_reset();
+	$result = ewpa_callback( 'ewpa/duplicate-post' )(
+		array(
+			'post_id' => 101,
+			'status'  => $refused_status,
+		)
+	);
+	ewpa_check( 'duplicate_refuses_' . $refused_status . '_without_publish_capability', ewpa_is_error( $result, 'forbidden' ) );
+	ewpa_check( 'duplicate_does_not_insert_when_' . $refused_status . '_is_refused', array() === $GLOBALS['ewpa_inserted'] );
+}
 
 ewpa_reset();
 $result = ewpa_callback( 'ewpa/duplicate-post' )(
@@ -475,8 +494,20 @@ $result = ewpa_callback( 'ewpa/duplicate-post' )(
 	)
 );
 ewpa_check(
-	'duplicate_falls_back_to_draft_for_private_without_publish_capability',
-	! is_wp_error( $result ) && 'draft' === $GLOBALS['ewpa_posts'][ $result['new_post_id'] ]->post_status
+	'duplicate_private_refusal_says_the_status_was_refused',
+	is_wp_error( $result ) && false !== strpos( $result->get_error_message(), 'private' ) && false !== stripos( $result->get_error_message(), 'refused' )
+);
+
+ewpa_reset();
+$result = ewpa_callback( 'ewpa/duplicate-post' )(
+	array(
+		'post_id' => 102,
+		'status'  => 'pending',
+	)
+);
+ewpa_check(
+	'duplicate_allows_pending_without_publish_capability',
+	! is_wp_error( $result ) && 'pending' === $GLOBALS['ewpa_posts'][ $result['new_post_id'] ]->post_status
 );
 
 ewpa_reset();
@@ -655,6 +686,15 @@ ewpa_check(
 	! is_wp_error( $result ) && 3 === $GLOBALS['ewpa_posts'][ $result['post_id'] ]->post_author && 'publish' === $result['status']
 );
 
+// ewpa/create-post is gated by publish_posts in its permission callback, so a user who cannot
+// publish never reaches its status handling: there is no silent draft fallback to replace.
+// This case characterizes that gate and passes before and after Part A.
+ewpa_reset();
+ewpa_check(
+	'create_post_is_denied_to_users_without_publish_posts',
+	false === ewpa_callback_permission( 'ewpa/create-post' )
+);
+
 /*
  * ==========================================================================
  * T1.4 — ewpa/create-cpt-item and ewpa/update-cpt-item
@@ -669,9 +709,33 @@ $result = ewpa_callback( 'ewpa/create-cpt-item' )(
 		'status'    => 'publish',
 	)
 );
+ewpa_check( 'create_cpt_refuses_publish_without_the_types_publish_capability', ewpa_is_error( $result, 'forbidden' ) );
+ewpa_check( 'create_cpt_does_not_insert_when_publish_is_refused', array() === $GLOBALS['ewpa_inserted'] );
+
+// 'future' is not part of this ability's status enum, so it is not a case here.
+foreach ( array( 'private' ) as $refused_status ) {
+	ewpa_reset();
+	$result = ewpa_callback( 'ewpa/create-cpt-item' )(
+		array(
+			'post_type' => 'courses',
+			'title'     => 'Course',
+			'status'    => $refused_status,
+		)
+	);
+	ewpa_check( 'create_cpt_refuses_' . $refused_status . '_without_the_types_publish_capability', ewpa_is_error( $result, 'forbidden' ) );
+}
+
+ewpa_reset();
+$result = ewpa_callback( 'ewpa/create-cpt-item' )(
+	array(
+		'post_type' => 'courses',
+		'title'     => 'Course',
+		'status'    => 'pending',
+	)
+);
 ewpa_check(
-	'create_cpt_falls_back_to_draft_without_the_types_publish_capability',
-	! is_wp_error( $result ) && 'draft' === $GLOBALS['ewpa_posts'][ $result['post_id'] ]->post_status && 'draft' === $result['status']
+	'create_cpt_allows_pending_without_publish_capability',
+	! is_wp_error( $result ) && 'pending' === $GLOBALS['ewpa_posts'][ $result['post_id'] ]->post_status
 );
 
 // A global publish_posts must not publish a type that has its own capability.
@@ -684,10 +748,7 @@ $result               = ewpa_callback( 'ewpa/create-cpt-item' )(
 		'status'    => 'publish',
 	)
 );
-ewpa_check(
-	'create_cpt_checks_the_types_own_publish_capability',
-	! is_wp_error( $result ) && 'draft' === $GLOBALS['ewpa_posts'][ $result['post_id'] ]->post_status
-);
+ewpa_check( 'create_cpt_checks_the_types_own_publish_capability', ewpa_is_error( $result, 'forbidden' ) );
 
 ewpa_reset();
 $GLOBALS['ewpa_caps'] = array_merge( ewpa_contributor_caps(), array( 'publish_courses' ) );

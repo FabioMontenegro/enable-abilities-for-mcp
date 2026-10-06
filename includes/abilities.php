@@ -1626,7 +1626,7 @@ function ewpa_register_custom_abilities(): void {
 						$allowed_status = array( 'draft', 'publish', 'pending', 'private' );
 						if ( in_array( $input['status'], $allowed_status, true ) ) {
 							if ( $input['status'] !== $post->post_status && ewpa_status_needs_publish_cap( $input['status'] ) && ! current_user_can( 'publish_post', $post_id ) ) {
-								return ewpa_publish_forbidden_error();
+								return ewpa_publish_forbidden_error( $input['status'] );
 							}
 							$post_data['post_status'] = $input['status'];
 						}
@@ -2499,7 +2499,10 @@ function ewpa_register_custom_abilities(): void {
 					}
 
 					$title      = isset( $input['title'] ) ? sanitize_text_field( $input['title'] ) : $post->post_title . ' (Copy)';
-					$status     = ewpa_resolve_new_post_status( isset( $input['status'] ) ? sanitize_text_field( $input['status'] ) : 'draft', $post->post_type );
+					$status = ewpa_resolve_new_post_status( isset( $input['status'] ) ? sanitize_text_field( $input['status'] ) : 'draft', $post->post_type );
+					if ( is_wp_error( $status ) ) {
+						return $status;
+					}
 					$copy_meta  = ! isset( $input['copy_meta'] ) || (bool) $input['copy_meta'];
 					$copy_terms = ! isset( $input['copy_terms'] ) || (bool) $input['copy_terms'];
 
@@ -5469,10 +5472,13 @@ function ewpa_register_custom_abilities(): void {
 						return new WP_Error( 'forbidden', __( 'You do not have permission to create items of this type.', 'enable-abilities-for-mcp' ) );
 					}
 
-					// Publishing needs the publish capability of this post type; without it the item stays a draft.
+					// Publishing needs the publish capability of this post type; without it the status is refused.
 					$allowed_statuses = array( 'draft', 'publish', 'pending', 'private' );
 					$requested        = $input['status'] ?? 'draft';
 					$status           = ewpa_resolve_new_post_status( in_array( $requested, $allowed_statuses, true ) ? $requested : 'draft', $cpt_obj->name );
+					if ( is_wp_error( $status ) ) {
+						return $status;
+					}
 
 					$post_data = array(
 						'post_type'   => $cpt_obj->name,
@@ -5670,7 +5676,7 @@ function ewpa_register_custom_abilities(): void {
 						$allowed_statuses = array( 'draft', 'publish', 'pending', 'private' );
 						if ( in_array( $input['status'], $allowed_statuses, true ) ) {
 							if ( $input['status'] !== $post->post_status && ewpa_status_needs_publish_cap( $input['status'] ) && ! ewpa_user_can_for_type( $cpt_obj->name, 'publish_posts' ) ) {
-								return ewpa_publish_forbidden_error();
+								return ewpa_publish_forbidden_error( $input['status'] );
 							}
 							$post_data['post_status'] = $input['status'];
 						}
@@ -7531,7 +7537,7 @@ function ewpa_register_custom_abilities(): void {
 					if ( isset( $args['status'] ) ) {
 						$new_status = sanitize_text_field( $args['status'] );
 						if ( $new_status !== $post->post_status && ewpa_status_needs_publish_cap( $new_status ) && ! ewpa_user_can_for_type( $post->post_type, 'publish_posts' ) ) {
-							return ewpa_publish_forbidden_error();
+							return ewpa_publish_forbidden_error( $new_status );
 						}
 						$post_args['post_status'] = $new_status;
 					}

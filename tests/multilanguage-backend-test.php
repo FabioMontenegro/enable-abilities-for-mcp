@@ -73,11 +73,11 @@ $cases = array(
 	'refuses_translation_into_a_type_the_user_cannot_create',
 	'refuses_to_overwrite_a_translation_the_user_cannot_edit',
 	'refuses_publishing_an_existing_translation_without_publish_capability',
-	'translation_falls_back_to_draft_without_publish_capability',
+	'translation_refuses_publish_without_publish_capability',
 	'translation_belongs_to_current_user_without_edit_others',
 	'translation_keeps_source_author_with_edit_others',
 	'linguator_translation_without_edit_others_belongs_to_current_user',
-	'linguator_translation_falls_back_to_draft_without_publish_capability',
+	'linguator_translation_refuses_publish_without_publish_capability',
 );
 
 $failures = 0;
@@ -222,7 +222,7 @@ function ewpa_bootstrap_case( string $case ): void {
 	$GLOBALS['ewpa_added_post_meta']             = array();
 	$GLOBALS['ewpa_added_term_meta']             = array();
 
-	if ( in_array( $case, array( 'detects_polylang', 'keeps_polylang_precedence_over_linguator', 'creates_polylang_translation_by_duplicating', 'creates_polylang_term_translation_by_duplicating', 'preserves_backslashes_when_copying_source_content', 'preserves_backslashes_in_translated_content', 'preserves_backslashes_when_updating_existing_translation', 'preserves_backslashes_in_copied_post_meta', 'preserves_backslashes_in_copied_term_meta', 'preserves_backslashes_in_duplicated_term', 'lists_polylang_languages_with_term_ids', 'links_polylang_post_translation_assigning_language', 'reports_polylang_post_link_that_did_not_persist', 'links_polylang_term_translation_assigning_language', 'reports_polylang_term_link_that_did_not_persist', 'copies_post_language_without_translation_group', 'refuses_translation_when_source_is_not_readable', 'refuses_translation_into_a_type_the_user_cannot_create', 'refuses_to_overwrite_a_translation_the_user_cannot_edit', 'refuses_publishing_an_existing_translation_without_publish_capability', 'translation_falls_back_to_draft_without_publish_capability', 'translation_belongs_to_current_user_without_edit_others', 'translation_keeps_source_author_with_edit_others' ), true ) ) {
+	if ( in_array( $case, array( 'detects_polylang', 'keeps_polylang_precedence_over_linguator', 'creates_polylang_translation_by_duplicating', 'creates_polylang_term_translation_by_duplicating', 'preserves_backslashes_when_copying_source_content', 'preserves_backslashes_in_translated_content', 'preserves_backslashes_when_updating_existing_translation', 'preserves_backslashes_in_copied_post_meta', 'preserves_backslashes_in_copied_term_meta', 'preserves_backslashes_in_duplicated_term', 'lists_polylang_languages_with_term_ids', 'links_polylang_post_translation_assigning_language', 'reports_polylang_post_link_that_did_not_persist', 'links_polylang_term_translation_assigning_language', 'reports_polylang_term_link_that_did_not_persist', 'copies_post_language_without_translation_group', 'refuses_translation_when_source_is_not_readable', 'refuses_translation_into_a_type_the_user_cannot_create', 'refuses_to_overwrite_a_translation_the_user_cannot_edit', 'refuses_publishing_an_existing_translation_without_publish_capability', 'translation_refuses_publish_without_publish_capability', 'translation_belongs_to_current_user_without_edit_others', 'translation_keeps_source_author_with_edit_others' ), true ) ) {
 		require_once __DIR__ . '/doubles/polylang.php';
 	}
 
@@ -307,7 +307,7 @@ function ewpa_bootstrap_case( string $case ): void {
 	if ( 'refuses_publishing_an_existing_translation_without_publish_capability' === $case ) {
 		$GLOBALS['ewpa_denied_caps'] = array( 'publish_post:20' );
 	}
-	if ( in_array( $case, array( 'translation_falls_back_to_draft_without_publish_capability', 'linguator_translation_falls_back_to_draft_without_publish_capability' ), true ) ) {
+	if ( in_array( $case, array( 'translation_refuses_publish_without_publish_capability', 'linguator_translation_refuses_publish_without_publish_capability' ), true ) ) {
 		$GLOBALS['ewpa_denied_caps'] = array( 'publish_posts' );
 	}
 	if ( in_array( $case, array( 'translation_belongs_to_current_user_without_edit_others', 'linguator_translation_without_edit_others_belongs_to_current_user' ), true ) ) {
@@ -539,10 +539,11 @@ function ewpa_run_case( string $case ): void {
 			ewpa_assert_same( 'forbidden', $result->get_error_code() );
 			ewpa_assert_same( 0, count( $GLOBALS['ewpa_updated_posts'] ) );
 			break;
-		case 'translation_falls_back_to_draft_without_publish_capability':
+		case 'translation_refuses_publish_without_publish_capability':
 			$result = ewpa_multilanguage_create_post_translation( 10, 'it', array( 'status' => 'publish' ) );
-			ewpa_assert_true( ! $result instanceof WP_Error, ewpa_describe( $result ) );
-			ewpa_assert_same( 'draft', $GLOBALS['ewpa_inserted_posts'][0]['post_status'] );
+			ewpa_assert_true( $result instanceof WP_Error, ewpa_describe( $result ) );
+			ewpa_assert_same( 'forbidden', $result->get_error_code() );
+			ewpa_assert_same( 0, count( $GLOBALS['ewpa_inserted_posts'] ) );
 			break;
 		case 'translation_belongs_to_current_user_without_edit_others':
 			$result = ewpa_multilanguage_create_post_translation( 10, 'it', array( 'title' => 'Ciao' ) );
@@ -560,11 +561,11 @@ function ewpa_run_case( string $case ): void {
 			ewpa_assert_true( ! $result instanceof WP_Error, ewpa_describe( $result ) );
 			ewpa_assert_same( 2, (int) $GLOBALS['ewpa_posts'][ $result['post_id'] ]->post_author );
 			break;
-		case 'linguator_translation_falls_back_to_draft_without_publish_capability':
+		case 'linguator_translation_refuses_publish_without_publish_capability':
 			$result = ewpa_multilanguage_create_post_translation( 10, 'it', array( 'status' => 'publish' ) );
-			ewpa_assert_true( ! $result instanceof WP_Error, ewpa_describe( $result ) );
-			ewpa_assert_same( 'draft', $result['status'] );
-			ewpa_assert_same( 'draft', $GLOBALS['ewpa_posts'][ $result['post_id'] ]->post_status );
+			ewpa_assert_true( $result instanceof WP_Error, ewpa_describe( $result ) );
+			ewpa_assert_same( 'forbidden', $result->get_error_code() );
+			ewpa_assert_same( 0, count( $GLOBALS['ewpa_copied_posts'] ) );
 			break;
 		case 'sets_linguator_term_language':
 			$result = ewpa_multilanguage_set_term_language( 6, 'it' );

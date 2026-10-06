@@ -63,14 +63,16 @@ function ewpa_user_can_for_type( string $post_type, string $capability ): bool {
 /**
  * Resolves the status a new post may be created with.
  *
- * A status that publishes content needs the publish capability of the post
- * type; without it the post is created as a draft.
+ * Mirrors the core REST controller: a status that publishes content ("publish",
+ * "future" or "private") needs the publish capability of the post type and is
+ * refused with an error otherwise, never downgraded silently. An unknown or
+ * missing status resolves to a draft.
  *
  * @param mixed  $requested Requested status.
  * @param string $post_type Post type slug.
- * @return string
+ * @return string|WP_Error
  */
-function ewpa_resolve_new_post_status( $requested, string $post_type ): string {
+function ewpa_resolve_new_post_status( $requested, string $post_type ) {
 	$requested = (string) $requested;
 	$allowed   = array( 'draft', 'publish', 'pending', 'private', 'future' );
 
@@ -78,19 +80,29 @@ function ewpa_resolve_new_post_status( $requested, string $post_type ): string {
 		return 'draft';
 	}
 	if ( ewpa_status_needs_publish_cap( $requested ) && ! ewpa_user_can_for_type( $post_type, 'publish_posts' ) ) {
-		return 'draft';
+		return ewpa_publish_forbidden_error( $requested );
 	}
 
 	return $requested;
 }
 
 /**
- * Builds the error returned when a status change needs a missing publish capability.
+ * Builds the error returned when a status needs a missing publish capability.
  *
+ * Same decision and wording as core's rest_cannot_publish (403) for "publish",
+ * "future" and "private"; the plugin keeps its own "forbidden" code.
+ *
+ * @param string $status Refused status.
  * @return WP_Error
  */
-function ewpa_publish_forbidden_error() {
-	return new WP_Error( 'forbidden', __( 'You do not have permission to publish this content.', 'enable-abilities-for-mcp' ) );
+function ewpa_publish_forbidden_error( string $status = 'publish' ) {
+	if ( 'private' === $status ) {
+		$message = __( 'Status refused: you are not allowed to create private posts in this post type.', 'enable-abilities-for-mcp' );
+	} else {
+		$message = __( 'Status refused: you are not allowed to publish posts in this post type.', 'enable-abilities-for-mcp' );
+	}
+
+	return new WP_Error( 'forbidden', $message, array( 'status' => 403 ) );
 }
 
 /**
@@ -932,7 +944,7 @@ function ewpa_multilanguage_update_post_translation( int $source_id, int $transl
 		&& ewpa_status_needs_publish_cap( $fields['post_status'] )
 		&& get_post_status( $translated_id ) !== $fields['post_status']
 		&& ! current_user_can( 'publish_post', $translated_id ) ) {
-		return ewpa_publish_forbidden_error();
+		return ewpa_publish_forbidden_error( (string) $fields['post_status'] );
 	}
 
 	if ( ! empty( $fields ) ) {
@@ -986,11 +998,14 @@ function ewpa_linguator_create_post_translation( int $source_id, string $source_
 	}
 
 	// copy_post() forces its own status for new posts; apply ours afterwards,
-	// falling back to a draft when the user cannot publish this post type.
+	// refusing it when the user cannot publish this post type.
 	$requested_status = '';
 	if ( isset( $fields['post_status'] ) ) {
 		$source_post      = get_post( $source_id );
 		$requested_status = ewpa_resolve_new_post_status( $fields['post_status'], $source_post ? (string) $source_post->post_type : 'post' );
+		if ( is_wp_error( $requested_status ) ) {
+			return $requested_status;
+		}
 	}
 	unset( $fields['post_status'] );
 
@@ -1074,10 +1089,15 @@ function ewpa_multilanguage_duplicate_post_translation( int $source_id, string $
 		return ewpa_multilanguage_error( 'not_found', 'Source post not found.' );
 	}
 
+	$new_status = ewpa_resolve_new_post_status( $fields['post_status'] ?? 'draft', (string) $source->post_type );
+	if ( is_wp_error( $new_status ) ) {
+		return $new_status;
+	}
+
 	$args = array(
 		'post_type'      => $source->post_type,
 		'post_author'    => ewpa_user_can_for_type( (string) $source->post_type, 'edit_others_posts' ) ? $source->post_author : get_current_user_id(),
-		'post_status'    => ewpa_resolve_new_post_status( $fields['post_status'] ?? 'draft', (string) $source->post_type ),
+		'post_status'    => $new_status,
 		'post_title'     => $fields['post_title'] ?? $source->post_title,
 		'post_content'   => $fields['post_content'] ?? $source->post_content,
 		'post_excerpt'   => $fields['post_excerpt'] ?? $source->post_excerpt,
