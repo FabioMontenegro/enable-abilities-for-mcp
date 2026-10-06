@@ -122,3 +122,40 @@ function ewpa_tp_get_sections(): array {
 
 	return $sections;
 }
+
+/**
+ * Computes the new denylist after the dashboard form was saved.
+ *
+ * Only the abilities the form actually offered are decided by the submission: an
+ * offered ability left unchecked is disabled, an offered one that is checked is
+ * re-enabled. A disabled ability that was not offered (its plugin was inactive
+ * when the page rendered, or the snapshot lost it) keeps its entry; dropping it
+ * would silently turn a disabled ability back on.
+ *
+ * @param string[] $current Names currently disabled.
+ * @param string[] $offered Names the submitted form offered.
+ * @param string[] $posted  Names the submitted form left checked (enabled).
+ * @return string[]
+ */
+function ewpa_tp_merge_disabled( array $current, array $offered, array $posted ): array {
+	$kept     = array_diff( $current, $offered );
+	$disabled = array_diff( $offered, $posted );
+
+	return array_values( array_unique( array_merge( $kept, $disabled ) ) );
+}
+
+/**
+ * Saves the third-party denylist from the dashboard form.
+ *
+ * @param string[]|null $offered Names the form offered, or null for a form that did
+ *                               not send the list (falls back to the current snapshot).
+ * @param string[]      $posted  Names the form left checked (enabled).
+ * @return void
+ */
+function ewpa_tp_save_submission( ?array $offered, array $posted ): void {
+	if ( null === $offered ) {
+		$offered = array_keys( ewpa_tp_get_seen() );
+	}
+
+	update_option( 'ewpa_thirdparty_disabled', ewpa_tp_merge_disabled( ewpa_tp_get_disabled(), $offered, $posted ) );
+}

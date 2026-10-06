@@ -108,20 +108,64 @@ function get_post_types( ...$args ) {
 	return array_keys( $GLOBALS['ewpa_post_types'] );
 }
 
-function get_object_taxonomies( $post_type ) {
-	return array();
+function get_object_taxonomies( $post_type, $output = 'names' ) {
+	$out = array();
+	foreach ( $GLOBALS['ewpa_taxonomies'] ?? array() as $slug => $taxonomy ) {
+		if ( in_array( $post_type, $taxonomy->object_type, true ) ) {
+			$out[ $slug ] = $taxonomy;
+		}
+	}
+	return 'objects' === $output ? $out : array_keys( $out );
 }
 
 function wp_get_object_terms( ...$args ) {
 	return array();
 }
 
-function wp_set_object_terms( ...$args ) {
+function wp_set_object_terms( $post_id, $terms, $taxonomy, $append = false ) {
+	$GLOBALS['ewpa_set_terms'][] = array( $post_id, $terms, $taxonomy, $append );
 	return array();
 }
 
 function taxonomy_exists( $taxonomy ) {
-	return false;
+	return isset( $GLOBALS['ewpa_taxonomies'][ $taxonomy ] );
+}
+
+function get_taxonomy( $taxonomy ) {
+	return $GLOBALS['ewpa_taxonomies'][ $taxonomy ] ?? false;
+}
+
+/**
+ * Models term_exists(): an integer is a term ID, a string is a slug or name.
+ */
+function term_exists( $term, $taxonomy = '' ) {
+	if ( is_int( $term ) ) {
+		return in_array( $term, $GLOBALS['ewpa_term_ids'][ $taxonomy ] ?? array(), true ) ? array( 'term_id' => $term ) : null;
+	}
+	return in_array( $term, $GLOBALS['ewpa_terms'][ $taxonomy ] ?? array(), true ) ? array( 'term_id' => 1 ) : null;
+}
+
+function get_post_stati( $args = array(), $output = 'names' ) {
+	return $GLOBALS['ewpa_post_stati'];
+}
+
+function get_comments( $args = array() ) {
+	return array();
+}
+
+function get_option( $name, $default = false ) {
+	return $GLOBALS['ewpa_options'][ $name ] ?? $default;
+}
+
+function update_option( $name, $value, $autoload = null ) {
+	$GLOBALS['ewpa_options'][ $name ] = $value;
+	return true;
+}
+
+function wp_delete_post( $post_id, $force = false ) {
+	$GLOBALS['ewpa_deleted'][] = $post_id;
+	unset( $GLOBALS['ewpa_posts'][ absint( $post_id ) ], $GLOBALS['ewpa_meta'][ absint( $post_id ) ] );
+	return true;
 }
 
 function get_post( $post_id ) {
@@ -215,6 +259,12 @@ function delete_post_thumbnail( $post_id ) {
  */
 function current_user_can( $capability, ...$args ) {
 	$caps = $GLOBALS['ewpa_caps'];
+
+	if ( 'edit_post_meta' === $capability ) {
+		// Core maps it to edit_post and, for a protected key, to a capability named after the key.
+		$key = (string) ( $args[1] ?? '' );
+		return current_user_can( 'edit_post', $args[0] ?? 0 ) && ( ! is_protected_meta( $key, 'post' ) || in_array( $key, $caps, true ) );
+	}
 
 	if ( ! in_array( $capability, array( 'edit_post', 'read_post', 'publish_post' ), true ) ) {
 		return in_array( $capability, $caps, true );
@@ -422,6 +472,7 @@ function ewpa_register_ability_with_log( $name, $args ) {
 }
 
 require dirname( __DIR__ ) . '/includes/multilanguage.php';
+require dirname( __DIR__ ) . '/includes/thirdparty.php';
 require dirname( __DIR__ ) . '/includes/abilities.php';
 
 /*
@@ -542,6 +593,23 @@ function ewpa_reset(): void {
 		),
 	);
 	$GLOBALS['ewpa_get_posts_args'] = array();
+	$GLOBALS['ewpa_set_terms']      = array();
+	$GLOBALS['ewpa_deleted']        = array();
+	$GLOBALS['ewpa_options']        = array();
+	$GLOBALS['ewpa_post_stati']     = array_combine( $std = array( 'publish', 'future', 'draft', 'pending', 'private', 'trash', 'auto-draft', 'inherit' ), $std );
+	$GLOBALS['ewpa_taxonomies']     = array(
+		'genre' => (object) array(
+			'name'        => 'genre',
+			'label'       => 'Genre',
+			'object_type' => array( 'post', 'courses' ),
+			'cap'         => (object) array(
+				'assign_terms' => 'edit_posts',
+				'edit_terms'   => 'manage_categories',
+			),
+		),
+	);
+	$GLOBALS['ewpa_terms']          = array( 'genre' => array( 'drama' ) );
+	$GLOBALS['ewpa_term_ids']       = array( 'genre' => array( 7 ) );
 	$GLOBALS['ewpa_wp_query_args']  = array();
 	$GLOBALS['ewpa_thumbnails']     = array();
 	$GLOBALS['ewpa_downloads']      = array();
@@ -583,6 +651,8 @@ function ewpa_admin_caps(): array {
 		'publish_pages',
 		'edit_users',
 		'upload_files',
+		'manage_categories',
+		'moderate_comments',
 	);
 }
 
@@ -1256,7 +1326,7 @@ ewpa_callback( 'ewpa/get-cpt-items' )(
 		'status'    => 'not-a-status',
 	)
 );
-ewpa_check( 'get_cpt_items_whitelists_the_status', 'publish' === ( ewpa_last_get_posts_args()['post_status'] ?? '' ) );
+ewpa_check( 'get_cpt_items_refuses_an_unknown_status_instead_of_resolving_it_to_publish', array() === $GLOBALS['ewpa_get_posts_args'] );
 
 ewpa_reset();
 $result = ewpa_callback( 'ewpa/get-cpt-items' )(
@@ -1503,6 +1573,559 @@ ewpa_check(
 	'admin_accessibility_snapshot_lists_every_attachment',
 	array() === $limited && 2 === $result['total_images'] && 2 === count( $result['missing_alt_items'] )
 );
+
+/*
+ * ==========================================================================
+ * Part A — listing statuses come from the registry, not from a fixed list
+ * ==========================================================================
+ */
+
+/**
+ * Registers a custom post status the way WooCommerce or any plugin would.
+ *
+ * @param string $status Status slug.
+ */
+function ewpa_register_status( string $status ): void {
+	$GLOBALS['ewpa_post_stati'][ $status ] = $status;
+}
+
+/**
+ * Adds posts in a custom status: 113 own and 114 foreign courses, 103 own and
+ * 104 foreign posts, 132 foreign page.
+ */
+function ewpa_add_custom_status_posts(): void {
+	$GLOBALS['ewpa_posts'][113] = ewpa_fake_post( 113, 'courses', 2, 'wc-processing' );
+	$GLOBALS['ewpa_posts'][114] = ewpa_fake_post( 114, 'courses', 3, 'wc-processing' );
+	$GLOBALS['ewpa_posts'][103] = ewpa_fake_post( 103, 'post', 2, 'wc-processing' );
+	$GLOBALS['ewpa_posts'][104] = ewpa_fake_post( 104, 'post', 3, 'wc-processing' );
+	$GLOBALS['ewpa_posts'][132] = ewpa_fake_post( 132, 'page', 3, 'wc-processing' );
+}
+
+/**
+ * Builds the input of get-cpt-items for the courses type.
+ *
+ * @param string $status Requested status.
+ * @return array
+ */
+function ewpa_cpt_list_input( string $status ): array {
+	return array(
+		'post_type' => 'courses',
+		'status'    => $status,
+		'order'     => 'DESC',
+		'orderby'   => 'date',
+	);
+}
+
+ewpa_reset();
+ewpa_add_custom_status_posts();
+$result = ewpa_callback( 'ewpa/get-cpt-items' )( ewpa_cpt_list_input( 'wc-processing' ) );
+ewpa_check( 'get_cpt_items_refuses_an_unregistered_status_with_an_error', ewpa_is_error( $result, 'invalid_status' ) );
+ewpa_check( 'get_cpt_items_does_not_query_for_an_unregistered_status', array() === $GLOBALS['ewpa_get_posts_args'] );
+
+ewpa_reset();
+ewpa_add_custom_status_posts();
+ewpa_register_status( 'wc-processing' );
+$result = ewpa_callback( 'ewpa/get-cpt-items' )( ewpa_cpt_list_input( 'wc-processing' ) );
+ewpa_check( 'get_cpt_items_accepts_a_registered_custom_status', ! is_wp_error( $result ) && 'wc-processing' === ( ewpa_last_get_posts_args()['post_status'] ?? '' ) );
+ewpa_check( 'get_cpt_items_custom_status_keeps_the_per_post_filter', array( 113 ) === ewpa_ids( $result ) );
+
+ewpa_reset();
+ewpa_add_custom_status_posts();
+ewpa_register_status( 'wc-processing' );
+$GLOBALS['ewpa_caps'] = array( 'read' );
+$result               = ewpa_callback( 'ewpa/get-cpt-items' )( ewpa_cpt_list_input( 'wc-processing' ) );
+ewpa_check( 'get_cpt_items_custom_status_still_needs_the_editing_capability', ewpa_is_error( $result, 'forbidden' ) );
+
+ewpa_reset();
+ewpa_add_custom_status_posts();
+ewpa_register_status( 'wc-processing' );
+ewpa_become_admin();
+$result = ewpa_callback( 'ewpa/get-cpt-items' )( ewpa_cpt_list_input( 'wc-processing' ) );
+ewpa_check( 'admin_get_cpt_items_lists_a_registered_custom_status', array( 113, 114 ) === ewpa_ids( $result ) );
+$result = ewpa_callback( 'ewpa/get-cpt-items' )( ewpa_cpt_list_input( 'trash' ) );
+ewpa_check( 'admin_get_cpt_items_still_accepts_standard_statuses', ! is_wp_error( $result ) );
+$result = ewpa_callback( 'ewpa/get-cpt-items' )( ewpa_cpt_list_input( 'any' ) );
+ewpa_check( 'admin_get_cpt_items_still_accepts_any', ! is_wp_error( $result ) && 'any' === ( ewpa_last_get_posts_args()['post_status'] ?? '' ) );
+$result = ewpa_callback( 'ewpa/get-cpt-items' )( ewpa_cpt_list_input( 'bogus' ) );
+ewpa_check( 'admin_get_cpt_items_refuses_an_unregistered_status', ewpa_is_error( $result, 'invalid_status' ) );
+
+ewpa_reset();
+ewpa_add_custom_status_posts();
+$result = ewpa_callback( 'ewpa/get-posts' )( ewpa_list_input( array( 'status' => 'wc-processing' ) ) );
+ewpa_check( 'get_posts_refuses_an_unregistered_status_with_an_error', ewpa_is_error( $result, 'invalid_status' ) );
+ewpa_register_status( 'wc-processing' );
+$result = ewpa_callback( 'ewpa/get-posts' )( ewpa_list_input( array( 'status' => 'wc-processing' ) ) );
+ewpa_check( 'get_posts_accepts_a_registered_custom_status_and_filters_per_post', ! is_wp_error( $result ) && array( 103 ) === ewpa_ids( $result ) );
+$GLOBALS['ewpa_caps'] = array( 'read' );
+$result               = ewpa_callback( 'ewpa/get-posts' )( ewpa_list_input( array( 'status' => 'wc-processing' ) ) );
+ewpa_check( 'get_posts_custom_status_still_needs_the_editing_capability', ewpa_is_error( $result, 'forbidden' ) );
+ewpa_become_admin();
+$result = ewpa_callback( 'ewpa/get-posts' )( ewpa_list_input( array( 'status' => 'wc-processing' ) ) );
+ewpa_check( 'admin_get_posts_lists_a_registered_custom_status', array( 103, 104 ) === ewpa_ids( $result ) );
+
+ewpa_reset();
+ewpa_add_custom_status_posts();
+$result = ewpa_callback( 'ewpa/get-pages' )( ewpa_list_input( array( 'status' => 'wc-processing' ) ) );
+ewpa_check( 'get_pages_refuses_an_unregistered_status_with_an_error', ewpa_is_error( $result, 'invalid_status' ) );
+ewpa_register_status( 'wc-processing' );
+$GLOBALS['ewpa_caps'] = array( 'read' );
+$result               = ewpa_callback( 'ewpa/get-pages' )( ewpa_list_input( array( 'status' => 'wc-processing' ) ) );
+ewpa_check( 'get_pages_custom_status_still_needs_the_editing_capability', ewpa_is_error( $result, 'forbidden' ) );
+ewpa_become_admin();
+$result = ewpa_callback( 'ewpa/get-pages' )( ewpa_list_input( array( 'status' => 'wc-processing' ) ) );
+ewpa_check( 'admin_get_pages_lists_a_registered_custom_status', array( 132 ) === ewpa_ids( $result ) );
+
+foreach ( array( 'ewpa/get-posts', 'ewpa/get-pages', 'ewpa/get-cpt-items' ) as $ability ) {
+	$status_schema = $GLOBALS['ewpa_registered'][ $ability ]['input_schema']['properties']['status'];
+	ewpa_check( 'schema_of_' . $ability . '_does_not_promise_a_fixed_status_list', ! isset( $status_schema['enum'] ) );
+}
+
+/*
+ * ==========================================================================
+ * T3.2 — no PHP notices when optional input is absent
+ * ==========================================================================
+ */
+
+/**
+ * Runs a callback and returns the warnings and notices it raised.
+ *
+ * @param callable $callback Code to run.
+ * @return string[]
+ */
+function ewpa_collect_notices( callable $callback ): array {
+	$notices = array();
+	set_error_handler(
+		function ( $errno, $errstr ) use ( &$notices ) {
+			$notices[] = $errstr;
+			return true;
+		}
+	);
+	try {
+		$callback();
+	} catch ( Throwable $e ) {
+		$notices[] = 'Uncaught ' . get_class( $e ) . ': ' . $e->getMessage();
+	}
+	restore_error_handler();
+	return $notices;
+}
+
+ewpa_reset();
+ewpa_become_admin();
+$notices = ewpa_collect_notices(
+	function () {
+		ewpa_callback( 'ewpa/get-posts' )( array() );
+	}
+);
+ewpa_check( 'get_posts_emits_no_notice_without_optional_input', array() === $notices );
+
+$notices = ewpa_collect_notices(
+	function () {
+		ewpa_callback( 'ewpa/get-pages' )( array() );
+	}
+);
+ewpa_check( 'get_pages_emits_no_notice_without_optional_input', array() === $notices );
+
+$notices = ewpa_collect_notices(
+	function () {
+		ewpa_callback( 'ewpa/get-cpt-items' )( array( 'post_type' => 'courses' ) );
+	}
+);
+ewpa_check( 'get_cpt_items_emits_no_notice_without_optional_input', array() === $notices );
+
+$notices = ewpa_collect_notices(
+	function () {
+		ewpa_callback( 'ewpa/get-cpt-items' )(
+			array(
+				'post_type' => 'courses',
+				'tax_query' => array(
+					array(
+						'taxonomy' => 'genre',
+						'terms'    => array( 'drama' ),
+					),
+				),
+			)
+		);
+	}
+);
+ewpa_check( 'get_cpt_items_emits_no_notice_for_a_tax_query_without_field_or_operator', array() === $notices );
+
+$notices = ewpa_collect_notices(
+	function () {
+		ewpa_callback( 'ewpa/get-comments' )( array() );
+	}
+);
+ewpa_check( 'get_comments_emits_no_notice_without_optional_input', array() === $notices );
+
+$notices = ewpa_collect_notices(
+	function () {
+		ewpa_callback( 'ewpa/create-page' )(
+			array(
+				'title'   => 'Page',
+				'content' => 'Body',
+			)
+		);
+	}
+);
+ewpa_check( 'create_page_emits_no_notice_without_a_status', array() === $notices );
+ewpa_check( 'create_page_still_defaults_to_draft', 'draft' === ( end( $GLOBALS['ewpa_inserted'] )['post_status'] ?? '' ) );
+
+ewpa_reset();
+ewpa_become_admin();
+ewpa_callback( 'ewpa/get-posts' )(
+	array(
+		'status'  => 'publish',
+		'orderby' => 'title',
+		'order'   => 'ASC',
+	)
+);
+$args = ewpa_last_get_posts_args();
+ewpa_check( 'get_posts_still_honours_a_valid_orderby_and_order', 'title' === $args['orderby'] && 'ASC' === $args['order'] );
+ewpa_callback( 'ewpa/get-posts' )(
+	array(
+		'status'  => 'publish',
+		'orderby' => 'bogus',
+		'order'   => 'sideways',
+	)
+);
+$args = ewpa_last_get_posts_args();
+ewpa_check( 'get_posts_still_falls_back_on_an_invalid_orderby_and_order', 'date' === $args['orderby'] && 'DESC' === $args['order'] );
+
+/*
+ * ==========================================================================
+ * T3.1 — protected meta on write
+ * ==========================================================================
+ */
+
+ewpa_reset();
+$result = ewpa_callback( 'ewpa/update-post-meta' )(
+	array(
+		'post_id'    => 102,
+		'meta_key'   => '_thumbnail_id',
+		'meta_value' => '5',
+	)
+);
+ewpa_check( 'update_post_meta_refuses_a_protected_key_without_edit_post_meta', ewpa_is_error( $result, 'protected_meta' ) );
+ewpa_check( 'update_post_meta_error_names_the_refused_key', is_wp_error( $result ) && false !== strpos( $result->get_error_message(), '_thumbnail_id' ) );
+ewpa_check( 'update_post_meta_writes_nothing_for_a_refused_key', ! isset( $GLOBALS['ewpa_meta'][102]['_thumbnail_id'] ) );
+
+ewpa_reset();
+$result = ewpa_callback( 'ewpa/update-post-meta' )(
+	array(
+		'post_id'    => 102,
+		'meta_key'   => 'subtitle',
+		'meta_value' => 'Hello',
+	)
+);
+ewpa_check( 'update_post_meta_still_writes_an_unprotected_key', ! is_wp_error( $result ) && 'Hello' === ( $GLOBALS['ewpa_meta'][102]['subtitle'] ?? '' ) );
+
+ewpa_reset();
+$result = ewpa_callback( 'ewpa/update-post-meta' )(
+	array(
+		'post_id'    => 102,
+		'meta_key'   => '_edit_lock',
+		'meta_value' => 'x',
+	)
+);
+ewpa_check( 'update_post_meta_keeps_the_hard_denylist', ewpa_is_error( $result, 'blocked_key' ) );
+
+ewpa_reset();
+ewpa_become_admin();
+$result = ewpa_callback( 'ewpa/update-post-meta' )(
+	array(
+		'post_id'    => 102,
+		'meta_key'   => 'subtitle',
+		'meta_value' => 'Admin',
+	)
+);
+ewpa_check( 'admin_update_post_meta_writes_an_unprotected_key', ! is_wp_error( $result ) && 'Admin' === ( $GLOBALS['ewpa_meta'][102]['subtitle'] ?? '' ) );
+$result = ewpa_callback( 'ewpa/update-post-meta' )(
+	array(
+		'post_id'    => 102,
+		'meta_key'   => '_genesis_title',
+		'meta_value' => 'SEO',
+	)
+);
+ewpa_check( 'admin_update_post_meta_refuses_a_protected_key_the_site_has_not_authorized', ewpa_is_error( $result, 'protected_meta' ) );
+$result = ewpa_callback( 'ewpa/update-post-meta' )(
+	array(
+		'post_id'    => 102,
+		'meta_key'   => '_edit_lock',
+		'meta_value' => 'x',
+	)
+);
+ewpa_check( 'admin_update_post_meta_keeps_the_hard_denylist', ewpa_is_error( $result, 'blocked_key' ) );
+$GLOBALS['ewpa_caps'][] = '_genesis_title'; // Models an auth_post_meta_{key} / register_post_meta auth_callback grant.
+$result                 = ewpa_callback( 'ewpa/update-post-meta' )(
+	array(
+		'post_id'    => 102,
+		'meta_key'   => '_genesis_title',
+		'meta_value' => 'SEO',
+	)
+);
+ewpa_check( 'admin_update_post_meta_writes_a_protected_key_the_site_authorized', ! is_wp_error( $result ) && 'SEO' === ( $GLOBALS['ewpa_meta'][102]['_genesis_title'] ?? '' ) );
+
+ewpa_reset();
+$result = ewpa_callback( 'ewpa/create-cpt-item' )(
+	array(
+		'post_type' => 'courses',
+		'title'     => 'Course',
+		'meta'      => array(
+			'subtitle'         => 'Fine',
+			'_internal_secret' => 'Nope',
+		),
+	)
+);
+ewpa_check( 'create_cpt_item_refuses_a_protected_meta_key_with_an_error', ewpa_is_error( $result, 'protected_meta' ) );
+ewpa_check( 'create_cpt_item_error_names_the_refused_key', is_wp_error( $result ) && false !== strpos( $result->get_error_message(), '_internal_secret' ) );
+ewpa_check( 'create_cpt_item_leaves_no_post_and_no_meta_behind_on_a_refused_key', array( 500 ) === $GLOBALS['ewpa_deleted'] && ! isset( $GLOBALS['ewpa_posts'][500] ) && ! isset( $GLOBALS['ewpa_meta'][500] ) );
+
+ewpa_reset();
+$result = ewpa_callback( 'ewpa/create-cpt-item' )(
+	array(
+		'post_type' => 'courses',
+		'title'     => 'Course',
+		'meta'      => array( '_edit_lock' => 'x' ),
+	)
+);
+ewpa_check( 'create_cpt_item_refuses_a_denylisted_key_instead_of_skipping_it', ewpa_is_error( $result, 'blocked_key' ) );
+
+ewpa_reset();
+$result = ewpa_callback( 'ewpa/create-cpt-item' )(
+	array(
+		'post_type' => 'courses',
+		'title'     => 'Course',
+		'meta'      => array( 'subtitle' => 'Fine' ),
+	)
+);
+ewpa_check( 'create_cpt_item_still_writes_unprotected_meta', ! is_wp_error( $result ) && 'Fine' === ( $GLOBALS['ewpa_meta'][500]['subtitle'] ?? '' ) );
+
+ewpa_reset();
+$result = ewpa_callback( 'ewpa/update-cpt-item' )(
+	array(
+		'post_id' => 111,
+		'meta'    => array( '_internal_secret' => 'Changed' ),
+	)
+);
+ewpa_check( 'update_cpt_item_refuses_a_protected_meta_key_with_an_error', ewpa_is_error( $result, 'protected_meta' ) );
+ewpa_check( 'update_cpt_item_leaves_the_protected_meta_untouched', 'Own protected value' === $GLOBALS['ewpa_meta'][111]['_internal_secret'] );
+
+ewpa_reset();
+$result = ewpa_callback( 'ewpa/update-cpt-item' )(
+	array(
+		'post_id' => 111,
+		'title'   => 'Renamed',
+		'meta'    => array( '_edit_lock' => 'x' ),
+	)
+);
+ewpa_check( 'update_cpt_item_refuses_a_denylisted_key_instead_of_skipping_it', ewpa_is_error( $result, 'blocked_key' ) );
+ewpa_check( 'update_cpt_item_does_not_update_the_post_when_a_meta_key_is_refused', 'Post 111' === $GLOBALS['ewpa_posts'][111]->post_title );
+
+ewpa_reset();
+$result = ewpa_callback( 'ewpa/update-cpt-item' )(
+	array(
+		'post_id' => 111,
+		'meta'    => array( 'subtitle' => 'New' ),
+	)
+);
+ewpa_check( 'update_cpt_item_still_writes_unprotected_meta', ! is_wp_error( $result ) && 'New' === $GLOBALS['ewpa_meta'][111]['subtitle'] );
+
+ewpa_reset();
+ewpa_become_admin();
+$result = ewpa_callback( 'ewpa/create-cpt-item' )(
+	array(
+		'post_type' => 'courses',
+		'title'     => 'Admin course',
+		'meta'      => array( 'subtitle' => 'A' ),
+	)
+);
+ewpa_check( 'admin_create_cpt_item_writes_unprotected_meta', ! is_wp_error( $result ) && 'A' === ( $GLOBALS['ewpa_meta'][500]['subtitle'] ?? '' ) );
+$result = ewpa_callback( 'ewpa/update-cpt-item' )(
+	array(
+		'post_id' => 111,
+		'meta'    => array( 'subtitle' => 'B' ),
+	)
+);
+ewpa_check( 'admin_update_cpt_item_writes_unprotected_meta', ! is_wp_error( $result ) && 'B' === $GLOBALS['ewpa_meta'][111]['subtitle'] );
+$GLOBALS['ewpa_caps'][] = '_internal_secret';
+$result                 = ewpa_callback( 'ewpa/update-cpt-item' )(
+	array(
+		'post_id' => 111,
+		'meta'    => array( '_internal_secret' => 'C' ),
+	)
+);
+ewpa_check( 'admin_update_cpt_item_writes_a_protected_key_the_site_authorized', ! is_wp_error( $result ) && 'C' === $GLOBALS['ewpa_meta'][111]['_internal_secret'] );
+
+/*
+ * ==========================================================================
+ * T3.3 — third-party denylist must not drop entries that were not offered
+ * ==========================================================================
+ */
+
+ewpa_check( 'tp_merge_functions_exist', function_exists( 'ewpa_tp_merge_disabled' ) && function_exists( 'ewpa_tp_save_submission' ) );
+
+if ( function_exists( 'ewpa_tp_merge_disabled' ) ) {
+	$merged = ewpa_tp_merge_disabled( array( 'a/x', 'b/y' ), array( 'a/x' ), array( 'a/x' ) );
+	ewpa_check( 'tp_merge_keeps_a_disabled_entry_that_was_not_offered', in_array( 'b/y', $merged, true ) );
+	ewpa_check( 'tp_merge_re_enables_an_offered_entry_that_was_checked', ! in_array( 'a/x', $merged, true ) );
+
+	$merged = ewpa_tp_merge_disabled( array(), array( 'a/x', 'a/z' ), array( 'a/x' ) );
+	ewpa_check( 'tp_merge_disables_an_offered_entry_that_was_unchecked', array( 'a/z' ) === $merged );
+
+	$merged = ewpa_tp_merge_disabled( array( 'a/z' ), array( 'a/z' ), array( 'a/z' ) );
+	ewpa_check( 'tp_merge_empties_the_list_when_everything_offered_is_checked', array() === $merged );
+
+	$merged = ewpa_tp_merge_disabled( array( 'a/z', 'a/z' ), array( 'a/z' ), array() );
+	ewpa_check( 'tp_merge_does_not_duplicate_entries', array( 'a/z' ) === $merged );
+}
+
+if ( function_exists( 'ewpa_tp_save_submission' ) ) {
+	$tp_info = array(
+		'label'    => 'Label',
+		'desc'     => '',
+		'category' => 'c',
+	);
+
+	// Disabled earlier, then absent from the snapshot (its plugin was inactive when the page rendered).
+	ewpa_reset();
+	$GLOBALS['ewpa_options']['ewpa_thirdparty_disabled'] = array( 'gone/ability' );
+	$GLOBALS['ewpa_options']['ewpa_thirdparty_seen']     = array( 'a/x' => $tp_info );
+	ewpa_tp_save_submission( array( 'a/x' ), array( 'a/x' ) );
+	ewpa_check( 'tp_save_keeps_a_disabled_ability_absent_from_the_snapshot', array( 'gone/ability' ) === $GLOBALS['ewpa_options']['ewpa_thirdparty_disabled'] );
+
+	ewpa_reset();
+	$GLOBALS['ewpa_options']['ewpa_thirdparty_disabled'] = array( 'a/x' );
+	$GLOBALS['ewpa_options']['ewpa_thirdparty_seen']     = array();
+	ewpa_tp_save_submission( array(), array() );
+	ewpa_check( 'tp_save_keeps_the_denylist_when_the_snapshot_is_empty', array( 'a/x' ) === $GLOBALS['ewpa_options']['ewpa_thirdparty_disabled'] );
+
+	ewpa_reset();
+	$GLOBALS['ewpa_options']['ewpa_thirdparty_disabled'] = array( 'a/x' );
+	$GLOBALS['ewpa_options']['ewpa_thirdparty_seen']     = array(
+		'a/x' => $tp_info,
+		'a/y' => $tp_info,
+	);
+	ewpa_tp_save_submission( null, array( 'a/x' ) );
+	ewpa_check( 'tp_save_without_an_offered_list_falls_back_to_the_snapshot', array( 'a/y' ) === $GLOBALS['ewpa_options']['ewpa_thirdparty_disabled'] );
+}
+
+/*
+ * ==========================================================================
+ * T3.4 — creating a term by name needs edit_terms
+ * ==========================================================================
+ */
+
+ewpa_reset();
+$result = ewpa_callback( 'ewpa/assign-post-terms' )(
+	array(
+		'post_id'  => 102,
+		'taxonomy' => 'genre',
+		'terms'    => array( 'brand-new' ),
+	)
+);
+ewpa_check( 'assign_post_terms_refuses_to_create_a_term_without_edit_terms', ewpa_is_error( $result, 'forbidden' ) );
+ewpa_check( 'assign_post_terms_error_names_the_term', is_wp_error( $result ) && false !== strpos( $result->get_error_message(), 'brand-new' ) );
+ewpa_check( 'assign_post_terms_assigns_nothing_when_a_term_would_be_created', array() === $GLOBALS['ewpa_set_terms'] );
+
+ewpa_reset();
+$result = ewpa_callback( 'ewpa/assign-post-terms' )(
+	array(
+		'post_id'  => 102,
+		'taxonomy' => 'genre',
+		'terms'    => array( 'drama', 'brand-new' ),
+	)
+);
+ewpa_check( 'assign_post_terms_refuses_the_whole_request_when_one_term_is_new', ewpa_is_error( $result, 'forbidden' ) && array() === $GLOBALS['ewpa_set_terms'] );
+
+ewpa_reset();
+$result = ewpa_callback( 'ewpa/assign-post-terms' )(
+	array(
+		'post_id'  => 102,
+		'taxonomy' => 'genre',
+		'terms'    => array( 'drama', 7 ),
+	)
+);
+ewpa_check( 'assign_post_terms_still_assigns_existing_terms_with_assign_terms_only', ! is_wp_error( $result ) && 1 === count( $GLOBALS['ewpa_set_terms'] ) );
+
+ewpa_reset();
+ewpa_become_admin();
+$result = ewpa_callback( 'ewpa/assign-post-terms' )(
+	array(
+		'post_id'  => 102,
+		'taxonomy' => 'genre',
+		'terms'    => array( 'brand-new' ),
+	)
+);
+ewpa_check( 'admin_assign_post_terms_creates_a_new_term', ! is_wp_error( $result ) && array( 'brand-new' ) === ( $GLOBALS['ewpa_set_terms'][0][1] ?? null ) );
+
+ewpa_reset();
+$result = ewpa_callback( 'ewpa/assign-cpt-terms' )(
+	array(
+		'post_id'  => 111,
+		'taxonomy' => 'genre',
+		'terms'    => array( 'brand-new' ),
+	)
+);
+ewpa_check( 'assign_cpt_terms_refuses_to_create_a_term_without_edit_terms', ewpa_is_error( $result, 'forbidden' ) && array() === $GLOBALS['ewpa_set_terms'] );
+ewpa_check( 'assign_cpt_terms_error_names_the_term', is_wp_error( $result ) && false !== strpos( $result->get_error_message(), 'brand-new' ) );
+
+ewpa_reset();
+$result = ewpa_callback( 'ewpa/assign-cpt-terms' )(
+	array(
+		'post_id'  => 111,
+		'taxonomy' => 'genre',
+		'terms'    => array( 'drama' ),
+	)
+);
+ewpa_check( 'assign_cpt_terms_still_assigns_existing_terms_with_assign_terms_only', ! is_wp_error( $result ) && 1 === count( $GLOBALS['ewpa_set_terms'] ) );
+
+ewpa_reset();
+ewpa_become_admin();
+$result = ewpa_callback( 'ewpa/assign-cpt-terms' )(
+	array(
+		'post_id'  => 111,
+		'taxonomy' => 'genre',
+		'terms'    => array( 'brand-new' ),
+	)
+);
+ewpa_check( 'admin_assign_cpt_terms_creates_a_new_term', ! is_wp_error( $result ) && array( 'brand-new' ) === ( $GLOBALS['ewpa_set_terms'][0][1] ?? null ) );
+
+ewpa_reset();
+$result = ewpa_callback( 'ewpa/create-cpt-item' )(
+	array(
+		'post_type'  => 'courses',
+		'title'      => 'Course',
+		'taxonomies' => array( 'genre' => array( 'brand-new' ) ),
+	)
+);
+ewpa_check( 'create_cpt_item_refuses_to_create_a_term_without_edit_terms', ewpa_is_error( $result, 'forbidden' ) && array() === $GLOBALS['ewpa_inserted'] );
+
+ewpa_reset();
+$result = ewpa_callback( 'ewpa/update-cpt-item' )(
+	array(
+		'post_id'    => 111,
+		'taxonomies' => array( 'genre' => array( 'brand-new' ) ),
+	)
+);
+ewpa_check( 'update_cpt_item_refuses_to_create_a_term_without_edit_terms', ewpa_is_error( $result, 'forbidden' ) && array() === $GLOBALS['ewpa_set_terms'] );
+
+ewpa_reset();
+$result = ewpa_callback( 'ewpa/update-cpt-item' )(
+	array(
+		'post_id'    => 111,
+		'taxonomies' => array( 'genre' => array( 'drama' ) ),
+	)
+);
+ewpa_check( 'update_cpt_item_still_assigns_existing_terms', ! is_wp_error( $result ) && 1 === count( $GLOBALS['ewpa_set_terms'] ) );
+
+ewpa_reset();
+ewpa_become_admin();
+$result = ewpa_callback( 'ewpa/update-cpt-item' )(
+	array(
+		'post_id'    => 111,
+		'taxonomies' => array( 'genre' => array( 'brand-new' ) ),
+	)
+);
+ewpa_check( 'admin_update_cpt_item_creates_a_new_term', ! is_wp_error( $result ) && 1 === count( $GLOBALS['ewpa_set_terms'] ) );
 
 echo PHP_EOL;
 if ( $ewpa_failures > 0 ) {

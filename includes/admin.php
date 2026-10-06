@@ -183,15 +183,17 @@ add_action(
 
 		update_option( EWPA_OPTION_KEY, $enabled );
 
-		// Third-party abilities: denylist = seen snapshot minus the posted (checked) ones.
-		$ewpa_tp_seen = array_keys( ewpa_tp_get_seen() );
-		if ( $ewpa_tp_seen ) {
-			$ewpa_tp_posted = array();
-			if ( isset( $_POST['ewpa_tp_abilities'] ) && is_array( $_POST['ewpa_tp_abilities'] ) ) {
-				$ewpa_tp_posted = array_map( 'sanitize_text_field', wp_unslash( $_POST['ewpa_tp_abilities'] ) );
-			}
-			update_option( 'ewpa_thirdparty_disabled', array_values( array_diff( $ewpa_tp_seen, $ewpa_tp_posted ) ) );
+		// Third-party abilities: the submission only decides the abilities the form offered;
+		// a disabled ability that was not offered keeps its denylist entry.
+		$ewpa_tp_offered = null;
+		if ( isset( $_POST['ewpa_tp_offered'] ) && is_array( $_POST['ewpa_tp_offered'] ) ) {
+			$ewpa_tp_offered = array_map( 'sanitize_text_field', wp_unslash( $_POST['ewpa_tp_offered'] ) );
 		}
+		$ewpa_tp_posted = array();
+		if ( isset( $_POST['ewpa_tp_abilities'] ) && is_array( $_POST['ewpa_tp_abilities'] ) ) {
+			$ewpa_tp_posted = array_map( 'sanitize_text_field', wp_unslash( $_POST['ewpa_tp_abilities'] ) );
+		}
+		ewpa_tp_save_submission( $ewpa_tp_offered, $ewpa_tp_posted );
 
 		add_settings_error(
 			'ewpa_settings',
@@ -1272,6 +1274,7 @@ function ewpa_render_settings_page(): void {
 						<?php foreach ( $tp_abilities as $tp_key => $tp_info ) : ?>
 							<div class="ewpa-ability">
 								<label class="ewpa-switch">
+									<input type="hidden" name="ewpa_tp_offered[]" value="<?php echo esc_attr( $tp_key ); ?>">
 									<input
 										type="checkbox"
 										name="ewpa_tp_abilities[]"

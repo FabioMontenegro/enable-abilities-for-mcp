@@ -228,6 +228,161 @@ function ewpa_check_term_permission( $input, string $param = 'term_id' ) {
 }
 
 /**
+ * Resolves the status a listing ability filters by.
+ *
+ * Accepts the pseudo-status "any" and every status registered on the site
+ * (get_post_stati()), which includes the custom statuses of WooCommerce and of
+ * other plugins. An absent status means "publish"; an unregistered one is an
+ * error, never silently resolved to something else.
+ *
+ * @param mixed $requested Requested status.
+ * @return string|WP_Error
+ */
+function ewpa_resolve_listing_status( $requested ) {
+	if ( null === $requested || '' === $requested ) {
+		return 'publish';
+	}
+
+	$status = is_string( $requested ) ? sanitize_key( $requested ) : '';
+	if ( 'any' === $status || ( '' !== $status && in_array( $status, get_post_stati(), true ) ) ) {
+		return $status;
+	}
+
+	return new WP_Error(
+		'invalid_status',
+		sprintf(
+			/* translators: %s: requested post status */
+			__( 'Unknown post status "%s". Use "any" or a status registered on this site.', 'enable-abilities-for-mcp' ),
+			is_string( $requested ) ? $requested : gettype( $requested )
+		)
+	);
+}
+
+/**
+ * Checks that the current user may write one post meta key.
+ *
+ * Keys in the denylist are always refused. Protected keys (is_protected_meta())
+ * are refused unless WordPress itself lets the user write them
+ * (current_user_can( 'edit_post_meta', $post_id, $key )), which a site grants
+ * with register_post_meta() auth_callback or the auth_post_meta_{key} filter.
+ *
+ * @param int      $post_id  Post that receives the meta.
+ * @param string   $key      Meta key.
+ * @param string[] $denylist Keys that are never writable.
+ * @return true|WP_Error
+ */
+function ewpa_check_meta_write( int $post_id, string $key, array $denylist = array() ) {
+	if ( in_array( $key, $denylist, true ) ) {
+		return new WP_Error(
+			'blocked_key',
+			sprintf(
+				/* translators: %s: meta key */
+				__( 'The meta key "%s" is reserved by WordPress and cannot be written.', 'enable-abilities-for-mcp' ),
+				$key
+			)
+		);
+	}
+
+	if ( is_protected_meta( $key, 'post' ) && ! current_user_can( 'edit_post_meta', $post_id, $key ) ) {
+		return new WP_Error(
+			'protected_meta',
+			sprintf(
+				/* translators: %s: meta key */
+				__( 'The meta key "%s" is protected and you are not allowed to write it.', 'enable-abilities-for-mcp' ),
+				$key
+			)
+		);
+	}
+
+	return true;
+}
+
+/**
+ * Checks every key of a meta input object before anything is written.
+ *
+ * @param int   $post_id Post that receives the meta.
+ * @param array $meta    Meta key => value input.
+ * @return true|WP_Error The first refused key, or true.
+ */
+function ewpa_check_meta_input( int $post_id, array $meta ) {
+	$denylist = ewpa_get_wp_internal_meta_keys();
+
+	foreach ( array_keys( $meta ) as $key ) {
+		$check = ewpa_check_meta_write( $post_id, sanitize_text_field( (string) $key ), $denylist );
+		if ( is_wp_error( $check ) ) {
+			return $check;
+		}
+	}
+
+	return true;
+}
+
+/**
+ * Checks that the current user may create the terms a request would create.
+ *
+ * Core's wp_set_object_terms() creates every string that is not an existing term. The
+ * taxonomy's own edit_terms capability is required for that; assigning terms
+ * that already exist keeps requiring only assign_terms. Integers are term IDs
+ * and never create anything.
+ *
+ * @param mixed  $terms    Term names, slugs or IDs.
+ * @param string $taxonomy Taxonomy slug.
+ * @return true|WP_Error
+ */
+function ewpa_check_term_creation( $terms, string $taxonomy ) {
+	$tax_obj = get_taxonomy( $taxonomy );
+	if ( ! $tax_obj || current_user_can( $tax_obj->cap->edit_terms ) ) {
+		return true;
+	}
+
+	foreach ( (array) $terms as $term ) {
+		if ( is_int( $term ) || ! is_scalar( $term ) || '' === trim( (string) $term ) ) {
+			continue;
+		}
+		if ( ! term_exists( $term, $taxonomy ) ) {
+			return new WP_Error(
+				'forbidden',
+				sprintf(
+					/* translators: %s: term name */
+					__( 'The term "%s" does not exist and you are not allowed to create terms in this taxonomy.', 'enable-abilities-for-mcp' ),
+					(string) $term
+				)
+			);
+		}
+	}
+
+	return true;
+}
+
+/**
+ * Checks the taxonomies input of the CPT create and update abilities.
+ *
+ * Mirrors the loop that assigns them: only taxonomies that exist and belong to
+ * the post type are considered.
+ *
+ * @param mixed  $taxonomies Taxonomy slug => terms input.
+ * @param string $post_type  Post type slug.
+ * @return true|WP_Error
+ */
+function ewpa_check_taxonomies_input( $taxonomies, string $post_type ) {
+	if ( ! is_array( $taxonomies ) ) {
+		return true;
+	}
+
+	foreach ( $taxonomies as $tax_slug => $terms ) {
+		$tax_slug = sanitize_key( $tax_slug );
+		if ( taxonomy_exists( $tax_slug ) && in_array( $tax_slug, get_object_taxonomies( $post_type ), true ) ) {
+			$check = ewpa_check_term_creation( $terms, $tax_slug );
+			if ( is_wp_error( $check ) ) {
+				return $check;
+			}
+		}
+	}
+
+	return true;
+}
+
+/**
  * Detects the active page-cache plugin.
  *
  * @return string One of: wp_rocket | litespeed | w3_total_cache | wp_super_cache | wp_fastest_cache | none.
@@ -609,8 +764,7 @@ function ewpa_register_custom_abilities(): void {
 						),
 						'status'        => array(
 							'type'        => 'string',
-							'description' => 'Post status: publish, draft, pending, private, trash',
-							'enum'        => array( 'publish', 'draft', 'pending', 'private', 'trash', 'any' ),
+							'description' => 'Post status: any status registered on the site (e.g. publish, draft, pending, private, trash or a custom one) or "any". Default publish. Anything but publish needs an editing capability for the post type.',
 							'default'     => 'publish',
 						),
 						'category_name' => array(
@@ -666,17 +820,23 @@ function ewpa_register_custom_abilities(): void {
 					return current_user_can( 'read' );
 				},
 				'execute_callback'    => function ( $input ) {
-					$allowed_status  = array( 'publish', 'draft', 'pending', 'private', 'trash', 'any' );
 					$allowed_orderby = array( 'date', 'title', 'modified', 'rand' );
 					$allowed_order   = array( 'ASC', 'DESC' );
 
 					$numberposts = min( 100, max( 1, absint( $input['numberposts'] ?? 10 ) ) );
-					$post_status = in_array( $input['status'] ?? 'publish', $allowed_status, true )
-						? $input['status'] : 'publish';
-					$orderby = in_array( $input['orderby'] ?? 'date', $allowed_orderby, true )
-						? $input['orderby'] : 'date';
-					$order = in_array( $input['order'] ?? 'DESC', $allowed_order, true )
-						? $input['order'] : 'DESC';
+					// Any status registered on the site (custom statuses included) or "any"; an unknown one is an error.
+					$post_status = ewpa_resolve_listing_status( $input['status'] ?? 'publish' );
+					if ( is_wp_error( $post_status ) ) {
+						return $post_status;
+					}
+					$orderby = $input['orderby'] ?? 'date';
+					if ( ! in_array( $orderby, $allowed_orderby, true ) ) {
+						$orderby = 'date';
+					}
+					$order = $input['order'] ?? 'DESC';
+					if ( ! in_array( $order, $allowed_order, true ) ) {
+						$order = 'DESC';
+					}
 
 					// Anything but published content needs an editing capability of the type.
 					$status_check = ewpa_check_listing_status( $post_status, 'post' );
@@ -1060,8 +1220,7 @@ function ewpa_register_custom_abilities(): void {
 						),
 						'status'      => array(
 							'type'        => 'string',
-							'description' => 'Page status: publish, draft, private',
-							'enum'        => array( 'publish', 'draft', 'private', 'any' ),
+							'description' => 'Page status: any status registered on the site (e.g. publish, draft, private or a custom one) or "any". Default publish. Anything but publish needs an editing capability for pages.',
 							'default'     => 'publish',
 						),
 					),
@@ -1084,10 +1243,12 @@ function ewpa_register_custom_abilities(): void {
 					return current_user_can( 'read' );
 				},
 				'execute_callback'    => function ( $input ) {
-					$allowed_status = array( 'publish', 'draft', 'private', 'any' );
 					$numberposts = min( 100, max( 1, absint( $input['numberposts'] ?? 20 ) ) );
-					$post_status = in_array( $input['status'] ?? 'publish', $allowed_status, true )
-						? $input['status'] : 'publish';
+					// Any status registered on the site (custom statuses included) or "any"; an unknown one is an error.
+					$post_status = ewpa_resolve_listing_status( $input['status'] ?? 'publish' );
+					if ( is_wp_error( $post_status ) ) {
+						return $post_status;
+					}
 
 					// Anything but published content needs an editing capability of the type.
 					$status_check = ewpa_check_listing_status( $post_status, 'page' );
@@ -1182,8 +1343,10 @@ function ewpa_register_custom_abilities(): void {
 				'execute_callback'    => function ( $input ) {
 					$allowed_status = array( 'approve', 'hold', 'spam', 'trash', 'all' );
 					$number = min( 100, max( 1, absint( $input['number'] ?? 20 ) ) );
-					$status = in_array( $input['status'] ?? 'approve', $allowed_status, true )
-						? $input['status'] : 'approve';
+					$status = $input['status'] ?? 'approve';
+					if ( ! in_array( $status, $allowed_status, true ) ) {
+						$status = 'approve';
+					}
 
 					$args = array(
 						'number' => $number,
@@ -1974,8 +2137,10 @@ function ewpa_register_custom_abilities(): void {
 				},
 				'execute_callback'    => function ( $input ) {
 					$allowed_status = array( 'draft', 'publish', 'pending', 'private' );
-					$status = in_array( $input['status'] ?? 'draft', $allowed_status, true )
-						? $input['status'] : 'draft';
+					$status = $input['status'] ?? 'draft';
+					if ( ! in_array( $status, $allowed_status, true ) ) {
+						$status = 'draft';
+					}
 
 					$post_data = array(
 						'post_title'   => sanitize_text_field( $input['title'] ),
@@ -4623,7 +4788,7 @@ function ewpa_register_custom_abilities(): void {
 			'ewpa/update-post-meta',
 			array(
 				'label'               => __( 'Update Post Meta', 'enable-abilities-for-mcp' ),
-				'description'         => __( 'Writes any post meta field by exact key. Use this when you know the exact meta key required by a specific SEO plugin or custom field (e.g. _genesis_title for The SEO Framework, _seopress_titles_title for SEOPress). Requires edit_post capability on the target post.', 'enable-abilities-for-mcp' ),
+				'description'         => __( 'Writes any post meta field by exact key. Use this when you know the exact meta key required by a specific SEO plugin or custom field (e.g. _genesis_title for The SEO Framework, _seopress_titles_title for SEOPress). Requires edit_post capability on the target post. Protected keys (leading underscore) are refused unless the site authorizes them for the user (register_post_meta auth_callback or the auth_post_meta_{key} filter, i.e. edit_post_meta).', 'enable-abilities-for-mcp' ),
 				'category'            => 'content-management',
 				'input_schema'        => array(
 					'type'       => 'object',
@@ -4680,6 +4845,12 @@ function ewpa_register_custom_abilities(): void {
 
 					if ( in_array( $meta_key, $blocked, true ) ) {
 						return new WP_Error( 'blocked_key', 'This meta key is protected and cannot be written via this ability.' );
+					}
+
+					// Protected keys (leading underscore, internal data) need WordPress's own edit_post_meta authorization.
+					$meta_check = ewpa_check_meta_write( $post_id, $meta_key );
+					if ( is_wp_error( $meta_check ) ) {
+						return $meta_check;
 					}
 
 					if ( str_starts_with( $meta_key, 'rank_math_schema' ) ) {
@@ -5145,8 +5316,7 @@ function ewpa_register_custom_abilities(): void {
 						),
 						'status'      => array(
 							'type'        => 'string',
-							'description' => __( 'Filter by status: publish, draft, pending, private, future, trash, any (default publish). Anything but publish needs an editing capability for the post type.', 'enable-abilities-for-mcp' ),
-							'enum'        => array( 'publish', 'draft', 'pending', 'private', 'future', 'trash', 'any' ),
+							'description' => __( 'Filter by status: any status registered on the site (e.g. publish, draft, pending, private, future, trash or a custom one such as wc-processing) or "any" (default publish). Anything but publish needs an editing capability for the post type.', 'enable-abilities-for-mcp' ),
 						),
 						'orderby'     => array(
 							'type'        => 'string',
@@ -5193,15 +5363,16 @@ function ewpa_register_custom_abilities(): void {
 					}
 
 					$numberposts = min( absint( $input['numberposts'] ?? 20 ), 100 );
-					$allowed_status = array( 'publish', 'draft', 'pending', 'private', 'future', 'trash', 'any' );
-					$post_status    = sanitize_text_field( $input['status'] ?? 'publish' );
-					if ( ! in_array( $post_status, $allowed_status, true ) ) {
-						$post_status = 'publish';
+					// Any status registered on the site (custom statuses included) or "any"; an unknown one is an error.
+					$post_status = ewpa_resolve_listing_status( $input['status'] ?? 'publish' );
+					if ( is_wp_error( $post_status ) ) {
+						return $post_status;
 					}
-					$orderby     = sanitize_text_field( $input['orderby'] ?? 'date' );
-					$order       = in_array( strtoupper( $input['order'] ?? 'DESC' ), array( 'ASC', 'DESC' ), true )
-						? strtoupper( $input['order'] )
-						: 'DESC';
+					$orderby = sanitize_text_field( $input['orderby'] ?? 'date' );
+					$order   = strtoupper( is_string( $input['order'] ?? null ) ? $input['order'] : 'DESC' );
+					if ( ! in_array( $order, array( 'ASC', 'DESC' ), true ) ) {
+						$order = 'DESC';
+					}
 
 					$allowed_orderby = array( 'date', 'title', 'modified', 'menu_order', 'ID', 'rand' );
 					if ( ! in_array( $orderby, $allowed_orderby, true ) ) {
@@ -5241,15 +5412,21 @@ function ewpa_register_custom_abilities(): void {
 							if ( empty( $tq['taxonomy'] ) || empty( $tq['terms'] ) ) {
 								continue;
 							}
+							$tq_field = $tq['field'] ?? 'slug';
+							if ( ! in_array( $tq_field, array( 'slug', 'term_id', 'id' ), true ) ) {
+								$tq_field = 'slug';
+							} elseif ( 'id' === $tq_field ) {
+								$tq_field = 'term_id';
+							}
+							$tq_operator = strtoupper( is_string( $tq['operator'] ?? null ) ? $tq['operator'] : 'IN' );
+							if ( ! in_array( $tq_operator, array( 'IN', 'NOT IN', 'AND' ), true ) ) {
+								$tq_operator = 'IN';
+							}
 							$tax_query[] = array(
 								'taxonomy' => sanitize_key( $tq['taxonomy'] ),
-								'field'    => in_array( $tq['field'] ?? 'slug', array( 'slug', 'term_id', 'id' ), true )
-									? ( 'id' === $tq['field'] ? 'term_id' : $tq['field'] )
-									: 'slug',
+								'field'    => $tq_field,
 								'terms'    => is_array( $tq['terms'] ) ? array_map( 'sanitize_text_field', $tq['terms'] ) : array( sanitize_text_field( $tq['terms'] ) ),
-								'operator' => in_array( strtoupper( $tq['operator'] ?? 'IN' ), array( 'IN', 'NOT IN', 'AND' ), true )
-									? strtoupper( $tq['operator'] )
-									: 'IN',
+								'operator' => $tq_operator,
 							);
 						}
 						if ( ! empty( $tax_query ) ) {
@@ -5557,9 +5734,24 @@ function ewpa_register_custom_abilities(): void {
 						$post_data['post_name'] = sanitize_title( $input['slug'] );
 					}
 
+					// Creating a term by name needs the taxonomy's edit_terms capability.
+					$terms_check = ewpa_check_taxonomies_input( $input['taxonomies'] ?? null, $cpt_obj->name );
+					if ( is_wp_error( $terms_check ) ) {
+						return $terms_check;
+					}
+
 					$post_id = wp_insert_post( $post_data, true );
 					if ( is_wp_error( $post_id ) ) {
 						return $post_id;
+					}
+
+					// Meta keys are checked against the new post before any is written; a refused key undoes the creation.
+					if ( ! empty( $input['meta'] ) && is_array( $input['meta'] ) ) {
+						$meta_check = ewpa_check_meta_input( $post_id, $input['meta'] );
+						if ( is_wp_error( $meta_check ) ) {
+							wp_delete_post( $post_id, true );
+							return $meta_check;
+						}
 					}
 
 					// Featured image.
@@ -5580,12 +5772,8 @@ function ewpa_register_custom_abilities(): void {
 
 					// Meta fields.
 					if ( ! empty( $input['meta'] ) && is_array( $input['meta'] ) ) {
-						$blocked_keys = ewpa_get_wp_internal_meta_keys();
 						foreach ( $input['meta'] as $key => $value ) {
-							$key = sanitize_text_field( $key );
-							if ( ! in_array( $key, $blocked_keys, true ) ) {
-								update_post_meta( $post_id, $key, wp_slash( $value ) );
-							}
+							update_post_meta( $post_id, sanitize_text_field( $key ), wp_slash( $value ) );
 						}
 					}
 
@@ -5738,6 +5926,18 @@ function ewpa_register_custom_abilities(): void {
 						$post_data['menu_order'] = intval( $input['menu_order'] );
 					}
 
+					// Refuse before changing anything: protected or reserved meta keys, and terms the user may not create.
+					if ( ! empty( $input['meta'] ) && is_array( $input['meta'] ) ) {
+						$meta_check = ewpa_check_meta_input( $post_id, $input['meta'] );
+						if ( is_wp_error( $meta_check ) ) {
+							return $meta_check;
+						}
+					}
+					$terms_check = ewpa_check_taxonomies_input( $input['taxonomies'] ?? null, $cpt_obj->name );
+					if ( is_wp_error( $terms_check ) ) {
+						return $terms_check;
+					}
+
 					$result = wp_update_post( $post_data, true );
 					if ( is_wp_error( $result ) ) {
 						return $result;
@@ -5766,12 +5966,8 @@ function ewpa_register_custom_abilities(): void {
 
 					// Meta fields.
 					if ( ! empty( $input['meta'] ) && is_array( $input['meta'] ) ) {
-						$blocked_keys = ewpa_get_wp_internal_meta_keys();
 						foreach ( $input['meta'] as $key => $value ) {
-							$key = sanitize_text_field( $key );
-							if ( ! in_array( $key, $blocked_keys, true ) ) {
-								update_post_meta( $post_id, $key, wp_slash( $value ) );
-							}
+							update_post_meta( $post_id, sanitize_text_field( $key ), wp_slash( $value ) );
 						}
 					}
 
@@ -6063,6 +6259,12 @@ function ewpa_register_custom_abilities(): void {
 					$terms  = is_array( $input['terms'] ) ? $input['terms'] : array( $input['terms'] );
 					$append = ! empty( $input['append'] );
 
+					// Terms that do not exist yet are created by name, which needs the taxonomy's edit_terms capability.
+					$term_check = ewpa_check_term_creation( $terms, $taxonomy );
+					if ( is_wp_error( $term_check ) ) {
+						return $term_check;
+					}
+
 					$result = wp_set_object_terms( $post_id, $terms, $taxonomy, $append );
 
 					if ( is_wp_error( $result ) ) {
@@ -6187,6 +6389,12 @@ function ewpa_register_custom_abilities(): void {
 
 					$terms  = is_array( $input['terms'] ) ? $input['terms'] : array( $input['terms'] );
 					$append = ! empty( $input['append'] );
+
+					// Terms that do not exist yet are created by name, which needs the taxonomy's edit_terms capability.
+					$term_check = ewpa_check_term_creation( $terms, $taxonomy );
+					if ( is_wp_error( $term_check ) ) {
+						return $term_check;
+					}
 
 					$result = wp_set_object_terms( $post_id, $terms, $taxonomy, $append );
 
