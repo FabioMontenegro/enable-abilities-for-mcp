@@ -184,10 +184,16 @@ add_action(
 		update_option( EWPA_OPTION_KEY, $enabled );
 
 		// Third-party abilities: the submission only decides the abilities the form offered;
-		// a disabled ability that was not offered keeps its denylist entry.
+		// a disabled ability that was not offered keeps its denylist entry. The form marker
+		// separates an empty offered list, meaning no third-party plugin was active when the
+		// page rendered so the submission decides nothing, from a form rendered before the
+		// field existed, which did offer every ability it knew about.
 		$ewpa_tp_offered = null;
-		if ( isset( $_POST['ewpa_tp_offered'] ) && is_array( $_POST['ewpa_tp_offered'] ) ) {
-			$ewpa_tp_offered = array_map( 'sanitize_text_field', wp_unslash( $_POST['ewpa_tp_offered'] ) );
+		if ( isset( $_POST['ewpa_tp_form'] ) ) {
+			$ewpa_tp_offered = array();
+			if ( isset( $_POST['ewpa_tp_offered'] ) && is_array( $_POST['ewpa_tp_offered'] ) ) {
+				$ewpa_tp_offered = array_map( 'sanitize_text_field', wp_unslash( $_POST['ewpa_tp_offered'] ) );
+			}
 		}
 		$ewpa_tp_posted = array();
 		if ( isset( $_POST['ewpa_tp_abilities'] ) && is_array( $_POST['ewpa_tp_abilities'] ) ) {
@@ -1151,6 +1157,8 @@ function ewpa_render_settings_page(): void {
 		<div class="ewpa-tab-panel" id="ewpa-tab-abilities" role="tabpanel">
 		<form method="post" action="">
 			<?php wp_nonce_field( 'ewpa_save_settings', 'ewpa_save_nonce' ); ?>
+			<?php // Marks a form that reports which third-party abilities it offered, even when it offered none. ?>
+			<input type="hidden" name="ewpa_tp_form" value="1">
 
 			<div class="ewpa-toolbar">
 				<div class="ewpa-toolbar-left">

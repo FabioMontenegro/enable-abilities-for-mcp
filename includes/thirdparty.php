@@ -147,8 +147,10 @@ function ewpa_tp_merge_disabled( array $current, array $offered, array $posted )
 /**
  * Saves the third-party denylist from the dashboard form.
  *
- * @param string[]|null $offered Names the form offered, or null for a form that did
- *                               not send the list (falls back to the current snapshot).
+ * @param string[]|null $offered Names the form offered. An empty array is a form that
+ *                               offered nothing and therefore decides nothing. Null is a
+ *                               form rendered before the offered list existed, which falls
+ *                               back to the current snapshot.
  * @param string[]      $posted  Names the form left checked (enabled).
  * @return void
  */

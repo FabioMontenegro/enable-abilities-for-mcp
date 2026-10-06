@@ -2043,6 +2043,19 @@ if ( function_exists( 'ewpa_tp_save_submission' ) ) {
 	);
 	ewpa_tp_save_submission( null, array( 'a/x' ) );
 	ewpa_check( 'tp_save_without_an_offered_list_falls_back_to_the_snapshot', array( 'a/y' ) === $GLOBALS['ewpa_options']['ewpa_thirdparty_disabled'] );
+
+	// The form marker is present but no third-party plugin was active, so the form offered
+	// nothing and the submission decides nothing. Without the marker this reached the null
+	// path instead and disabled every ability in the snapshot.
+	ewpa_reset();
+	$GLOBALS['ewpa_options']['ewpa_thirdparty_disabled'] = array( 'a/x' );
+	$GLOBALS['ewpa_options']['ewpa_thirdparty_seen']     = array(
+		'a/x' => $tp_info,
+		'a/y' => $tp_info,
+	);
+	ewpa_tp_save_submission( array(), array() );
+	ewpa_check( 'tp_save_with_an_empty_offered_list_leaves_the_denylist_untouched', array( 'a/x' ) === $GLOBALS['ewpa_options']['ewpa_thirdparty_disabled'] );
+	ewpa_check( 'tp_save_with_an_empty_offered_list_does_not_disable_the_snapshot', ! in_array( 'a/y', $GLOBALS['ewpa_options']['ewpa_thirdparty_disabled'], true ) );
 }
 
 /*
