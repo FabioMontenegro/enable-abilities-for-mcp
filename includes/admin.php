@@ -27,35 +27,131 @@ add_action(
 add_action( 'admin_notices', 'ewpa_admin_notice_mcp_adapter' );
 
 /**
- * Shows a dismissible admin notice if MCP Adapter plugin is not active.
+ * Shows a dismissible admin notice when the MCP Adapter runtime is unavailable.
+ *
+ * There are three states, not two. The MCP Adapter plugin defines WP_MCP_VERSION when
+ * it boots, whatever folder it was installed in. Since 0.7.0 it refuses to boot at all
+ * when another copy of WP\MCP\Core\McpAdapter is already registered by a different
+ * autoloader, which is exactly what a plugin bundling its own copy does. The constant
+ * is then missing even though the plugin is installed and active, so telling the
+ * administrator to download it is both wrong and useless: the real fix is to find the
+ * plugin shipping the stale copy.
  */
 function ewpa_admin_notice_mcp_adapter(): void {
 	if ( ! current_user_can( 'activate_plugins' ) ) {
 		return;
 	}
 
-	// Only the MCP Adapter plugin defines WP_MCP_VERSION, whatever folder it was
-	// installed in. Copies bundled by other plugins (WooCommerce ships 0.3.0) do
-	// not, so they are not mistaken for it.
 	if ( defined( 'WP_MCP_VERSION' ) ) {
 		return;
 	}
 
-	$mcp_url = 'https://wordpress.org/plugins/mcp-adapter/';
+	// The class existing is not enough: another plugin may simply ship a copy while
+	// MCP Adapter is not installed at all. Only an active MCP Adapter that still did not
+	// define its constant is the stand-down case.
+	$adapter_active = ewpa_mcp_adapter_plugin_is_active();
+
+	// Three outcomes, kept apart on purpose: null is no copy loaded at all, the empty
+	// string is a copy whose location could not be resolved, and anything else names it.
+	// Casting null to a string would blame an imaginary plugin whenever the adapter
+	// failed to boot for some reason other than a conflicting copy.
+	$conflict = $adapter_active ? ewpa_mcp_adapter_conflict_source() : null;
+	$mcp_url  = 'https://wordpress.org/plugins/mcp-adapter/';
 	?>
 	<div class="notice notice-warning is-dismissible">
 		<p>
 			<?php
-			printf(
-				/* translators: %1$s: opening <a> tag, %2$s: closing </a> tag */
-				esc_html__( 'Enable Abilities for MCP requires the MCP Adapter plugin to work. %1$sDownload MCP Adapter%2$s', 'enable-abilities-for-mcp' ),
-				'<a href="' . esc_url( $mcp_url ) . '" target="_blank" rel="noopener noreferrer">',
-				'</a>'
-			);
+			if ( ! $adapter_active ) {
+				printf(
+					/* translators: %1$s: opening <a> tag, %2$s: closing </a> tag */
+					esc_html__( 'Enable Abilities for MCP requires the MCP Adapter plugin to work. %1$sDownload MCP Adapter%2$s', 'enable-abilities-for-mcp' ),
+					'<a href="' . esc_url( $mcp_url ) . '" target="_blank" rel="noopener noreferrer">',
+					'</a>'
+				);
+			} elseif ( null === $conflict ) {
+				esc_html_e( 'MCP Adapter is installed and active but did not start, so Enable Abilities for MCP has nothing to register its abilities with. Check whether it meets its own PHP and WordPress requirements, and whether another plugin interferes with it.', 'enable-abilities-for-mcp' );
+			} elseif ( '' === $conflict ) {
+				esc_html_e( 'MCP Adapter did not start because another copy of it is already loaded on this site, bundled by a different plugin. Update or deactivate that plugin; MCP Adapter stands down while an older bundled copy is registered first.', 'enable-abilities-for-mcp' );
+			} else {
+				printf(
+					/* translators: %s: plugin folder or file path shipping the conflicting copy */
+					esc_html__( 'MCP Adapter did not start because another copy of it is already loaded from %s. Update or deactivate that plugin; MCP Adapter stands down while an older bundled copy is registered first.', 'enable-abilities-for-mcp' ),
+					'<code>' . esc_html( $conflict ) . '</code>'
+				);
+			}
 			?>
 		</p>
 	</div>
 	<?php
+}
+
+/**
+ * Tells whether the MCP Adapter plugin itself is active.
+ *
+ * The folder can be renamed, so the entry file name is what identifies it.
+ *
+ * @return bool
+ */
+function ewpa_mcp_adapter_plugin_is_active(): bool {
+	$active = (array) get_option( 'active_plugins', array() );
+
+	if ( is_multisite() ) {
+		$active = array_merge( $active, array_keys( (array) get_site_option( 'active_sitewide_plugins', array() ) ) );
+	}
+
+	foreach ( $active as $plugin ) {
+		// Listed is not the same as present: a folder removed by hand stays in the
+		// option until WordPress notices, and then it is not active in any useful sense.
+		if ( 'mcp-adapter.php' === basename( (string) $plugin ) && file_exists( WP_PLUGIN_DIR . '/' . $plugin ) ) {
+			return true;
+		}
+	}
+
+	return false;
+}
+
+/**
+ * Tells where a conflicting copy of MCP Adapter was loaded from.
+ *
+ * Autoloading is deliberately not triggered: in the conflicting case the other copy is
+ * already loaded, because the adapter's own guard resolved the class before standing
+ * down. Asking for it again would only risk loading a copy nobody had loaded yet.
+ *
+ * @return string|null Plugin folder or path, an empty string when the location cannot
+ *                     be resolved, or null when no copy is loaded at all.
+ */
+function ewpa_mcp_adapter_conflict_source(): ?string {
+	if ( ! class_exists( '\WP\MCP\Core\McpAdapter', false ) ) {
+		return null;
+	}
+
+	try {
+		$file = ( new ReflectionClass( '\WP\MCP\Core\McpAdapter' ) )->getFileName();
+	} catch ( ReflectionException $e ) {
+		return '';
+	}
+
+	if ( ! is_string( $file ) || '' === $file ) {
+		return '';
+	}
+
+	$file       = wp_normalize_path( $file );
+	$plugin_dir = trailingslashit( wp_normalize_path( WP_PLUGIN_DIR ) );
+
+	if ( str_starts_with( $file, $plugin_dir ) ) {
+		$relative = substr( $file, strlen( $plugin_dir ) );
+		$folder   = strtok( $relative, '/' );
+
+		return false === $folder ? $relative : $folder;
+	}
+
+	$content_dir = trailingslashit( wp_normalize_path( WP_CONTENT_DIR ) );
+
+	if ( str_starts_with( $file, $content_dir ) ) {
+		return substr( $file, strlen( $content_dir ) );
+	}
+
+	return $file;
 }
 
 // ─── Migration notice ───────────────────────────────────────────────────────

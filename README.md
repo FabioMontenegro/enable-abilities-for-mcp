@@ -62,6 +62,8 @@ Write abilities validate per-post permissions (`edit_post`, `read_post`) and des
 - Install **[Enable Abilities for MCP](https://wordpress.org/plugins/enable-abilities-for-mcp/)** from the plugin directory
 - Install the **[MCP Adapter](https://wordpress.org/plugins/mcp-adapter/)** plugin
 
+From 0.7.0, MCP Adapter refuses to start when another plugin has already registered its own bundled copy of `WP\MCP\Core\McpAdapter` — WooCommerce ships one, among others. It says so with an "Another version of MCP Adapter is already loaded" notice, and this plugin then reports that the adapter is present but did not start, naming the folder the conflicting copy came from. The fix is to update the plugin bundling the stale copy; which copy wins depends on autoloader registration order, so the conflict does not appear on every site.
+
 ### 2. Configure access
 
 Go to **Settings → WP Abilities**:

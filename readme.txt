@@ -5,7 +5,7 @@ Tags: mcp, ai, rest-api, content-management, woocommerce
 Requires at least: 6.9
 Tested up to: 7.1
 Requires PHP: 8.0
-Stable tag: 2.13.3
+Stable tag: 2.13.4
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -260,6 +260,9 @@ Yes — strict OAuth clients require a direct `200` on `/.well-known/oauth-autho
 
 == Changelog ==
 
+= 2.13.4 =
+* Fixed: the "requires the MCP Adapter plugin to work" notice appeared on sites where MCP Adapter was installed and active. Since its 0.7.0 release the adapter refuses to start when another plugin has already registered its own bundled copy of `WP\MCP\Core\McpAdapter`, and it then never defines `WP_MCP_VERSION`, which is what this plugin checked. The notice now tells three situations apart: the adapter working, the adapter present but stopped, and the adapter missing. When it is present but stopped the notice names the folder the conflicting copy was loaded from, so the plugin shipping it can be found instead of reinstalling one that is already there. Reported by @joshbour.
+
 = 2.13.3 =
 * Security: object-level authorization across every ability that reads or writes a post. A capability was checked site-wide (`edit_posts`, `read`, `edit_products`) but never against the specific post, so a Contributor could duplicate another author's draft and publish it keeping the original author, publish their own posts without review, and a Subscriber could list every draft on the site. Every per-post ability now checks `read_post` or `edit_post` on the target, an `author_id` from the input requires `edit_others_posts`, and a `post_parent` from the input requires permission on the parent.
 * Security: student records (`ewpa/tutor-get-user-progress`, `ewpa/tutor-get-quiz-results`) require `edit_users`, matching their LearnDash equivalents, instead of `edit_posts`. The SEO readers (Rank Math, SEOPress, Yoast), `ewpa/tec-get-event`, `ewpa/ld-get-course` and `ewpa/get-accessibility-snapshot` now check the object or a capability that matches what they return.
@@ -407,6 +410,9 @@ Yes — strict OAuth clients require a direct `200` on `/.well-known/oauth-autho
 * See [changelog.txt](https://plugins.trac.wordpress.org/browser/enable-abilities-for-mcp/trunk/changelog.txt) for the full history of older versions.
 
 == Upgrade Notice ==
+
+= 2.13.4 =
+Fixes a misleading notice that told administrators to download MCP Adapter on sites where it was already installed and active, but had been stopped from starting by another plugin's bundled copy of it. The notice now names the plugin responsible.
 
 = 2.13.3 =
 Security release, recommended for every site. Closes a privilege escalation: a Contributor could duplicate and publish another author's draft keeping the original author, and a Subscriber could list every draft on the site. Behavior change: requesting `publish`, `future` or `private` without the publish capability now returns an error instead of saving a draft in silence.
