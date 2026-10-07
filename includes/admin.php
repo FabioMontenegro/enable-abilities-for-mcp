@@ -49,19 +49,27 @@ function ewpa_admin_notice_mcp_adapter(): void {
 	// The class existing is not enough: another plugin may simply ship a copy while
 	// MCP Adapter is not installed at all. Only an active MCP Adapter that still did not
 	// define its constant is the stand-down case.
-	$conflict = ewpa_mcp_adapter_plugin_is_active() ? (string) ewpa_mcp_adapter_conflict_source() : null;
+	$adapter_active = ewpa_mcp_adapter_plugin_is_active();
+
+	// Three outcomes, kept apart on purpose: null is no copy loaded at all, the empty
+	// string is a copy whose location could not be resolved, and anything else names it.
+	// Casting null to a string would blame an imaginary plugin whenever the adapter
+	// failed to boot for some reason other than a conflicting copy.
+	$conflict = $adapter_active ? ewpa_mcp_adapter_conflict_source() : null;
 	$mcp_url  = 'https://wordpress.org/plugins/mcp-adapter/';
 	?>
 	<div class="notice notice-warning is-dismissible">
 		<p>
 			<?php
-			if ( null === $conflict ) {
+			if ( ! $adapter_active ) {
 				printf(
 					/* translators: %1$s: opening <a> tag, %2$s: closing </a> tag */
 					esc_html__( 'Enable Abilities for MCP requires the MCP Adapter plugin to work. %1$sDownload MCP Adapter%2$s', 'enable-abilities-for-mcp' ),
 					'<a href="' . esc_url( $mcp_url ) . '" target="_blank" rel="noopener noreferrer">',
 					'</a>'
 				);
+			} elseif ( null === $conflict ) {
+				esc_html_e( 'MCP Adapter is installed and active but did not start, so Enable Abilities for MCP has nothing to register its abilities with. Check whether it meets its own PHP and WordPress requirements, and whether another plugin interferes with it.', 'enable-abilities-for-mcp' );
 			} elseif ( '' === $conflict ) {
 				esc_html_e( 'MCP Adapter did not start because another copy of it is already loaded on this site, bundled by a different plugin. Update or deactivate that plugin; MCP Adapter stands down while an older bundled copy is registered first.', 'enable-abilities-for-mcp' );
 			} else {
