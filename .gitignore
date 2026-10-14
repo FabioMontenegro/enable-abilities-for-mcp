@@ -23,7 +23,9 @@ package-lock.json
 
 # Composer
 vendor/
-composer.lock
+# composer.lock is versioned on purpose: sync-to-svn.ps1 builds the shipped vendor
+# from it with composer install --no-dev, so without it the same commit can release
+# different library versions from different machines.
 
 # WordPress
 wp-config.php
