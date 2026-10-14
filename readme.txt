@@ -5,7 +5,7 @@ Tags: mcp, ai, rest-api, content-management, woocommerce
 Requires at least: 6.9
 Tested up to: 7.1
 Requires PHP: 8.0
-Stable tag: 2.13.4
+Stable tag: 2.13.5
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -260,6 +260,10 @@ Yes — strict OAuth clients require a direct `200` on `/.well-known/oauth-autho
 
 == Changelog ==
 
+= 2.13.5 =
+* Updated: the bundled `wp-media/mcp-oauth` library goes from 1.0.3 to 2.0. Other plugins ship their own copy of the same library — Imagify carries a newer one — and since every Composer autoloader involved registers itself first, whichever plugin loads last wins for the whole site. Shipping the oldest copy meant we could win that race and leave another plugin running against a library older than it expects. This release also drops the `replace` workaround that kept `wordpress/mcp-adapter` out of the packaged files: version 2.0 no longer requires it and relies on the standalone MCP Adapter plugin, as this plugin already did.
+* Updated: `composer.lock` is now part of the repository, so the packaged library versions are reproducible instead of depending on the machine that builds the release.
+
 = 2.13.4 =
 * Fixed: the "requires the MCP Adapter plugin to work" notice appeared on sites where MCP Adapter was installed and active. Since its 0.7.0 release the adapter refuses to start when another plugin has already registered its own bundled copy of `WP\MCP\Core\McpAdapter`, and it then never defines `WP_MCP_VERSION`, which is what this plugin checked. The notice now tells three situations apart: the adapter working, the adapter present but stopped, and the adapter missing. When it is present but stopped the notice names the folder the conflicting copy was loaded from, so the plugin shipping it can be found instead of reinstalling one that is already there. Reported by @joshbour.
 
@@ -410,6 +414,9 @@ Yes — strict OAuth clients require a direct `200` on `/.well-known/oauth-autho
 * See [changelog.txt](https://plugins.trac.wordpress.org/browser/enable-abilities-for-mcp/trunk/changelog.txt) for the full history of older versions.
 
 == Upgrade Notice ==
+
+= 2.13.5 =
+Maintenance: updates the bundled OAuth library to 2.0 so this plugin is no longer the oldest copy on sites where another plugin bundles the same library. No change to how the connector is set up or used.
 
 = 2.13.4 =
 Fixes a misleading notice that told administrators to download MCP Adapter on sites where it was already installed and active, but had been stopped from starting by another plugin's bundled copy of it. The notice now names the plugin responsible.
