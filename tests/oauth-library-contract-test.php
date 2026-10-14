@@ -157,7 +157,15 @@ ewpa_check_method( 'WPMedia\\MCP\\OAuth\\Bootstrap', 'schedule_rewrite_flush', t
 // includes/oauth-connectors.php:200 — constructed, then called on the instance.
 ewpa_check_method( 'WPMedia\\MCP\\OAuth\\Context', 'is_enabled', false, 0 );
 
-// includes/oauth-connectors.php:1344 and includes/oauth-sessions.php:363
+// These two are called together, and only in these two places:
+//
+//   includes/oauth-connectors.php:1344
+//   includes/oauth-sessions.php:363
+//
+// Both read JWT::decode( $token, SecretManager::get_secret() ), so both sites use the
+// same arities — decode with 2 arguments, get_secret with none — and one check each
+// covers them. Should a third call site appear with a different arity, it needs its own
+// check: this file is the only place that mismatch would ever surface.
 ewpa_check_method( 'WPMedia\\MCP\\OAuth\\Auth\\JWT', 'decode', true, 2 );
 ewpa_check_method( 'WPMedia\\MCP\\OAuth\\Auth\\SecretManager', 'get_secret', true, 0 );
 
