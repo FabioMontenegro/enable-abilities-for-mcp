@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "76e3ef1708fc3b422c4daff66c6613ee",
+    "content-hash": "77533d9aa9236e2469855024e751cac3",
     "packages": [
         {
             "name": "wp-media/apply-filters-typed",
