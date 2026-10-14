@@ -9,6 +9,6 @@
         }
     },
     "require": {
-        "wp-media/mcp-oauth": "^2.0"
+        "wp-media/mcp-oauth": "2.0"
     }
 }
