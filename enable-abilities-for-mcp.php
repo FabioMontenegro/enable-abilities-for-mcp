@@ -229,6 +229,74 @@ function ewpa_maybe_upgrade(): void {
 	update_option( 'ewpa_db_version', EWPA_VERSION );
 }
 
+/*
+ * Settling the once-flagless key migrations has to happen before any of them runs, and
+ * before ewpa_maybe_upgrade() replaces the version they are judged against. Priority 1
+ * puts it ahead of both.
+ */
+add_action( 'plugins_loaded', 'ewpa_settle_unflagged_key_migrations', 1 );
+
+/**
+ * Marks the once-flagless key migrations as done on installs that already ran them.
+ *
+ * Seven migrations, the ones named v251 through v281, used to re-add their abilities on
+ * every request because they never recorded a flag, so an administrator could not
+ * durably disable them. They now carry the usual guard, but adding that guard alone
+ * would let each one run one final time and re-enable an ability the administrator had
+ * removed — undoing the very choice this fix exists to protect.
+ *
+ * On a site whose recorded version already passed the release that introduced a
+ * migration, that migration has run on every request since, so its abilities are there
+ * unless somebody deliberately removed them. Nothing is left to add, and the flag is
+ * simply recorded as done.
+ *
+ * The seven have two entry points — their own plugins_loaded hooks, and
+ * ewpa_run_migrations() on wp_abilities_api_init, which can fire first — so this is
+ * called from both. It reads ewpa_db_version itself instead of taking it as an argument
+ * so either path gets the same answer. Every call after the first one is seven cached
+ * option reads and no writes.
+ *
+ * @return void
+ */
+function ewpa_settle_unflagged_key_migrations(): void {
+	$previous_version = get_option( 'ewpa_db_version' );
+
+	// No recorded version means the install predates ewpa_db_version, written since
+	// 2.0.1, or is brand new. Leave the migrations to run normally; they are idempotent
+	// and flag themselves afterwards.
+	if ( ! is_string( $previous_version ) || '' === $previous_version ) {
+		return;
+	}
+
+	/*
+	 * The release each migration first shipped in, which is not always the one its name
+	 * suggests. Read off the published tags rather than the function names:
+	 * ewpa_maybe_migrate_keys_v251 is already in 2.5.0, and v271 first appears in 2.7.2
+	 * because no 2.7.1 was ever released. A migration settled one release too late costs
+	 * an administrator one unwanted re-enable; one settled too early means its ability
+	 * never gets added at all.
+	 */
+	$migrations = array(
+		'v251' => '2.5.0',
+		'v260' => '2.6.0',
+		'v270' => '2.7.0',
+		'v271' => '2.7.2',
+		'v272' => '2.7.2',
+		'v280' => '2.8.0',
+		'v281' => '2.8.1',
+	);
+
+	foreach ( $migrations as $flag => $introduced_in ) {
+		if ( get_option( 'ewpa_keys_migrated_' . $flag ) ) {
+			continue;
+		}
+
+		if ( version_compare( $previous_version, $introduced_in, '>=' ) ) {
+			update_option( 'ewpa_keys_migrated_' . $flag, true );
+		}
+	}
+}
+
 /**
  * Plugin activation callback.
  *
@@ -792,14 +860,22 @@ function ewpa_maybe_migrate_keys_v250() {
  * @return void
  */
 function ewpa_maybe_migrate_keys_v251(): void {
-	$enabled = get_option( EWPA_OPTION_KEY );
-	if ( ! is_array( $enabled ) ) {
+	if ( get_option( 'ewpa_keys_migrated_v251' ) ) {
 		return;
 	}
+
+	$enabled = get_option( EWPA_OPTION_KEY );
+	if ( ! is_array( $enabled ) ) {
+		update_option( 'ewpa_keys_migrated_v251', true );
+		return;
+	}
+
 	if ( ! in_array( 'ewpa/duplicate-post', $enabled, true ) ) {
 		$enabled[] = 'ewpa/duplicate-post';
 		update_option( EWPA_OPTION_KEY, $enabled );
 	}
+
+	update_option( 'ewpa_keys_migrated_v251', true );
 }
 
 /**
@@ -811,8 +887,13 @@ function ewpa_maybe_migrate_keys_v251(): void {
  * @return void
  */
 function ewpa_maybe_migrate_keys_v260(): void {
+	if ( get_option( 'ewpa_keys_migrated_v260' ) ) {
+		return;
+	}
+
 	$enabled = get_option( EWPA_OPTION_KEY );
 	if ( ! is_array( $enabled ) ) {
+		update_option( 'ewpa_keys_migrated_v260', true );
 		return;
 	}
 
@@ -832,6 +913,8 @@ function ewpa_maybe_migrate_keys_v260(): void {
 	if ( $changed ) {
 		update_option( EWPA_OPTION_KEY, $enabled );
 	}
+
+	update_option( 'ewpa_keys_migrated_v260', true );
 }
 
 /**
@@ -840,8 +923,13 @@ function ewpa_maybe_migrate_keys_v260(): void {
  * @return void
  */
 function ewpa_maybe_migrate_keys_v270(): void {
+	if ( get_option( 'ewpa_keys_migrated_v270' ) ) {
+		return;
+	}
+
 	$enabled = get_option( EWPA_OPTION_KEY );
 	if ( ! is_array( $enabled ) ) {
+		update_option( 'ewpa_keys_migrated_v270', true );
 		return;
 	}
 
@@ -861,6 +949,8 @@ function ewpa_maybe_migrate_keys_v270(): void {
 	if ( $changed ) {
 		update_option( EWPA_OPTION_KEY, $enabled );
 	}
+
+	update_option( 'ewpa_keys_migrated_v270', true );
 }
 
 /**
@@ -869,14 +959,22 @@ function ewpa_maybe_migrate_keys_v270(): void {
  * @return void
  */
 function ewpa_maybe_migrate_keys_v271(): void {
-	$enabled = get_option( EWPA_OPTION_KEY );
-	if ( ! is_array( $enabled ) ) {
+	if ( get_option( 'ewpa_keys_migrated_v271' ) ) {
 		return;
 	}
+
+	$enabled = get_option( EWPA_OPTION_KEY );
+	if ( ! is_array( $enabled ) ) {
+		update_option( 'ewpa_keys_migrated_v271', true );
+		return;
+	}
+
 	if ( ! in_array( 'ewpa/update-term', $enabled, true ) ) {
 		$enabled[] = 'ewpa/update-term';
 		update_option( EWPA_OPTION_KEY, $enabled );
 	}
+
+	update_option( 'ewpa_keys_migrated_v271', true );
 }
 
 /**
@@ -890,8 +988,13 @@ function ewpa_maybe_migrate_keys_v271(): void {
  * @return void
  */
 function ewpa_maybe_migrate_keys_v272(): void {
+	if ( get_option( 'ewpa_keys_migrated_v272' ) ) {
+		return;
+	}
+
 	$enabled = get_option( EWPA_OPTION_KEY );
 	if ( ! is_array( $enabled ) ) {
+		update_option( 'ewpa_keys_migrated_v272', true );
 		return;
 	}
 
@@ -911,6 +1014,8 @@ function ewpa_maybe_migrate_keys_v272(): void {
 	if ( $changed ) {
 		update_option( EWPA_OPTION_KEY, $enabled );
 	}
+
+	update_option( 'ewpa_keys_migrated_v272', true );
 }
 
 /**
@@ -919,14 +1024,22 @@ function ewpa_maybe_migrate_keys_v272(): void {
  * @return void
  */
 function ewpa_maybe_migrate_keys_v280(): void {
-	$enabled = get_option( EWPA_OPTION_KEY );
-	if ( ! is_array( $enabled ) ) {
+	if ( get_option( 'ewpa_keys_migrated_v280' ) ) {
 		return;
 	}
+
+	$enabled = get_option( EWPA_OPTION_KEY );
+	if ( ! is_array( $enabled ) ) {
+		update_option( 'ewpa_keys_migrated_v280', true );
+		return;
+	}
+
 	if ( ! in_array( 'ewpa/get-accessibility-snapshot', $enabled, true ) ) {
 		$enabled[] = 'ewpa/get-accessibility-snapshot';
 		update_option( EWPA_OPTION_KEY, $enabled );
 	}
+
+	update_option( 'ewpa_keys_migrated_v280', true );
 }
 
 /**
@@ -935,14 +1048,22 @@ function ewpa_maybe_migrate_keys_v280(): void {
  * @return void
  */
 function ewpa_maybe_migrate_keys_v281(): void {
-	$enabled = get_option( EWPA_OPTION_KEY );
-	if ( ! is_array( $enabled ) ) {
+	if ( get_option( 'ewpa_keys_migrated_v281' ) ) {
 		return;
 	}
+
+	$enabled = get_option( EWPA_OPTION_KEY );
+	if ( ! is_array( $enabled ) ) {
+		update_option( 'ewpa_keys_migrated_v281', true );
+		return;
+	}
+
 	if ( ! in_array( 'ewpa/assign-post-terms', $enabled, true ) ) {
 		$enabled[] = 'ewpa/assign-post-terms';
 		update_option( EWPA_OPTION_KEY, $enabled );
 	}
+
+	update_option( 'ewpa_keys_migrated_v281', true );
 }
 
 /**
@@ -1033,6 +1154,10 @@ function ewpa_maybe_migrate_keys_v2110(): void {
  * @return void
  */
 function ewpa_run_migrations(): void {
+	// wp_abilities_api_init can fire before plugins_loaded reaches priority 1, so the
+	// seven that used to run unflagged are settled here too, before any of them runs.
+	ewpa_settle_unflagged_key_migrations();
+
 	ewpa_maybe_migrate_keys_v251();
 	ewpa_maybe_migrate_keys_v260();
 	ewpa_maybe_migrate_keys_v270();
