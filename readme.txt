@@ -5,7 +5,7 @@ Tags: mcp, ai, rest-api, content-management, woocommerce
 Requires at least: 6.9
 Tested up to: 7.1
 Requires PHP: 8.0
-Stable tag: 2.13.5
+Stable tag: 2.13.6
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -260,6 +260,9 @@ Yes — strict OAuth clients require a direct `200` on `/.well-known/oauth-autho
 
 == Changelog ==
 
+= 2.13.6 =
+* Fixed: ten abilities were switched back on by themselves on every page load, so turning any of them off never lasted beyond the next request. Seven of the migrations that add abilities to existing installs never recorded that they had run, unlike every other migration in the plugin, so they ran again on every request and added their abilities back. The ten: `ewpa/duplicate-post`, `ewpa/fse-list-templates`, `ewpa/fse-get-template`, `ewpa/get-term-meta`, `ewpa/update-term-meta`, `ewpa/update-term`, `ewpa/je-list-queries`, `ewpa/je-get-query`, `ewpa/get-accessibility-snapshot` and `ewpa/assign-post-terms`. Your current selection is kept as it is: on an install that already passed those releases the migrations are recorded as done instead of running one final time, so an ability you had turned off stays off. An install upgrading from an older release still receives the abilities it never got. Reported by @peterbrej.
+
 = 2.13.5 =
 * Updated: the bundled `wp-media/mcp-oauth` library goes from 1.0.3 to 2.0. Other plugins ship their own copy of the same library — Imagify carries a newer one — and since every Composer autoloader involved registers itself first, whichever plugin loads last wins for the whole site. Shipping the oldest copy meant we could win that race and leave another plugin running against a library older than it expects. This release also drops the `replace` workaround that kept `wordpress/mcp-adapter` out of the packaged files: version 2.0 no longer requires it and relies on the standalone MCP Adapter plugin, as this plugin already did.
 * Updated: `composer.lock` is now part of the repository, so the packaged library versions are reproducible instead of depending on the machine that builds the release.
@@ -414,6 +417,9 @@ Yes — strict OAuth clients require a direct `200` on `/.well-known/oauth-autho
 * See [changelog.txt](https://plugins.trac.wordpress.org/browser/enable-abilities-for-mcp/trunk/changelog.txt) for the full history of older versions.
 
 == Upgrade Notice ==
+
+= 2.13.6 =
+Fixes ten abilities that switched back on by themselves on every page load, which made it impossible to keep them turned off. The selection you have now is preserved, and an install coming from an older release still gets the abilities it never received.
 
 = 2.13.5 =
 Maintenance: updates the bundled OAuth library to 2.0 so this plugin is no longer the oldest copy on sites where another plugin bundles the same library. No change to how the connector is set up or used.
