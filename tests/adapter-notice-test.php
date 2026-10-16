@@ -23,6 +23,9 @@ $ewpa_sandbox = rtrim( sys_get_temp_dir(), '/\\' ) . '/ewpa-notice-test-' . getm
 define( 'WP_CONTENT_DIR', $ewpa_sandbox );
 define( 'WP_PLUGIN_DIR', $ewpa_sandbox . '/plugins' );
 
+// admin.php builds its Plugins-screen hook names from this at load time.
+define( 'EWPA_PLUGIN_FILE', dirname( __DIR__ ) . '/enable-abilities-for-mcp.php' );
+
 register_shutdown_function(
 	function () use ( $ewpa_sandbox ) {
 		if ( ! is_dir( $ewpa_sandbox ) ) {
@@ -201,6 +204,8 @@ $GLOBALS['ewpa_noop_functions'] = array(
 	'_x',
 	'esc_html_x',
 	'apply_filters',
+	// Used at load time to build the plugin_action_links_<basename> hook name.
+	'plugin_basename',
 );
 
 foreach ( $GLOBALS['ewpa_noop_functions'] as $ewpa_fn ) {
