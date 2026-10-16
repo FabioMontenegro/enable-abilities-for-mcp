@@ -5,7 +5,7 @@ Tags: mcp, ai, rest-api, content-management, woocommerce
 Requires at least: 6.9
 Tested up to: 7.1
 Requires PHP: 8.0
-Stable tag: 2.13.6
+Stable tag: 2.13.7
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -260,6 +260,11 @@ Yes — strict OAuth clients require a direct `200` on `/.well-known/oauth-autho
 
 == Changelog ==
 
+= 2.13.7 =
+* **Security:** the Bearer token could be used against the whole WordPress REST API, not only this plugin's MCP routes. The check that limited it read the request URL, but WordPress decides which route to run from the `rest_route` query variable, and that variable wins over the URL. A request could therefore carry the allowed text in the URL while WordPress served a completely different route. Because the token is only ever issued to an administrator, anything the REST API exposes to an administrator was reachable, regardless of which abilities the site owner had enabled. The check now reads the route WordPress is actually serving, and matches it on a namespace boundary. Found in-house while testing an unrelated change; no reports of it being used. **If you use the Bearer token, update.** Application Passwords and the OAuth connector were never affected.
+* Fixed: the Bearer token now works on sites that do not use pretty permalinks. The old check looked for `/wp-json/` in the URL, which those sites never send, so the token was always refused there.
+* New: the `ewpa_bearer_route_prefixes` filter adds REST route prefixes the Bearer token is accepted on, for sites that run a second MCP server — JetEngine 3.9 ships its own. It is a filter and not a setting on purpose: the token carries administrator rights, so every prefix added is driven as an administrator, and that belongs in reviewed code.
+
 = 2.13.6 =
 * Fixed: ten abilities were switched back on by themselves on every page load, so turning any of them off never lasted beyond the next request. Seven of the migrations that add abilities to existing installs never recorded that they had run, unlike every other migration in the plugin, so they ran again on every request and added their abilities back. The ten: `ewpa/duplicate-post`, `ewpa/fse-list-templates`, `ewpa/fse-get-template`, `ewpa/get-term-meta`, `ewpa/update-term-meta`, `ewpa/update-term`, `ewpa/je-list-queries`, `ewpa/je-get-query`, `ewpa/get-accessibility-snapshot` and `ewpa/assign-post-terms`. Your current selection is kept as it is: on an install that already passed those releases the migrations are recorded as done instead of running one final time, so an ability you had turned off stays off. An install upgrading from an older release still receives the abilities it never got. Reported by @peterbrej.
 
@@ -417,6 +422,9 @@ Yes — strict OAuth clients require a direct `200` on `/.well-known/oauth-autho
 * See [changelog.txt](https://plugins.trac.wordpress.org/browser/enable-abilities-for-mcp/trunk/changelog.txt) for the full history of older versions.
 
 == Upgrade Notice ==
+
+= 2.13.7 =
+Security release. The Bearer token could be used against the whole REST API instead of only this plugin's MCP routes, giving anyone holding it the administrator access the REST API allows, whatever abilities were enabled. Update if you use the Bearer token. Application Passwords and the OAuth connector were not affected.
 
 = 2.13.6 =
 Fixes ten abilities that switched back on by themselves on every page load, which made it impossible to keep them turned off. The selection you have now is preserved, and an install coming from an older release still gets the abilities it never received.
