@@ -123,10 +123,38 @@ function untrailingslashit( $string ) {
 }
 
 /**
+ * @param mixed $value Value.
+ * @return mixed
+ */
+function wp_unslash( $value ) {
+	return is_string( $value ) ? stripslashes( $value ) : $value;
+}
+
+/**
+ * @param mixed $str Value.
  * @return string
  */
-function rest_get_url_prefix() {
-	return 'wp-json';
+function sanitize_text_field( $str ) {
+	return is_string( $str ) ? trim( $str ) : '';
+}
+
+/**
+ * @param int $user_id User ID.
+ * @return object|false
+ */
+function get_userdata( $user_id ) {
+	return 7 === (int) $user_id ? (object) array( 'ID' => 7 ) : false;
+}
+
+/**
+ * The token is only ever accepted for a user who can manage_options.
+ *
+ * @param object $user       User.
+ * @param string $capability Capability.
+ * @return bool
+ */
+function user_can( $user, $capability ) {
+	return isset( $user->ID ) && 7 === (int) $user->ID && 'manage_options' === $capability;
 }
 
 /**
@@ -471,6 +499,88 @@ ewpa_check(
 	'a_callback_resolving_the_user_does_not_recurse',
 	! $ewpa_recursed,
 	'the filter re-entered itself without bound'
+);
+
+// ─── The gate, driven end to end ─────────────────────────────────────────────
+//
+// Everything above exercises the three helpers directly, which says nothing about
+// whether the gate is wired into ewpa_authenticate_api_key() at all. Deleting the
+// `if ( ! $allowed ) { return $user_id; }` line puts the vulnerability back and left
+// the rest of this file green, so these checks drive the real callback with a real
+// token instead.
+
+echo "\n== the real callback, with a real token ==\n";
+
+ewpa_reset_filter( 'ewpa_bearer_route_prefixes' );
+ewpa_reset_filter( 'determine_current_user' );
+
+$ewpa_token = 'a-valid-token';
+
+$GLOBALS['ewpa_options']['ewpa_api_key'] = array(
+	'hash'    => hash( 'sha256', $ewpa_token ),
+	'user_id' => 7,
+);
+
+$_SERVER['HTTP_AUTHORIZATION'] = 'Bearer ' . $ewpa_token;
+
+ewpa_serving( '/mcp/mcp-oauth-server' );
+
+ewpa_check(
+	'a_valid_token_authenticates_on_an_allowed_route',
+	7 === ewpa_authenticate_api_key( false ),
+	'got ' . ewpa_show( ewpa_authenticate_api_key( false ) )
+);
+
+// The vulnerability this release fixes, at the only layer that can refuse it.
+foreach ( array( '/wp/v2/users', '/wp/v2/settings', '/batch/v1' ) as $ewpa_route ) {
+	ewpa_serving( $ewpa_route );
+
+	ewpa_check(
+		'a_valid_token_is_refused_on_' . str_replace( '/', '_', trim( $ewpa_route, '/' ) ),
+		false === ewpa_authenticate_api_key( false ),
+		'the token authenticated on ' . $ewpa_route
+	);
+}
+
+// A refused route must not leave the recursion guard raised behind it.
+ewpa_serving( '/mcp/mcp-oauth-server' );
+
+ewpa_check(
+	'a_refused_route_does_not_wedge_the_guard',
+	7 === ewpa_authenticate_api_key( false ),
+	'a valid token stopped authenticating after a refused call'
+);
+
+// And a throwing filter callback must not wedge it either.
+ewpa_reset_filter( 'ewpa_bearer_route_prefixes' );
+add_filter(
+	'ewpa_bearer_route_prefixes',
+	function () {
+		throw new RuntimeException( 'a third-party callback blew up' );
+	}
+);
+
+try {
+	ewpa_authenticate_api_key( false );
+} catch ( RuntimeException $e ) {
+	$ewpa_unused = $e->getMessage();
+}
+
+ewpa_reset_filter( 'ewpa_bearer_route_prefixes' );
+
+ewpa_check(
+	'a_throwing_callback_does_not_wedge_the_guard',
+	7 === ewpa_authenticate_api_key( false ),
+	'a valid token stopped authenticating after a callback threw'
+);
+
+// No route means nothing to authorize against.
+unset( $GLOBALS['wp']->query_vars['rest_route'] );
+
+ewpa_check(
+	'no_route_means_no_authentication',
+	false === ewpa_authenticate_api_key( false ),
+	'the token authenticated with no route in query_vars'
 );
 
 echo "\n$ewpa_pass passed, $ewpa_fail failed.\n";

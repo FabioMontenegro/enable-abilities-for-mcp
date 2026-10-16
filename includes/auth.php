@@ -272,10 +272,16 @@ function ewpa_authenticate_api_key( $user_id ) {
 
 	// The prefix list goes through a filter, and a callback is free to ask who the
 	// current user is, which re-enters this very filter. Arm the guard around it for
-	// the same reason it is armed around ewpa_validate_api_key() below.
+	// the same reason it is armed around ewpa_validate_api_key() below. The finally
+	// matters: a callback that throws would otherwise leave the guard raised for the
+	// rest of the request, and every later token check would quietly refuse.
 	$resolving = true;
-	$allowed   = ewpa_bearer_route_allowed( ewpa_current_rest_route(), ewpa_bearer_route_prefixes() );
-	$resolving = false;
+
+	try {
+		$allowed = ewpa_bearer_route_allowed( ewpa_current_rest_route(), ewpa_bearer_route_prefixes() );
+	} finally {
+		$resolving = false;
+	}
 
 	if ( ! $allowed ) {
 		return $user_id;
@@ -292,8 +298,12 @@ function ewpa_authenticate_api_key( $user_id ) {
 	}
 
 	$resolving = true;
-	$validated = ewpa_validate_api_key( $token );
-	$resolving = false;
+
+	try {
+		$validated = ewpa_validate_api_key( $token );
+	} finally {
+		$resolving = false;
+	}
 
 	if ( false === $validated ) {
 		return $user_id;
