@@ -105,6 +105,149 @@ function ewpa_get_authorization_header(): string {
 }
 
 /**
+ * Returns the REST route WordPress is serving for this request.
+ *
+ * Not the request URI, which is a different thing and must never be used to
+ * decide authorization. WordPress dispatches `$wp->query_vars['rest_route']`
+ * (wp-includes/rest-api.php, rest_api_loaded()), and for every public query var
+ * WP::parse_request() prefers an explicit `$_GET`/`$_POST` value over the one the
+ * permalink rewrite produced. A request to `/wp-json/mcp/x?rest_route=/wp/v2/users`
+ * therefore has `/wp-json/mcp/` in its URI while being dispatched to
+ * `/wp/v2/users`, and a guard reading the URI authorizes the wrong route.
+ *
+ * Callers must already have established that REST_REQUEST is defined. That
+ * constant is only defined after rest_api_loaded() has confirmed the query var
+ * is a non-empty string, so by then it is both present and authoritative.
+ *
+ * @return string The route, normalized the way core normalizes it, or '' if unknown.
+ */
+function ewpa_current_rest_route(): string {
+	if ( ! isset( $GLOBALS['wp']->query_vars['rest_route'] ) ) {
+		return '';
+	}
+
+	$route = $GLOBALS['wp']->query_vars['rest_route'];
+
+	if ( ! is_string( $route ) ) {
+		return '';
+	}
+
+	// Mirrors rest_api_loaded(), so this sees exactly what gets served.
+	$route = untrailingslashit( $route );
+
+	return '' === $route ? '/' : $route;
+}
+
+/**
+ * Returns the REST route prefixes the Bearer token is accepted on.
+ *
+ * The token is not a scoped credential: ewpa_validate_api_key() only accepts it
+ * for a user who can manage_options, so it carries full administrator rights.
+ * This list is the only thing keeping it away from the rest of the REST API,
+ * which is why it is deliberately narrow and has no setting behind it. Widening
+ * it is a decision that belongs in reviewed code, not one click away in wp-admin.
+ *
+ * @return array Route prefixes, each ending in '/', matched against the start of the route.
+ */
+function ewpa_bearer_route_prefixes(): array {
+	$default = '/mcp/';
+
+	/**
+	 * Filters the REST route prefixes the Bearer token authenticates on.
+	 *
+	 * These are route prefixes, not URL paths: '/mcp/', not '/wp-json/mcp/'.
+	 * Every prefix added here can be driven by the token as an administrator,
+	 * and whatever the route checks for itself becomes the only remaining
+	 * protection. Add another MCP server's namespace if you run one — for
+	 * example '/jet-engine/v1/mcp' — and nothing broader.
+	 *
+	 * Entries must be non-empty strings beginning with '/'. A bare '/' is
+	 * rejected, since it would match every route on the site.
+	 *
+	 * @param array $prefixes Route prefixes, starting with the built-in MCP one.
+	 */
+	$prefixes = apply_filters( 'ewpa_bearer_route_prefixes', array( $default ) );
+
+	$prefixes = ewpa_filter_route_prefixes( $prefixes );
+
+	// A filter that returned nothing usable must not switch Bearer auth off by
+	// accident; that is what the ewpa_bearer_enabled option is for.
+	return array() === $prefixes ? array( $default ) : $prefixes;
+}
+
+/**
+ * Keeps only the route prefixes that are safe to match a Bearer token against.
+ *
+ * Separate from the filter call so it can be tested on its own. Every surviving
+ * entry is normalized to end in '/', which is what makes the comparison in
+ * ewpa_bearer_route_allowed() a segment boundary rather than a text prefix:
+ * '/mcp/' must not match the route '/mcp-something/x'.
+ *
+ * @param mixed $prefixes Whatever the filter returned.
+ * @return array Valid prefixes, in the order given, without duplicates.
+ */
+function ewpa_filter_route_prefixes( $prefixes ): array {
+	if ( ! is_array( $prefixes ) ) {
+		return array();
+	}
+
+	$valid = array();
+
+	foreach ( $prefixes as $prefix ) {
+		if ( ! is_string( $prefix ) ) {
+			continue;
+		}
+
+		$prefix = trim( $prefix );
+
+		if ( '' === $prefix || '/' !== $prefix[0] ) {
+			continue;
+		}
+
+		// rtrim leaves '' for '/' and '//', both of which match every route.
+		$prefix = rtrim( $prefix, '/' );
+
+		if ( '' === $prefix ) {
+			continue;
+		}
+
+		$valid[] = $prefix . '/';
+	}
+
+	return array_values( array_unique( $valid ) );
+}
+
+/**
+ * Tells whether the route being served falls under one of the allowed prefixes.
+ *
+ * The route gets a trailing slash before the comparison so that a prefix only
+ * ever matches on a segment boundary: with prefix '/mcp/', the route '/mcp'
+ * matches as '/mcp/', '/mcp/server' matches, and '/mcp-other/x' does not.
+ *
+ * Matching is anchored and case sensitive, because REST route matching in
+ * WordPress is.
+ *
+ * @param string $route    Route from ewpa_current_rest_route().
+ * @param array  $prefixes Prefixes already normalized by ewpa_filter_route_prefixes().
+ * @return bool
+ */
+function ewpa_bearer_route_allowed( string $route, array $prefixes ): bool {
+	if ( '' === $route ) {
+		return false;
+	}
+
+	$haystack = $route . '/';
+
+	foreach ( $prefixes as $prefix ) {
+		if ( 0 === strpos( $haystack, $prefix ) ) {
+			return true;
+		}
+	}
+
+	return false;
+}
+
+/**
  * Authenticates REST API requests via Bearer token for MCP routes.
  *
  * @param int|false $user_id The current user ID or false.
@@ -127,11 +270,14 @@ function ewpa_authenticate_api_key( $user_id ) {
 		return $user_id;
 	}
 
-	$request_uri = isset( $_SERVER['REQUEST_URI'] )
-		? sanitize_text_field( wp_unslash( $_SERVER['REQUEST_URI'] ) )
-		: '';
+	// The prefix list goes through a filter, and a callback is free to ask who the
+	// current user is, which re-enters this very filter. Arm the guard around it for
+	// the same reason it is armed around ewpa_validate_api_key() below.
+	$resolving = true;
+	$allowed   = ewpa_bearer_route_allowed( ewpa_current_rest_route(), ewpa_bearer_route_prefixes() );
+	$resolving = false;
 
-	if ( false === strpos( $request_uri, '/' . rest_get_url_prefix() . '/mcp/' ) ) {
+	if ( ! $allowed ) {
 		return $user_id;
 	}
 
