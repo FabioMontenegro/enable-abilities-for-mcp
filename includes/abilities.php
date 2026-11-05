@@ -25,6 +25,40 @@ function ewpa_get_meta_string( $post_id, $key, $fallback = '' ) {
 }
 
 /**
+ * Returns the capability an ability requires, letting the site change it.
+ *
+ * Reading should never require permission to write, but which capability is
+ * right depends on the site: a role built by hand, an access-control plugin, or
+ * a shop that wants its order data held tighter than WooCommerce's own default.
+ * This is the seam for that, and it goes both ways: a site can loosen a check or
+ * demand more than the plugin asks for.
+ *
+ * Currently routed through here: the WooCommerce read abilities. Other abilities
+ * still name their capability inline; they are moved over as cases appear.
+ *
+ * @param string $ability    Ability name, e.g. 'ewpa/wc-get-orders'.
+ * @param string $capability Capability the plugin asks for by default.
+ * @return string Capability to check.
+ */
+function ewpa_ability_capability( string $ability, string $capability ): string {
+	/**
+	 * Filters the capability an ability requires.
+	 *
+	 * Returning a capability nobody holds closes the ability; returning one
+	 * everybody holds opens it to every authenticated user, so weigh what the
+	 * ability returns before loosening it. Order data carries the buyer's name,
+	 * address, e-mail and phone.
+	 *
+	 * @param string $capability Capability the plugin asks for by default.
+	 * @param string $ability    Ability name.
+	 */
+	$filtered = apply_filters( 'ewpa_ability_capability', $capability, $ability );
+
+	// A filter that returns nothing usable must not open or break the gate.
+	return is_string( $filtered ) && '' !== trim( $filtered ) ? trim( $filtered ) : $capability;
+}
+
+/**
  * Returns the non-public post types that the CPT abilities may still manage.
  *
  * `public` and `show_in_rest` describe front-end visibility and REST exposure,
@@ -6796,7 +6830,7 @@ function ewpa_register_custom_abilities(): void {
 					),
 				),
 				'permission_callback' => function ( $args ) {
-					return current_user_can( 'edit_products' );
+					return current_user_can( ewpa_ability_capability( 'ewpa/wc-get-products', 'read_private_products' ) );
 				},
 				'execute_callback'    => function ( $args ) {
 					$status   = isset( $args['status'] ) ? sanitize_text_field( $args['status'] ) : 'publish';
@@ -6878,7 +6912,7 @@ function ewpa_register_custom_abilities(): void {
 					'required'   => array( 'product_id' ),
 				),
 				'permission_callback' => function ( $args ) {
-					return current_user_can( 'edit_products' );
+					return current_user_can( ewpa_ability_capability( 'ewpa/wc-get-product', 'read_private_products' ) );
 				},
 				'execute_callback'    => function ( $args ) {
 					$product_id = intval( $args['product_id'] );
@@ -7090,7 +7124,7 @@ function ewpa_register_custom_abilities(): void {
 					),
 				),
 				'permission_callback' => function ( $args ) {
-					return current_user_can( 'edit_shop_orders' );
+					return current_user_can( ewpa_ability_capability( 'ewpa/wc-get-orders', 'read_private_shop_orders' ) );
 				},
 				'execute_callback'    => function ( $args ) {
 					$status   = isset( $args['status'] ) ? sanitize_text_field( $args['status'] ) : 'any';
@@ -7169,7 +7203,7 @@ function ewpa_register_custom_abilities(): void {
 					'required'   => array( 'order_id' ),
 				),
 				'permission_callback' => function ( $args ) {
-					return current_user_can( 'edit_shop_orders' );
+					return current_user_can( ewpa_ability_capability( 'ewpa/wc-get-order', 'read_private_shop_orders' ) );
 				},
 				'execute_callback'    => function ( $args ) {
 					$order_id = intval( $args['order_id'] );

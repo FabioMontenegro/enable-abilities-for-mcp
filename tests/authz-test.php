@@ -46,6 +46,10 @@ class Tribe__Events__Main {
 	const POSTTYPE = 'tribe_events';
 }
 
+// The WooCommerce abilities only register when this class exists, so without the
+// stub none of them reached this harness and their capabilities went unchecked.
+class WooCommerce {}
+
 function is_wp_error( $value ) {
 	return $value instanceof WP_Error;
 }
@@ -60,11 +64,38 @@ function esc_html__( $text, $domain = '' ) {
 
 function add_action( ...$args ) {}
 
-function add_filter( ...$args ) {}
+/*
+ * Real enough to test a filter the plugin exposes. Nothing the plugin registers
+ * at load time lands on a hook this harness applies, so recording callbacks
+ * changes no existing check.
+ */
+$GLOBALS['ewpa_filters'] = array();
+
+function add_filter( $hook, $callback = null, $priority = 10, $accepted_args = 1 ) {
+	if ( is_callable( $callback ) ) {
+		$GLOBALS['ewpa_filters'][ $hook ][] = array( $callback, $accepted_args );
+	}
+}
+
+/**
+ * Drops every callback on one hook, so each check starts clean.
+ *
+ * @param string $hook Hook name.
+ * @return void
+ */
+function ewpa_reset_filter( string $hook ): void {
+	unset( $GLOBALS['ewpa_filters'][ $hook ] );
+}
 
 function do_action( $hook, ...$args ) {}
 
 function apply_filters( $hook, $value, ...$args ) {
+	foreach ( $GLOBALS['ewpa_filters'][ $hook ] ?? array() as $registered ) {
+		list( $callback, $accepted_args ) = $registered;
+
+		$value = $callback( ...array_slice( array_merge( array( $value ), $args ), 0, max( 1, (int) $accepted_args ) ) );
+	}
+
 	return $value;
 }
 
@@ -2176,6 +2207,82 @@ $result = ewpa_callback( 'ewpa/update-cpt-item' )(
 	)
 );
 ewpa_check( 'admin_update_cpt_item_creates_a_new_term', ! is_wp_error( $result ) && 1 === count( $GLOBALS['ewpa_set_terms'] ) );
+
+/*
+ * ==========================================================================
+ * WOOCOMMERCE READ ABILITIES
+ * ==========================================================================
+ * Reported by @petis: a dedicated read-only MCP user could not read orders or
+ * products, because these four abilities asked for edit_shop_orders and
+ * edit_products. Reading should not require permission to write.
+ *
+ * The capability is read_private_* rather than plain read_*, because orders
+ * live in private post statuses and these abilities can list draft and pending
+ * products, so what they expose is exactly what read_private_* governs in
+ * WordPress. WooCommerce grants both to Shop Manager and Administrator
+ * (class-wc-install.php, get_core_capabilities()).
+ */
+
+$ewpa_wc_reads = array(
+	'ewpa/wc-get-orders'   => 'read_private_shop_orders',
+	'ewpa/wc-get-order'    => 'read_private_shop_orders',
+	'ewpa/wc-get-products' => 'read_private_products',
+	'ewpa/wc-get-product'  => 'read_private_products',
+);
+
+foreach ( $ewpa_wc_reads as $ewpa_wc_ability => $ewpa_wc_cap ) {
+	$ewpa_wc_label = str_replace( array( 'ewpa/', '-' ), array( '', '_' ), $ewpa_wc_ability );
+
+	// The read capability alone is enough: no write permission required.
+	ewpa_reset();
+	$GLOBALS['ewpa_caps'] = array( 'read', $ewpa_wc_cap );
+	ewpa_check(
+		$ewpa_wc_label . '_allows_a_read_only_user',
+		true === ewpa_callback_permission( $ewpa_wc_ability )
+	);
+
+	// An editor of the other WooCommerce type must not get in through the side.
+	ewpa_reset();
+	$GLOBALS['ewpa_caps'] = array( 'read', 'edit_posts' );
+	ewpa_check(
+		$ewpa_wc_label . '_refuses_a_user_without_the_capability',
+		true !== ewpa_callback_permission( $ewpa_wc_ability )
+	);
+
+	// A site can still tighten or loosen it per ability.
+	ewpa_reset();
+	$GLOBALS['ewpa_caps'] = array( 'read', 'manage_options' );
+	ewpa_reset_filter( 'ewpa_ability_capability' );
+	add_filter(
+		'ewpa_ability_capability',
+		function ( $capability, $ability ) use ( $ewpa_wc_ability ) {
+			return $ability === $ewpa_wc_ability ? 'manage_options' : $capability;
+		},
+		10,
+		2
+	);
+	ewpa_check(
+		$ewpa_wc_label . '_honours_the_capability_filter',
+		true === ewpa_callback_permission( $ewpa_wc_ability )
+	);
+	ewpa_reset_filter( 'ewpa_ability_capability' );
+
+	// And the filter must not leave the ability open to everyone.
+	ewpa_reset();
+	$GLOBALS['ewpa_caps'] = array( 'read' );
+	ewpa_check(
+		$ewpa_wc_label . '_still_refuses_after_the_filter_is_removed',
+		true !== ewpa_callback_permission( $ewpa_wc_ability )
+	);
+}
+
+// Customers were already gated on a read capability; this pins that it stays.
+ewpa_reset();
+$GLOBALS['ewpa_caps'] = array( 'read', 'list_users' );
+ewpa_check(
+	'wc_get_customers_still_asks_only_for_list_users',
+	true === ewpa_callback_permission( 'ewpa/wc-get-customers' )
+);
 
 echo PHP_EOL;
 if ( $ewpa_failures > 0 ) {
