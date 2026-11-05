@@ -5,7 +5,7 @@ Tags: mcp, ai, rest-api, content-management, woocommerce
 Requires at least: 6.9
 Tested up to: 7.1
 Requires PHP: 8.0
-Stable tag: 2.13.7
+Stable tag: 2.14.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -260,6 +260,11 @@ Yes — strict OAuth clients require a direct `200` on `/.well-known/oauth-autho
 
 == Changelog ==
 
+= 2.14.0 =
+* Fixed: the four WooCommerce read abilities asked for a capability to *edit* instead of one to *read*, so a user whose role was built to read orders and products and nothing else was refused. `ewpa/wc-get-orders` and `ewpa/wc-get-order` now ask for `read_private_shop_orders`, and `ewpa/wc-get-products` and `ewpa/wc-get-product` for `read_private_products`. Nobody loses access: a role that only holds the old `edit_shop_orders` or `edit_products` is still accepted. Plain `read` is not enough, and is not meant to be — order data carries the buyer's name, address, e-mail and phone, so the role still has to be given the capability to read private records of that type. Reported by @petis.
+* New: the `ewpa_ability_capability` filter changes the capability an ability requires, as `( $capability, $ability )`. It is currently routed through those four WooCommerce abilities, so a read-only role can be given exactly the access it needs. It tightens as readily as it loosens, and when it is used the built-in capability is no longer accepted, so the value you return is the only one that grants access. An empty or numeric value is refused and the built-in capability stands: WordPress rewrites a numeric capability into `level_0`, which every subscriber holds, so a site writing `'0'` to close the door would have opened it to every logged-in user instead.
+* New: a Settings link in the plugin's row on the Plugins screen. The settings page lives under Settings rather than in its own top-level menu, which made it easy to lose. A Donate link sits on the description line, beside "View details".
+
 = 2.13.7 =
 * **Security:** the Bearer token could be used against the whole WordPress REST API, not only this plugin's MCP routes. The check that limited it read the request URL, but WordPress decides which route to run from the `rest_route` query variable, and that variable wins over the URL. A request could therefore carry the allowed text in the URL while WordPress served a completely different route. Because the token is only ever issued to an administrator, anything the REST API exposes to an administrator was reachable, regardless of which abilities the site owner had enabled. The check now reads the route WordPress is actually serving, and matches it on a namespace boundary. Found in-house while testing an unrelated change; no reports of it being used. **If you use the Bearer token, update.** Application Passwords and the OAuth connector were never affected.
 * Fixed: the Bearer token now works on sites that do not use pretty permalinks. The old check looked for `/wp-json/` in the URL, which those sites never send, so the token was always refused there.
@@ -422,6 +427,9 @@ Yes — strict OAuth clients require a direct `200` on `/.well-known/oauth-autho
 * See [changelog.txt](https://plugins.trac.wordpress.org/browser/enable-abilities-for-mcp/trunk/changelog.txt) for the full history of older versions.
 
 == Upgrade Notice ==
+
+= 2.14.0 =
+Fixes the four WooCommerce read abilities, which asked for a capability to edit instead of one to read, so a role built only to read orders and products was refused. Roles that worked before keep working. Adds the `ewpa_ability_capability` filter, and a Settings link in the plugin's row on the Plugins screen.
 
 = 2.13.7 =
 Security release. The Bearer token could be used against the whole REST API instead of only this plugin's MCP routes, giving anyone holding it the administrator access the REST API allows, whatever abilities were enabled. Update if you use the Bearer token. Application Passwords and the OAuth connector were not affected.

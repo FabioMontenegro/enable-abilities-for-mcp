@@ -66,7 +66,7 @@ From 0.7.0, MCP Adapter refuses to start when another plugin has already registe
 
 ### 2. Configure access
 
-Go to **Settings → WP Abilities**:
+Go to **Settings → WP Abilities** (or use the **Settings** link in the plugin's row on the Plugins screen):
 
 - **Connection tab** — choose an auth method:
   - **claude.ai OAuth Custom Connector**: add your site to claude.ai (web, mobile, or desktop) with just a URL — an embedded OAuth 2.1 server (CIMD) lets each user log in with their own WordPress account and approve a consent screen. No Client ID, no tokens to copy.
@@ -183,6 +183,7 @@ request, and the library's own behaviour is bit-for-bit what it was.
 
 ## Security model
 
+- **Read abilities ask for a read capability** — the WooCommerce readers require `read_private_shop_orders` and `read_private_products` rather than an editing capability, so a role built only to read is not refused. Plain `read` is not enough and is not meant to be: order data carries the buyer's name, address, e-mail and phone, so the role still has to be given the capability to read private records of that type. The previous editing capability is still accepted, so a role that worked before keeps working
 - **Capability checks everywhere** — every ability declares a `permission_callback`; per-post abilities check `read_post`/`edit_post` on the specific target, not just site-wide caps. Publishing requires the publish capability of that post type and is refused with an error rather than degraded to a draft; an author or a parent taken from the input is validated against `edit_others_posts` and against permission on the parent; listing non-published statuses requires an editing capability and the results are filtered per post
 - **OAuth 2.1 connector** — opt-in, PKCE S256, Client ID Metadata Documents restricted to trusted publishers (Claude bundled), per-user consent screen, JWT-authenticated transport
 - **Revocable OAuth sessions** — each connector session is a WordPress Application Password named `MCP OAuth – <client> – <date>`, with Last Used and Last IP filled in. Turning the OAuth switch off, changing the user's password, "Log Out Everywhere", revoking the Application Password, or deactivating the plugin ends the session; a revoked connector must be approved again and never reconnects on its own. While the switch is off the OAuth server stays off, even if another plugin boots the same OAuth library
