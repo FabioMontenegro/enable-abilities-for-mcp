@@ -23,6 +23,55 @@ add_action(
 	}
 );
 
+// ─── Links on the Plugins screen ────────────────────────────────────────────
+
+add_filter( 'plugin_action_links_' . plugin_basename( EWPA_PLUGIN_FILE ), 'ewpa_plugin_action_links' );
+add_filter( 'plugin_row_meta', 'ewpa_plugin_row_meta', 10, 2 );
+
+/**
+ * Adds a Settings link to this plugin's row on the Plugins screen.
+ *
+ * The settings page lives under Settings rather than in its own top-level menu,
+ * which makes it easy to lose. This is the shortcut to it.
+ *
+ * @param array $links Action links for this plugin.
+ * @return array
+ */
+function ewpa_plugin_action_links( $links ) {
+	$links[] = sprintf(
+		'<a href="%s">%s</a>',
+		esc_url( admin_url( 'options-general.php?page=ewpa-settings' ) ),
+		esc_html__( 'Settings', 'enable-abilities-for-mcp' )
+	);
+
+	return $links;
+}
+
+/**
+ * Adds a Donate link to the description line of this plugin's row.
+ *
+ * It belongs on this line, next to "View details", and not beside Deactivate:
+ * the action links are where an administrator goes to operate the plugin, and
+ * an ask for money is not one of those actions.
+ *
+ * @param array  $links       Meta links shown under the plugin description.
+ * @param string $plugin_file Plugin the current row belongs to.
+ * @return array
+ */
+function ewpa_plugin_row_meta( $links, $plugin_file ) {
+	if ( plugin_basename( EWPA_PLUGIN_FILE ) !== $plugin_file ) {
+		return $links;
+	}
+
+	$links[] = sprintf(
+		'<a href="%s" target="_blank" rel="noopener noreferrer">%s</a>',
+		esc_url( 'https://ko-fi.com/fabiomontenegro' ),
+		esc_html__( 'Donate', 'enable-abilities-for-mcp' )
+	);
+
+	return $links;
+}
+
 // ─── MCP Adapter dependency notice ──────────────────────────────────────────
 add_action( 'admin_notices', 'ewpa_admin_notice_mcp_adapter' );
 
