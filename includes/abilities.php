@@ -54,8 +54,51 @@ function ewpa_ability_capability( string $ability, string $capability ): string 
 	 */
 	$filtered = apply_filters( 'ewpa_ability_capability', $capability, $ability );
 
-	// A filter that returns nothing usable must not open or break the gate.
-	return is_string( $filtered ) && '' !== trim( $filtered ) ? trim( $filtered ) : $capability;
+	if ( ! is_string( $filtered ) ) {
+		return $capability;
+	}
+
+	$filtered = trim( $filtered );
+
+	/*
+	 * A numeric capability is never refused by WordPress: has_cap() rewrites it
+	 * through translate_level_to_cap() into 'level_N', and every stock role down
+	 * to Subscriber holds level_0. So a site returning '0' to close this gate
+	 * would open it to every logged-in user instead. Refuse the shape rather
+	 * than honour a value whose meaning core changes behind the caller's back.
+	 */
+	if ( '' === $filtered || is_numeric( $filtered ) ) {
+		return $capability;
+	}
+
+	return $filtered;
+}
+
+/**
+ * Tells whether the current user may run an ability that only reads.
+ *
+ * Swapping a required capability narrows as easily as it widens: a role granted
+ * the capability this ability used to ask for would lose access the day the
+ * requirement changes. So the previous capability keeps working, and the new
+ * read capability is added beside it rather than put in its place.
+ *
+ * That grandfathering stops the moment a site uses the filter. If an operator
+ * names a capability, they get exactly that one: a filter that tightens a gate
+ * must not be undone by a capability the plugin used to accept.
+ *
+ * @param string $ability    Ability name.
+ * @param string $capability Read capability this ability asks for now.
+ * @param string $previous   Capability it required before, still accepted.
+ * @return bool
+ */
+function ewpa_user_can_read( string $ability, string $capability, string $previous ): bool {
+	$effective = ewpa_ability_capability( $ability, $capability );
+
+	if ( current_user_can( $effective ) ) {
+		return true;
+	}
+
+	return $effective === $capability && current_user_can( $previous );
 }
 
 /**
@@ -6830,7 +6873,7 @@ function ewpa_register_custom_abilities(): void {
 					),
 				),
 				'permission_callback' => function ( $args ) {
-					return current_user_can( ewpa_ability_capability( 'ewpa/wc-get-products', 'read_private_products' ) );
+					return ewpa_user_can_read( 'ewpa/wc-get-products', 'read_private_products', 'edit_products' );
 				},
 				'execute_callback'    => function ( $args ) {
 					$status   = isset( $args['status'] ) ? sanitize_text_field( $args['status'] ) : 'publish';
@@ -6912,7 +6955,7 @@ function ewpa_register_custom_abilities(): void {
 					'required'   => array( 'product_id' ),
 				),
 				'permission_callback' => function ( $args ) {
-					return current_user_can( ewpa_ability_capability( 'ewpa/wc-get-product', 'read_private_products' ) );
+					return ewpa_user_can_read( 'ewpa/wc-get-product', 'read_private_products', 'edit_products' );
 				},
 				'execute_callback'    => function ( $args ) {
 					$product_id = intval( $args['product_id'] );
@@ -7124,7 +7167,7 @@ function ewpa_register_custom_abilities(): void {
 					),
 				),
 				'permission_callback' => function ( $args ) {
-					return current_user_can( ewpa_ability_capability( 'ewpa/wc-get-orders', 'read_private_shop_orders' ) );
+					return ewpa_user_can_read( 'ewpa/wc-get-orders', 'read_private_shop_orders', 'edit_shop_orders' );
 				},
 				'execute_callback'    => function ( $args ) {
 					$status   = isset( $args['status'] ) ? sanitize_text_field( $args['status'] ) : 'any';
@@ -7203,7 +7246,7 @@ function ewpa_register_custom_abilities(): void {
 					'required'   => array( 'order_id' ),
 				),
 				'permission_callback' => function ( $args ) {
-					return current_user_can( ewpa_ability_capability( 'ewpa/wc-get-order', 'read_private_shop_orders' ) );
+					return ewpa_user_can_read( 'ewpa/wc-get-order', 'read_private_shop_orders', 'edit_shop_orders' );
 				},
 				'execute_callback'    => function ( $args ) {
 					$order_id = intval( $args['order_id'] );

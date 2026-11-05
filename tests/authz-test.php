@@ -298,6 +298,29 @@ function current_user_can( $capability, ...$args ) {
 	}
 
 	if ( ! in_array( $capability, array( 'edit_post', 'read_post', 'publish_post' ), true ) ) {
+		/*
+		 * Three behaviours of WP_User::has_cap() that a plain in_array() misses, and
+		 * that decide whether a capability gate is really closed:
+		 *
+		 *   wp-includes/class-wp-user.php:788  a numeric capability is rewritten
+		 *                                      into translate_level_to_cap(), i.e.
+		 *                                      'level_N' — and schema.php:833-834
+		 *                                      gives every Subscriber level_0
+		 *   wp-includes/class-wp-user.php:827  everyone is allowed to 'exist'
+		 *   wp-includes/class-wp-user.php:830  nobody is allowed 'do_not_allow'
+		 */
+		if ( is_numeric( $capability ) ) {
+			$capability = 'level_' . $capability;
+		}
+
+		if ( 'exist' === $capability ) {
+			return true;
+		}
+
+		if ( 'do_not_allow' === $capability ) {
+			return false;
+		}
+
 		return in_array( $capability, $caps, true );
 	}
 
@@ -2276,13 +2299,114 @@ foreach ( $ewpa_wc_reads as $ewpa_wc_ability => $ewpa_wc_cap ) {
 	);
 }
 
-// Customers were already gated on a read capability; this pins that it stays.
+/*
+ * Nobody may lose access. Swapping a capability narrows as easily as it widens:
+ * a hand-built role granted only the capability these abilities used to require
+ * would have been locked out the day the requirement changed.
+ */
+foreach ( array( 'ewpa/wc-get-orders', 'ewpa/wc-get-order' ) as $ewpa_wc_ability ) {
+	ewpa_reset();
+	$GLOBALS['ewpa_caps'] = array( 'read', 'edit_shop_orders' );
+	ewpa_check(
+		str_replace( array( 'ewpa/', '-' ), array( '', '_' ), $ewpa_wc_ability ) . '_still_allows_the_previous_capability',
+		true === ewpa_callback_permission( $ewpa_wc_ability )
+	);
+}
+
+foreach ( array( 'ewpa/wc-get-products', 'ewpa/wc-get-product' ) as $ewpa_wc_ability ) {
+	ewpa_reset();
+	$GLOBALS['ewpa_caps'] = array( 'read', 'edit_products' );
+	ewpa_check(
+		str_replace( array( 'ewpa/', '-' ), array( '', '_' ), $ewpa_wc_ability ) . '_still_allows_the_previous_capability',
+		true === ewpa_callback_permission( $ewpa_wc_ability )
+	);
+}
+
+// A site that tightens the gate must not be undone by the capability the
+// ability used to accept.
+ewpa_reset();
+$GLOBALS['ewpa_caps'] = array( 'read', 'edit_shop_orders' );
+ewpa_reset_filter( 'ewpa_ability_capability' );
+add_filter(
+	'ewpa_ability_capability',
+	function () {
+		return 'manage_options';
+	},
+	10,
+	2
+);
+ewpa_check(
+	'a_tightening_filter_overrides_the_previous_capability',
+	true !== ewpa_callback_permission( 'ewpa/wc-get-orders' )
+);
+ewpa_reset_filter( 'ewpa_ability_capability' );
+
+/*
+ * The capability the filter returns goes straight to current_user_can(), and
+ * WordPress does not take every string at face value: a numeric one becomes
+ * 'level_N', which every stock role holds at level_0. A site returning '0' to
+ * close this gate would otherwise open it to every Subscriber.
+ */
+$ewpa_bad_capabilities = array(
+	'the_string_zero'   => '0',
+	'the_string_one'    => '1',
+	'a_padded_number'   => ' 0 ',
+	'an_empty_string'   => '',
+	'only_whitespace'   => '   ',
+	'null'              => null,
+	'a_boolean'         => true,
+	'an_array'          => array( 'read' ),
+);
+
+foreach ( $ewpa_bad_capabilities as $ewpa_bad_name => $ewpa_bad_value ) {
+	ewpa_reset();
+	// A Subscriber: 'read' and the level WordPress grants every stock role.
+	$GLOBALS['ewpa_caps'] = array( 'read', 'level_0' );
+	ewpa_reset_filter( 'ewpa_ability_capability' );
+	add_filter(
+		'ewpa_ability_capability',
+		function () use ( $ewpa_bad_value ) {
+			return $ewpa_bad_value;
+		},
+		10,
+		2
+	);
+	ewpa_check(
+		'a_filter_returning_' . $ewpa_bad_name . '_does_not_open_orders_to_a_subscriber',
+		true !== ewpa_callback_permission( 'ewpa/wc-get-order' )
+	);
+	ewpa_reset_filter( 'ewpa_ability_capability' );
+}
+
+// Customers were already gated on a read capability; this pins that it stays,
+// in both directions.
 ewpa_reset();
 $GLOBALS['ewpa_caps'] = array( 'read', 'list_users' );
 ewpa_check(
 	'wc_get_customers_still_asks_only_for_list_users',
 	true === ewpa_callback_permission( 'ewpa/wc-get-customers' )
 );
+
+ewpa_reset();
+$GLOBALS['ewpa_caps'] = array( 'read' );
+ewpa_check(
+	'wc_get_customers_refuses_a_user_without_list_users',
+	true !== ewpa_callback_permission( 'ewpa/wc-get-customers' )
+);
+
+// The WooCommerce write abilities only became reachable in this harness when the
+// stub above was added. Pin their capabilities so a later edit cannot lower one.
+foreach ( array( 'ewpa/wc-update-order-status' => 'edit_shop_orders', 'ewpa/wc-update-product' => 'edit_products' ) as $ewpa_wc_ability => $ewpa_wc_cap ) {
+	$ewpa_wc_label = str_replace( array( 'ewpa/', '-' ), array( '', '_' ), $ewpa_wc_ability );
+
+	ewpa_reset();
+	$GLOBALS['ewpa_caps'] = array( 'read', $ewpa_wc_cap );
+	ewpa_check( $ewpa_wc_label . '_requires_its_write_capability', true === ewpa_callback_permission( $ewpa_wc_ability ) );
+
+	ewpa_reset();
+	$GLOBALS['ewpa_caps'] = array( 'read', 'read_private_products', 'read_private_shop_orders' );
+	ewpa_check( $ewpa_wc_label . '_refuses_a_read_only_user', true !== ewpa_callback_permission( $ewpa_wc_ability ) );
+}
 
 echo PHP_EOL;
 if ( $ewpa_failures > 0 ) {
