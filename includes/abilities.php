@@ -407,6 +407,53 @@ function ewpa_check_meta_input( int $post_id, array $meta ) {
 }
 
 /**
+ * Turns the optional meta_key / meta_value input of a listing into query args.
+ *
+ * Filtering by a meta value reveals that value, so it needs an editing
+ * capability of the post type, and a protected key (leading underscore) needs
+ * an administrator, as reading protected meta does.
+ *
+ * @param array  $input     Ability input.
+ * @param string $post_type Post type being listed.
+ * @return array|WP_Error Query args to merge (empty without a filter), or the refusal.
+ */
+function ewpa_resolve_meta_filter( array $input, string $post_type ) {
+	$key   = isset( $input['meta_key'] ) ? sanitize_text_field( (string) $input['meta_key'] ) : '';
+	$value = $input['meta_value'] ?? null;
+
+	if ( '' === $key ) {
+		if ( null !== $value && '' !== $value ) {
+			return new WP_Error( 'invalid_meta_filter', __( 'meta_value needs a meta_key.', 'enable-abilities-for-mcp' ) );
+		}
+
+		return array();
+	}
+
+	if ( ! ewpa_user_can_for_type( $post_type, 'edit_posts' ) ) {
+		return new WP_Error( 'forbidden', __( 'You do not have permission to filter content by meta.', 'enable-abilities-for-mcp' ) );
+	}
+
+	if ( is_protected_meta( $key, 'post' ) && ! current_user_can( 'manage_options' ) ) {
+		return new WP_Error(
+			'protected_meta',
+			sprintf(
+				/* translators: %s: meta key */
+				__( 'The meta key "%s" is protected and you are not allowed to filter by it.', 'enable-abilities-for-mcp' ),
+				$key
+			)
+		);
+	}
+
+	$args = array( 'meta_key' => $key ); // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_key -- Opt-in filter, needed to find a post by an external ID.
+
+	if ( null !== $value && '' !== $value ) {
+		$args['meta_value'] = (string) $value; // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_value -- Same opt-in filter.
+	}
+
+	return $args;
+}
+
+/**
  * Checks that the current user may create the terms a request would create.
  *
  * Core's wp_set_object_terms() creates every string that is not an existing term. The
@@ -880,6 +927,14 @@ function ewpa_register_custom_abilities(): void {
 							'type'        => 'string',
 							'description' => 'Search term to filter posts (optional)',
 						),
+						'meta_key'      => array(
+							'type'        => 'string',
+							'description' => 'Only posts that have this meta key (optional). Needs an editing capability; protected keys (leading underscore) need an administrator.',
+						),
+						'meta_value'    => array(
+							'type'        => 'string',
+							'description' => 'With meta_key, only posts whose value for that key is exactly this (optional). Useful to find a post by an external ID, e.g. a run ID written at creation.',
+						),
 					),
 				),
 				'output_schema'       => array(
@@ -949,6 +1004,12 @@ function ewpa_register_custom_abilities(): void {
 					if ( ! empty( $input['s'] ) ) {
 						$args['s'] = sanitize_text_field( $input['s'] );
 					}
+
+					$meta_filter = ewpa_resolve_meta_filter( $input, 'post' );
+					if ( is_wp_error( $meta_filter ) ) {
+						return $meta_filter;
+					}
+					$args = array_merge( $args, $meta_filter );
 
 					$posts  = ewpa_filter_readable_posts( get_posts( $args ) );
 					$result = array();
@@ -1698,6 +1759,10 @@ function ewpa_register_custom_abilities(): void {
 							'type'        => 'integer',
 							'description' => 'Post ID of the original post this is a translation of (optional, requires Polylang or WPML)',
 						),
+						'meta'              => array(
+							'type'        => 'object',
+							'description' => 'Object mapping meta keys to values, written in the same request that creates the post (optional). Protected keys (leading underscore) need an administrator or an explicit grant of that key; a refused key undoes the creation.',
+						),
 					),
 				),
 				'output_schema'       => array(
@@ -1754,6 +1819,19 @@ function ewpa_register_custom_abilities(): void {
 
 					if ( is_wp_error( $post_id ) ) {
 						return $post_id;
+					}
+
+					// Meta goes first, right after the insert, so an external ID lands with the post.
+					// Keys are checked against the new post before any is written; a refused key undoes the creation.
+					if ( ! empty( $input['meta'] ) && is_array( $input['meta'] ) ) {
+						$meta_check = ewpa_check_meta_input( $post_id, $input['meta'] );
+						if ( is_wp_error( $meta_check ) ) {
+							wp_delete_post( $post_id, true );
+							return $meta_check;
+						}
+						foreach ( $input['meta'] as $key => $value ) {
+							update_post_meta( $post_id, sanitize_text_field( (string) $key ), wp_slash( $value ) );
+						}
 					}
 
 					if ( ! empty( $input['tags'] ) ) {

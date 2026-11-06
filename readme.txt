@@ -56,7 +56,7 @@ Prefer tokens? Application Passwords (per-user) and a single-admin Bearer token 
 
 **Read (safe, query-only):**
 
-* Get posts with filters (status, category, tag, search)
+* Get posts with filters (status, category, tag, search, meta key and value)
 * Get single post details (content, SEO meta, featured image)
 * Get categories, tags, pages, comments, media, and users
 
