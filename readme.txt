@@ -5,7 +5,7 @@ Tags: mcp, ai, rest-api, content-management, woocommerce
 Requires at least: 6.9
 Tested up to: 7.1
 Requires PHP: 8.0
-Stable tag: 2.14.0
+Stable tag: 2.15.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -56,7 +56,7 @@ Prefer tokens? Application Passwords (per-user) and a single-admin Bearer token 
 
 **Read (safe, query-only):**
 
-* Get posts with filters (status, category, tag, search)
+* Get posts with filters (status, category, tag, search, meta key and value)
 * Get single post details (content, SEO meta, featured image)
 * Get categories, tags, pages, comments, media, and users
 
@@ -260,6 +260,10 @@ Yes — strict OAuth clients require a direct `200` on `/.well-known/oauth-autho
 
 == Changelog ==
 
+= 2.15.0 =
+* New: `ewpa/create-post` accepts `meta`, an object of custom fields written in the same request that creates the post. An agent that tags each post with its own run ID can now find, after a timeout or a retry, the post an earlier attempt already created, instead of publishing it twice. Protected keys (those starting with an underscore) still need an administrator, and if any key is refused the post is deleted again, so a failed call never leaves a half-written post behind.
+* New: `ewpa/get-posts` filters by custom field with `meta_key`, and optionally `meta_value` for an exact match. Filtering needs an editing capability, since it reveals which posts carry a value; protected keys need an administrator. `meta_value` on its own is refused rather than ignored. Drafts by other authors stay hidden exactly as before.
+
 = 2.14.0 =
 * Fixed: the four WooCommerce read abilities asked for a capability to *edit* instead of one to *read*, so a user whose role was built to read orders and products and nothing else was refused. `ewpa/wc-get-orders` and `ewpa/wc-get-order` now ask for `read_private_shop_orders`, and `ewpa/wc-get-products` and `ewpa/wc-get-product` for `read_private_products`. Nobody loses access: a role that only holds the old `edit_shop_orders` or `edit_products` is still accepted. Plain `read` is not enough, and is not meant to be — order data carries the buyer's name, address, e-mail and phone, so the role still has to be given the capability to read private records of that type. Reported by @petis.
 * New: the `ewpa_ability_capability` filter changes the capability an ability requires, as `( $capability, $ability )`. It is currently routed through those four WooCommerce abilities, so a read-only role can be given exactly the access it needs. It tightens as readily as it loosens, and when it is used the built-in capability is no longer accepted, so the value you return is the only one that grants access. An empty or numeric value is refused and the built-in capability stands: WordPress rewrites a numeric capability into `level_0`, which every subscriber holds, so a site writing `'0'` to close the door would have opened it to every logged-in user instead.
@@ -427,6 +431,9 @@ Yes — strict OAuth clients require a direct `200` on `/.well-known/oauth-autho
 * See [changelog.txt](https://plugins.trac.wordpress.org/browser/enable-abilities-for-mcp/trunk/changelog.txt) for the full history of older versions.
 
 == Upgrade Notice ==
+
+= 2.15.0 =
+`create-post` can write custom fields in the same call, and `get-posts` can filter by custom field, so an agent can check whether a post already exists before creating it again. Nothing changes for calls that do not use them.
 
 = 2.14.0 =
 Fixes the four WooCommerce read abilities, which asked for a capability to edit instead of one to read, so a role built only to read orders and products was refused. Roles that worked before keep working. Adds the `ewpa_ability_capability` filter, and a Settings link in the plugin's row on the Plugins screen.

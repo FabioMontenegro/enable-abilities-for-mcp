@@ -420,9 +420,20 @@ function get_posts( $args = array() ) {
 	$status                           = $args['post_status'] ?? 'publish';
 	$out                              = array();
 	foreach ( $GLOBALS['ewpa_posts'] as $post ) {
-		if ( $post->post_type === $type && ( 'any' === $status || $post->post_status === $status ) ) {
-			$out[] = $post;
+		if ( $post->post_type !== $type || ( 'any' !== $status && $post->post_status !== $status ) ) {
+			continue;
 		}
+		// meta_key alone keeps posts that have the key; with meta_value the value must match exactly.
+		if ( isset( $args['meta_key'] ) ) {
+			$meta = $GLOBALS['ewpa_meta'][ $post->ID ] ?? array();
+			if ( ! array_key_exists( $args['meta_key'], $meta ) ) {
+				continue;
+			}
+			if ( isset( $args['meta_value'] ) && (string) $meta[ $args['meta_key'] ] !== (string) $args['meta_value'] ) {
+				continue;
+			}
+		}
+		$out[] = $post;
 	}
 	return $out;
 }
@@ -1046,6 +1057,70 @@ ewpa_check(
 	false === ewpa_callback_permission( 'ewpa/create-post' )
 );
 
+// meta: written in the same request that creates the post, so a caller that
+// loses the response can still find the post by that meta afterwards.
+ewpa_reset();
+$result = ewpa_callback( 'ewpa/create-post' )(
+	array(
+		'title'   => 'With meta',
+		'content' => 'x',
+		'meta'    => array(
+			'pdc_run_id'         => 'run-42',
+			'pdc_target_country' => 'co',
+		),
+	)
+);
+ewpa_check(
+	'create_post_writes_meta_input',
+	! is_wp_error( $result )
+		&& 'run-42' === ( $GLOBALS['ewpa_meta'][ $result['post_id'] ]['pdc_run_id'] ?? null )
+		&& 'co' === ( $GLOBALS['ewpa_meta'][ $result['post_id'] ]['pdc_target_country'] ?? null )
+);
+
+ewpa_reset();
+$result = ewpa_callback( 'ewpa/create-post' )(
+	array(
+		'title'   => 'Protected meta',
+		'content' => 'x',
+		'meta'    => array(
+			'pdc_run_id'       => 'run-43',
+			'_internal_secret' => 'nope',
+		),
+	)
+);
+$created = $GLOBALS['ewpa_next_id'] - 1;
+ewpa_check( 'create_post_refuses_protected_meta_key', ewpa_is_error( $result, 'protected_meta' ) );
+ewpa_check(
+	'create_post_undoes_creation_when_a_meta_key_is_refused',
+	in_array( $created, $GLOBALS['ewpa_deleted'], true ) && ! isset( $GLOBALS['ewpa_posts'][ $created ] ) && ! isset( $GLOBALS['ewpa_meta'][ $created ] )
+);
+
+ewpa_reset();
+ewpa_become_admin();
+$result = ewpa_callback( 'ewpa/create-post' )(
+	array(
+		'title'   => 'Admin protected meta',
+		'content' => 'x',
+		'meta'    => array( '_internal_secret' => 'allowed' ),
+	)
+);
+ewpa_check(
+	'admin_create_post_writes_protected_meta',
+	! is_wp_error( $result ) && 'allowed' === ( $GLOBALS['ewpa_meta'][ $result['post_id'] ]['_internal_secret'] ?? null )
+);
+
+ewpa_reset();
+$result = ewpa_callback( 'ewpa/create-post' )(
+	array(
+		'title'   => 'No meta',
+		'content' => 'x',
+	)
+);
+ewpa_check(
+	'create_post_without_meta_writes_no_meta',
+	! is_wp_error( $result ) && array() === ( $GLOBALS['ewpa_meta'][ $result['post_id'] ] ?? array() )
+);
+
 /*
  * ==========================================================================
  * T1.4 — ewpa/create-cpt-item and ewpa/update-cpt-item
@@ -1331,6 +1406,74 @@ $result = ewpa_callback( 'ewpa/get-posts' )( ewpa_list_input( array( 'status' =>
 ewpa_check( 'admin_get_posts_lists_every_status', array( 100, 101, 102 ) === ewpa_ids( $result ) );
 $result = ewpa_callback( 'ewpa/get-posts' )( ewpa_list_input( array( 'status' => 'draft' ) ) );
 ewpa_check( 'admin_get_posts_lists_drafts', array( 100, 102 ) === ewpa_ids( $result ) );
+
+// Meta filter: lets a publishing agent find the post a previous attempt created.
+$ewpa_seed_run_meta = function (): void {
+	$GLOBALS['ewpa_meta'][100]['pdc_run_id'] = 'run-1';
+	$GLOBALS['ewpa_meta'][101]['pdc_run_id'] = 'run-2';
+	$GLOBALS['ewpa_meta'][102]['pdc_run_id'] = 'run-1';
+	$GLOBALS['ewpa_meta'][100]['_internal']  = 'x';
+};
+
+ewpa_reset();
+ewpa_become_admin();
+$ewpa_seed_run_meta();
+$result = ewpa_callback( 'ewpa/get-posts' )(
+	ewpa_list_input(
+		array(
+			'status'     => 'any',
+			'meta_key'   => 'pdc_run_id',
+			'meta_value' => 'run-1',
+		)
+	)
+);
+ewpa_check( 'get_posts_filters_by_meta_key_and_value', array( 100, 102 ) === ewpa_ids( $result ) );
+ewpa_check(
+	'get_posts_passes_meta_filter_to_wordpress',
+	'pdc_run_id' === ( ewpa_last_get_posts_args()['meta_key'] ?? null ) && 'run-1' === ( ewpa_last_get_posts_args()['meta_value'] ?? null )
+);
+
+ewpa_reset();
+ewpa_become_admin();
+$ewpa_seed_run_meta();
+$result = ewpa_callback( 'ewpa/get-posts' )( ewpa_list_input( array( 'status' => 'any', 'meta_key' => 'pdc_run_id' ) ) );
+ewpa_check( 'get_posts_filters_by_meta_key_only', array( 100, 101, 102 ) === ewpa_ids( $result ) );
+ewpa_check( 'get_posts_meta_key_only_sends_no_meta_value', ! array_key_exists( 'meta_value', ewpa_last_get_posts_args() ) );
+
+ewpa_reset();
+ewpa_become_admin();
+$result = ewpa_callback( 'ewpa/get-posts' )( ewpa_list_input( array( 'meta_value' => 'run-1' ) ) );
+ewpa_check( 'get_posts_refuses_meta_value_without_meta_key', ewpa_is_error( $result, 'invalid_meta_filter' ) );
+
+ewpa_reset();
+$GLOBALS['ewpa_caps'] = array( 'read' );
+$ewpa_seed_run_meta();
+$result = ewpa_callback( 'ewpa/get-posts' )( ewpa_list_input( array( 'meta_key' => 'pdc_run_id', 'meta_value' => 'run-2' ) ) );
+ewpa_check( 'get_posts_meta_filter_needs_an_editing_capability', ewpa_is_error( $result, 'forbidden' ) );
+
+ewpa_reset();
+$ewpa_seed_run_meta();
+$result = ewpa_callback( 'ewpa/get-posts' )( ewpa_list_input( array( 'status' => 'any', 'meta_key' => '_internal' ) ) );
+ewpa_check( 'get_posts_meta_filter_refuses_protected_key_for_non_admin', ewpa_is_error( $result, 'protected_meta' ) );
+
+ewpa_reset();
+ewpa_become_admin();
+$ewpa_seed_run_meta();
+$result = ewpa_callback( 'ewpa/get-posts' )( ewpa_list_input( array( 'status' => 'any', 'meta_key' => '_internal' ) ) );
+ewpa_check( 'admin_get_posts_meta_filter_allows_protected_key', array( 100 ) === ewpa_ids( $result ) );
+
+ewpa_reset();
+$ewpa_seed_run_meta();
+$result = ewpa_callback( 'ewpa/get-posts' )( ewpa_list_input( array( 'status' => 'any', 'meta_key' => 'pdc_run_id', 'meta_value' => 'run-1' ) ) );
+ewpa_check( 'get_posts_meta_filter_still_hides_other_authors_drafts', array( 102 ) === ewpa_ids( $result ) );
+
+ewpa_reset();
+ewpa_become_admin();
+ewpa_callback( 'ewpa/get-posts' )( ewpa_list_input() );
+ewpa_check(
+	'get_posts_without_meta_filter_sends_no_meta_args',
+	! array_key_exists( 'meta_key', ewpa_last_get_posts_args() ) && ! array_key_exists( 'meta_value', ewpa_last_get_posts_args() )
+);
 
 foreach ( array( 'draft', 'private', 'any' ) as $status ) {
 	ewpa_reset();
