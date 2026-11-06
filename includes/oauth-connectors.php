@@ -1053,6 +1053,20 @@ function ewpa_oauth_register_rate_limit_ok(): bool {
  */
 
 /**
+ * Builds the state transient key, matching the library's when it provides one.
+ *
+ * @param string $state The OAuth state.
+ * @return string
+ */
+function ewpa_oauth_state_key( string $state ): string {
+	if ( method_exists( '\WPMedia\MCP\OAuth\Auth\AuthorizeEndpoint', 'state_key' ) ) {
+		return \WPMedia\MCP\OAuth\Auth\AuthorizeEndpoint::state_key( $state );
+	}
+
+	return 'mcp_oauth_state_' . $state;
+}
+
+/**
  * Handles GET /oauth/authorize for locally-registered clients.
  *
  * Validates exactly what the library's AuthorizeEndpoint validates, then
@@ -1205,7 +1219,7 @@ function ewpa_oauth_maybe_handle_authorize(): void {
 	}
 
 	set_transient(
-		'mcp_oauth_state_' . $state,
+		ewpa_oauth_state_key( $state ),
 		array(
 			'client_id'             => $client_id,
 			'client_name'           => (string) ( $client['client_name'] ?? '' ),
@@ -1248,7 +1262,7 @@ function ewpa_oauth_maybe_handle_callback(): void {
 		return;
 	}
 
-	$state_key  = 'mcp_oauth_state_' . $state;
+	$state_key  = ewpa_oauth_state_key( $state );
 	$state_data = get_transient( $state_key );
 
 	if ( ! is_array( $state_data ) ) {
