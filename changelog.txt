@@ -1,6 +1,89 @@
-=== Enable Abilities for MCP - Changelog (2.0.25 and earlier) ===
+=== Enable Abilities for MCP - Changelog (2.9.0 and earlier) ===
 
-Changes from 2.1.0 onwards are listed in readme.txt.
+Changes from 2.10.0 onwards are listed in readme.txt.
+
+= 2.9.0 =
+* New: ChatGPT & Other OAuth Connectors (beta, opt-in, off by default) — RFC 7591 dynamic client registration at `/oauth/register`, so ChatGPT and other self-registering clients connect through the same login-and-consent flow as the claude.ai connector. The security boundary is an administrator-managed callback allowlist, enforced at registration and re-checked on every authorization request, so removing a URL immediately blocks clients that registered while it was allowed. The same list gates which client metadata documents are fetched (`wp_safe_remote_get`, no redirects). Consent, code issuance, PKCE, token signing and refresh rotation stay in the bundled wp-media/mcp-oauth library; with the toggle off, the claude.ai connector is unchanged. Contributed by @keyvansolha.
+* New: Regression suite for the connector callback allowlist (`tests/oauth-connectors-test.php`, 42 checks) covering redirect-URI smuggling — userinfo and backslash authorities, subdomain confusion, port and path-prefix mismatches, query strings and fragments through wildcards, protocol-relative and non-HTTP schemes — plus RFC 8252 loopback handling. Runs without WordPress: `php tests/oauth-connectors-test.php`.
+* Fix: IPv6 loopback redirect URIs (`http://[::1]:port/…`) were rejected, because PHP's `parse_url()` keeps the brackets around an IPv6 literal and the loopback check only knew `::1`. It failed closed, so nothing was ever allowed that should not have been; native clients on IPv6 loopback can now connect. Found by the new regression suite.
+
+= 2.8.1 =
+* New: `ewpa/assign-post-terms` (Write section, enabled by default) — assigns a custom taxonomy's terms to a post or page. `ewpa/assign-cpt-terms` explicitly rejects built-in post types (post, page, attachment, and others) by design, since native categories/tags on posts are already covered by `ewpa/update-post` — but that left a real gap for a custom taxonomy registered on `post`/`page` by a companion plugin, with no assignment path through MCP at all. Mirrors `ewpa/assign-cpt-terms`'s security checks exactly (`edit_post`, `taxonomy_exists`, taxonomy-post_type association, and the taxonomy's own `assign_terms` capability), so an admin-only taxonomy stays admin-only regardless of post type.
+* Updated: Total abilities: 102 in 21 categories.
+
+= 2.8.0 =
+* New: Accessibility (WCAG) section — `ewpa/get-accessibility-snapshot` (read, enabled by default) scans the media library for images missing alt text (WCAG 1.1.1 Non-text Content) and returns a paginated list, so they can be fixed via `ewpa/update-post-meta` (`_wp_attachment_image_alt`). Deliberately narrow scope: full WCAG scanning (color contrast, ARIA, keyboard navigation) is a rendered-page/browser concern already covered by browser-based tools such as Lighthouse, not duplicated here.
+* Updated: Total abilities: 101 in 21 categories.
+
+= 2.7.2 =
+* New: JetEngine Query Builder section (3 abilities) — `ewpa/je-list-queries` and `ewpa/je-get-query` (read, enabled by default) list and read Query Builder queries via JetEngine's own internal data layer (`Jet_Engine\Query_Builder\Manager`); `ewpa/je-update-query` (write, opt-in) updates an existing query's name, type, or arguments, converting `query_args` the same way JetEngine's own tools do. This is the missing counterpart to JetEngine's own native "Add Query" MCP tool — JetEngine ships its own separate, bundled MCP server with a tool to create a query but none to list, read, or edit one; these abilities close that gap through the standard WordPress Abilities API instead of JetEngine's internal tool registry. Requires JetEngine with the Query Builder module. Validated end-to-end on a live production site, including a real write to an in-use query with a non-trivial tax_query/post_type configuration that was confirmed intact after the update.
+* Updated: Total abilities: 100 in 20 categories.
+
+= 2.7.1 =
+* New: `ewpa/update-term` (Custom Post Types section, enabled by default) — updates a taxonomy term's core fields (name, slug, description, parent term). Only the provided fields are modified. Complements `ewpa/get-term-meta` / `ewpa/update-term-meta` (v2.7.0), which only cover custom meta, not these core fields. Requested from a live JetEngine + Polylang site that needed to rename a mistranslated term.
+* Updated: Total abilities: 97 in 19 categories.
+
+= 2.7.0 =
+* New: `ewpa/get-term-meta` and `ewpa/update-term-meta` (Custom Post Types section, enabled by default) — read and write taxonomy term meta by exact key, the term-level equivalent of `ewpa/get-post-meta` / `ewpa/update-post-meta`. `get-term-meta` returns every meta field for the term when `meta_key` is omitted. Both require the `edit_term` capability on the target term.
+* Fix: `ewpa/get-cpt-taxonomies` threw an output-schema validation error ("not of type string") for taxonomies registered with `'label' => false` — a pattern used by internal taxonomies some multilingual plugins (e.g. Polylang) attach to custom post types. The taxonomy slug is now used as a fallback label instead of the raw `false` value. Reported from a live JetEngine + Polylang site.
+* Updated: Total abilities: 96 in 19 categories.
+
+= 2.6.0 =
+* New: FSE Block Templates section (3 abilities) — `ewpa/fse-list-templates` and `ewpa/fse-get-template` (read, enabled by default) list and read `wp_template` / `wp_template_part` entries for the active theme via `get_block_templates()` / `get_block_template()`, merging theme-file defaults with database overrides; `ewpa/fse-update-template` (write, opt-in) writes new block markup, creating a database override when the target is still a theme default, and rejects content with unbalanced block-comment delimiters before saving. Guarded behind `current_theme_supports('block-templates')`. Requested by redsoulwarrior in a WordPress.org review.
+* Fix: `ewpa/create-code-snippet` failed on every call with "Cannot instantiate Snippet class" on Code Snippets 3.10.0+ — its PSR-4 refactor moved the `Snippet` class from `Code_Snippets\Snippet` to `Code_Snippets\Model\Snippet`. Now checks both locations (plus the legacy global `Snippet` for 2.x), so it works across Code Snippets 2.x through 3.10+. Reported by redsoulwarrior with a confirmed version-downgrade repro.
+* Docs: "Available Abilities" section now documents the Multilanguage, LearnDash, JetEngine Options Pages, Elementor, Code Snippets, and AI Agent Readiness (llms.txt) sections — previously listed only in the Features summary, not broken out in detail.
+* Compatibility: Tested up to WordPress 7.1.
+* Updated: Total abilities: 94 in 19 categories.
+
+= 2.5.2 =
+* Fix: `ewpa/search-replace` matched against a `sanitize_text_field()`-cleaned copy of the search term instead of the raw text — a search containing HTML tags, line breaks, or repeated whitespace would silently never match `post_content` (which stores that raw). The search and replacement values are now used as-is.
+* Fix: `ewpa/search-replace` rejected a search term of `"0"` as empty, because PHP's `empty()` treats the string `"0"` as falsy. Now uses a strict empty-string check.
+* Fix: `Stable tag` in this readme was left at 2.5.0 after the 2.5.1 release, so WordPress.org never picked up 2.5.1 as current. Corrected to 2.5.2.
+
+= 2.5.1 =
+* Fix: `ewpa/tutor-get-user-progress` always returned `enrollment_status: null` — Tutor's `EnrollmentModel::is_enrolled()` doesn't select `post_status` in its query, so the field silently read as null. Now resolved via `get_post()`.
+* Docs: v2.5.0 also shipped 6 Tutor LMS parity abilities (list courses, get course detail with topics/lessons hierarchy, get user progress, get quiz results, enroll user, unenroll user) that were left undocumented in that release — now reflected here and in the Available Abilities list.
+* Updated: Total abilities: 91 in 18 categories (corrected from the 85 mistakenly listed in 2.5.0).
+
+= 2.5.0 =
+* New: `ewpa/duplicate-post` — duplicates any post, page, or CPT item, copying all post meta (ACF fields, SEO data, featured image) and taxonomy terms. The copy is saved as a draft by default. Opt-in write ability.
+* Fix: meta values are now re-slashed before `add_post_meta()` to match WordPress's internal `wp_unslash()` contract — prevents backslash loss in serialized or JSON meta fields (e.g. `_elementor_data`) when duplicating.
+* Fix: self-healing migration automatically adds `ewpa/duplicate-post` to the enabled-abilities list on existing installs upgrading from earlier versions.
+* Updated: Total abilities: 85 in 18 categories.
+* i18n: POT and Spanish (es_ES) translation updated.
+
+= 2.4.0 =
+* New: Tutor LMS section — 2 abilities to read and set a lesson's video source: `ewpa/tutor-get-lesson-video` and `ewpa/tutor-update-lesson-video`, both enabled by default. Requires Tutor LMS (`tutor_utils()`).
+* Fix: writing a lesson's video through the generic `ewpa/update-post-meta` ability silently broke video playback — Tutor stores `_video` as a native PHP array, but `update-post-meta` always writes strings, and WordPress's own serialization safeguards (`is_serialized()`) prevent a plain or hand-serialized string from ever being reinterpreted as that array. `ewpa/tutor-update-lesson-video` calls `tutor_utils()->update_video()` directly — the same function Tutor's own editor uses — so the value is always stored correctly, including third-party sources registered via the `tutor_preferred_video_sources` filter (e.g. Bunny.net). Validated on a live Tutor LMS site with a Bunny.net-hosted lesson video.
+* Updated: Total abilities: 84 in 18 categories.
+* i18n: POT and Spanish (es_ES) translation updated.
+
+= 2.3.0 =
+* New: Navigation Menus section — 8 new abilities to create and manage a site's navigation menus entirely through MCP: `create-menu`, `list-menus`, `get-menu`, `add-menu-item` (pages, posts, categories, tags, or custom URLs, with parent/position), and `update-menu-item` are enabled by default; `remove-menu-item`, `assign-menu-location`, and `delete-menu` are opt-in (destructive). All require `edit_theme_options`, the same capability WordPress demands for Appearance → Menus.
+* Updated: Total abilities: 82 in 17 categories.
+* i18n: POT and Spanish (es_ES) translation updated.
+
+= 2.2.1 =
+* Fix: `ewpa/get-cpt-items` ignored the requested `post_type` when the `s` (search) parameter was set, silently returning items from a different post type. Caused by `suppress_filters => false` on the internal `get_posts()` call, which left third-party `pre_get_posts` hooks free to rewrite the query once a search term was present (observed on a Tutor LMS site, where `lesson` is excluded from search and a search-integration plugin fell back to `courses`). Removed the override so the ability uses `get_posts()`'s own safe default (`suppress_filters => true`), matching every other CPT-listing ability in the plugin. Reported by a user testing the MCP connector against a live Tutor LMS site.
+
+= 2.2.0 =
+* New: third-party ability management — abilities registered by other MCP-ready plugins (e.g. Fluent Forms 6.2.12+) now appear in the Abilities tab under a "Third-party" section per plugin namespace, with the same per-ability toggles. Disabling one unregisters it at the end of `wp_abilities_api_init`, removing it from every MCP server on the site (this plugin's claude.ai OAuth connector, the default adapter server, and the third-party plugin's own MCP endpoint). New third-party abilities start enabled, and disabled ones stay listed for re-enabling — validated end-to-end against Fluent Forms' MCP tools.
+* New: plugin homepage at https://mcp.fabiomontenegro.com/ (Plugin URI); donations moved to Ko-fi.
+* i18n: POT and Spanish (es_ES) translation updated.
+
+= 2.1.1 =
+* Fix: OAuth discovery-document handling (canonical-redirect prevention and RFC 9728 path-suffixed URLs) now works for sites installed in a subdirectory — the matchers derive the site's base path from `home_url()` instead of assuming a root install.
+* New: multisite discovery bridge — on subdirectory networks, OAuth clients resolve `/.well-known/oauth-*` against the domain root, which belongs to the main site. With the plugin network-activated, the main site now resolves those requests to the owning subsite and relays its discovery document, making the claude.ai connector work for every subsite (validated against claude.ai on a production-style subdirectory multisite).
+* Docs: Multisite FAQ updated with the subdirectory-network requirements.
+
+= 2.1.0 =
+* New: claude.ai OAuth Custom Connector — embedded OAuth 2.1 server (wp-media/mcp-oauth) with Client ID Metadata Document (CIMD) support. Add your site as a custom connector in claude.ai (web, mobile, or desktop) with just a URL — no Client ID, no Application Password: each user logs in with their own WordPress account and approves a consent screen. Opt-in from Settings > WP Abilities > Connection.
+* New: Connection tab redesigned — authentication methods now read top-down as options (claude.ai OAuth, Application Passwords, Single Admin Bearer Token) and the client configuration examples (Claude Desktop / Claude Code, OpenAI Codex CLI, Google Antigravity) moved to a shared, highlighted "Connect your AI client" section with the MCP endpoint URL, since they apply to both token methods.
+* New: generating Application Password credentials now auto-fills every client example with your real `Basic` authorization header — copy-paste ready, no manual editing.
+* Fix: OAuth discovery documents (`/.well-known/oauth-*`) and `/oauth/*` endpoints no longer receive WordPress's trailing-slash 301 canonical redirect, which strict OAuth clients (claude.ai) reject as a failed metadata fetch.
+* Fix: RFC 9728 path-suffixed discovery URLs (`/.well-known/oauth-protected-resource/<mcp-path>`) are now served, matching the lookup order of Anthropic's OAuth client.
+* Docs: FAQ entries on diagnosing hosting WAFs (cPGuard/Imunify/ModSecurity) and Cloudflare bot protections that block Anthropic's `python-httpx` client.
+* i18n: POT and Spanish (es_ES) translation updated with the new strings.
 
 = 2.0.25 =
 * New: Connection tab now includes ready-to-copy configuration for three AI clients — Claude Desktop / Claude Code (`claude_desktop_config.json`), OpenAI Codex CLI (`~/.codex/config.toml`, TOML `[mcp_servers.*]`), and Google Antigravity (`mcp_config.json`, direct `serverUrl` + `headers` connection with no npx required).
