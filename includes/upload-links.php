@@ -271,7 +271,7 @@ function ewpa_upload_link_create( int $user_id, array $args = array() ) {
 		'expires_at'    => gmdate( 'c', $expires ),
 		'max_bytes'     => ewpa_upload_link_max_bytes(),
 		'allowed_types' => $types,
-		'instructions'  => 'Do not send the file through this conversation. If you can run commands and have the file, upload it with: curl -X PUT --data-binary @<file> "<upload_url with FILENAME replaced by the file name>". The link is the credential: send no Authorization header. Otherwise give the user page_url to open in a browser and drop the file there. Then call ewpa/get-upload-status with upload_id.',
+		'instructions'  => 'Do not send the file through this conversation. If you can run commands and have the file, upload it with: curl -X PUT --data-binary @<file> "<upload_url with FILENAME replaced by the file name>". The link is the credential: send no Authorization header. If you cannot run commands, do not have the file bytes, or the upload fails (for example because your sandbox blocks network access to this site), give the user page_url to open in a browser and drop the file there; do not retry the upload. Then call ewpa/get-upload-status with upload_id.',
 	);
 }
 
@@ -680,7 +680,7 @@ function ewpa_register_upload_link_abilities(): void {
 			'ewpa/create-upload-link',
 			array(
 				'label'               => __( 'Create Upload Link', 'enable-abilities-for-mcp' ),
-				'description'         => __( 'Creates a temporary, single-use link to upload an image from the user\'s computer straight to the media library, so the file never passes through the conversation. Use this instead of sending base64. If you can run commands and have the file, send it with an HTTP PUT to upload_url; otherwise give the user page_url to open in a browser. Then call ewpa/get-upload-status with upload_id to get the attachment ID.', 'enable-abilities-for-mcp' ),
+				'description'         => __( 'Creates a temporary, single-use link to upload an image from the user\'s computer straight to the media library, so the file never passes through the conversation. Use this instead of sending base64. If you can run commands and have the file, send it with an HTTP PUT to upload_url; otherwise, or if that request fails, give the user page_url to open in a browser. Then call ewpa/get-upload-status with upload_id to get the attachment ID.', 'enable-abilities-for-mcp' ),
 				'category'            => 'content-management',
 				'input_schema'        => array(
 					'type'       => 'object',
