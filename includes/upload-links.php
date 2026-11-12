@@ -271,7 +271,7 @@ function ewpa_upload_link_create( int $user_id, array $args = array() ) {
 		'expires_at'    => gmdate( 'c', $expires ),
 		'max_bytes'     => ewpa_upload_link_max_bytes(),
 		'allowed_types' => $types,
-		'instructions'  => 'Do not send the file through this conversation. If you can run commands and have the file, upload it with: curl -X PUT --data-binary @<file> "<upload_url with FILENAME replaced by the file name>". Otherwise give the user page_url to open in a browser and drop the file there. Then call ewpa/get-upload-status with upload_id.',
+		'instructions'  => 'Do not send the file through this conversation. If you can run commands and have the file, upload it with: curl -X PUT --data-binary @<file> "<upload_url with FILENAME replaced by the file name>". The link is the credential: send no Authorization header. Otherwise give the user page_url to open in a browser and drop the file there. Then call ewpa/get-upload-status with upload_id.',
 	);
 }
 
@@ -520,7 +520,7 @@ function ewpa_upload_link_rest_receive( WP_REST_Request $request ) {
 	}
 
 	$filename = (string) $request['filename'];
-	$tmp_file = wp_tempnam( $filename );
+	$tmp_file = wp_tempnam( sanitize_file_name( $filename ) );
 	if ( ! $tmp_file || false === file_put_contents( $tmp_file, $body ) ) { // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_file_put_contents -- Temp file handed to media_handle_sideload().
 		return new WP_Error( 'storage_failed', 'The file could not be written to a temporary location.', array( 'status' => 500 ) );
 	}
@@ -627,9 +627,9 @@ img{display:block;max-width:100%;max-height:220px;margin:16px auto 0;border-radi
 	<p id="status" role="status" aria-live="polite"></p>
 	<script nonce="<?php echo esc_attr( $nonce ); ?>">
 	(function () {
-		var endpoint = <?php echo wp_json_encode( $rest ); ?>;
+		var endpoint = <?php echo wp_json_encode( $rest, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT ); ?>;
 		var maxBytes = <?php echo (int) $max; ?>;
-		var t = <?php echo wp_json_encode( $i18n ); ?>;
+		var t = <?php echo wp_json_encode( $i18n, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT ); ?>;
 		var drop = document.getElementById('drop'), input = document.getElementById('file');
 		var statusEl = document.getElementById('status'), preview = document.getElementById('preview');
 		var busy = false;
