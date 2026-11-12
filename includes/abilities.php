@@ -9673,7 +9673,6 @@ function ewpa_register_custom_abilities(): void {
 							'post_status'      => 'publish',
 							'posts_per_page'   => min( (int) ( $input['per_page'] ?? 20 ), 100 ),
 							'paged'            => max( 1, (int) ( $input['page'] ?? 1 ) ),
-							'suppress_filters' => true,
 						);
 						if ( ! empty( $input['search'] ) ) {
 							$args['s'] = sanitize_text_field( $input['search'] );
@@ -10279,7 +10278,6 @@ function ewpa_register_custom_abilities(): void {
 							'post_status'      => 'publish',
 							'posts_per_page'   => min( (int) ( $input['per_page'] ?? 20 ), 100 ),
 							'paged'            => max( 1, (int) ( $input['page'] ?? 1 ) ),
-							'suppress_filters' => true,
 						);
 						if ( ! empty( $input['search'] ) ) {
 							$args['s'] = sanitize_text_field( $input['search'] );

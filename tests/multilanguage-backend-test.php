@@ -12,6 +12,7 @@
  */
 
 if ( isset( $argv[1] ) && '--case' === $argv[1] ) {
+	define( 'ABSPATH', __DIR__ . '/' );
 	define( 'EWPA_TESTING', true );
 	ewpa_bootstrap_case( $argv[2] ?? '' );
 	require dirname( __DIR__ ) . '/includes/multilanguage.php';

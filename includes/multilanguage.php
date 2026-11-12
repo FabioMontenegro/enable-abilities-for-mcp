@@ -11,7 +11,7 @@
  * @package EnableAbilitiesForMCP
  */
 
-if ( ! defined( 'ABSPATH' ) && ! defined( 'EWPA_TESTING' ) ) {
+if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
