@@ -264,6 +264,8 @@ Yes — strict OAuth clients require a direct `200` on `/.well-known/oauth-autho
 * New: `ewpa/create-upload-link` gets an image from the user's computer into the media library without the file passing through the conversation. Sending a file as base64 makes the model type out the whole file, which is slow, expensive and usually fails on size. Instead the ability returns a temporary link: an assistant that can run commands sends the file with a single `PUT`, and one that cannot (Claude Desktop, claude.ai) hands the user a small upload page to drop the image on. The link works once, for 10 minutes, for the user who created it, who must still be able to upload files when it is used. Only JPEG, PNG, GIF, WebP and AVIF are accepted, checked by content and not just by name, up to the site's upload limit capped at 20 MB. Each user can hold five unused links at a time. Only a hash of the link is stored. Opt-in.
 * New: `ewpa/get-upload-status` tells the assistant whether the file has arrived and returns the attachment ID and URL. A link that belongs to someone else reads as expired, so it cannot be used to probe other users' uploads. Opt-in.
 * New: filters `ewpa_upload_link_ttl`, `ewpa_upload_link_max_bytes` and `ewpa_upload_link_max_active` adjust the link lifetime, the size cap and the per-user limit.
+* Security: password-protected posts no longer give away their content. A user who could read a post but not edit it got its full content and excerpt from `ewpa/get-post`, `ewpa/get-page` and `ewpa/get-cpt-item`, its excerpt from `ewpa/get-posts` and `ewpa/get-cpt-items`, and its description from `ewpa/tec-get-event`, `ewpa/ld-get-course` and `ewpa/tutor-get-course`. That content now comes back empty, as in the WordPress REST API, and the single-item readers return `password_protected` so the assistant knows why. `ewpa/duplicate-post` refuses to copy a protected post the user cannot edit. Users who can edit the post see everything as before.
+* Security: `ewpa/elementor-update-element` filters the HTML it writes for users without the `unfiltered_html` capability, as WordPress does for post content. It writes the Elementor data directly, so Elementor's own filtering never ran, and an author could store a script in a page. Administrators and editors on a single site are not affected.
 * Updated: Total abilities: 114 in 21 categories.
 
 = 2.15.0 =
@@ -356,7 +358,7 @@ Yes — strict OAuth clients require a direct `200` on `/.well-known/oauth-autho
 == Upgrade Notice ==
 
 = 2.16.0 =
-New opt-in abilities to upload an image from your computer through a temporary, single-use link, so the file never passes through the conversation. Nothing changes until you turn them on.
+New opt-in abilities to upload an image from your computer through a temporary, single-use link, so the file never passes through the conversation. Also a security fix: password-protected posts no longer give away their content to users who cannot edit them, and the Elementor element editor filters HTML for users without `unfiltered_html`.
 
 = 2.15.0 =
 `create-post` can write custom fields in the same call, and `get-posts` can filter by custom field, so an agent can check whether a post already exists before creating it again. Nothing changes for calls that do not use them.

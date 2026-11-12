@@ -9,7 +9,7 @@ msgstr ""
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"POT-Creation-Date: 2026-11-12T04:51:05+00:00\n"
+"POT-Creation-Date: 2026-11-12T23:13:32+00:00\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "X-Generator: WP-CLI 2.12.0\n"
 "X-Domain: enable-abilities-for-mcp\n"
@@ -49,7 +49,7 @@ msgid "Native WordPress core abilities. Exposed to MCP with the public flag."
 msgstr ""
 
 #: enable-abilities-for-mcp.php:1228
-#: includes/abilities.php:761
+#: includes/abilities.php:795
 msgid "Site Information"
 msgstr ""
 
@@ -82,7 +82,7 @@ msgid "Only query data, do not modify anything. Safest to expose via MCP."
 msgstr ""
 
 #: enable-abilities-for-mcp.php:1247
-#: includes/abilities.php:888
+#: includes/abilities.php:922
 msgid "Get Posts"
 msgstr ""
 
@@ -91,7 +91,7 @@ msgid "List posts with filters by status, category, count, and order."
 msgstr ""
 
 #: enable-abilities-for-mcp.php:1251
-#: includes/abilities.php:1055
+#: includes/abilities.php:1089
 msgid "Get Single Post"
 msgstr ""
 
@@ -100,7 +100,7 @@ msgid "Full post detail by ID, including content, meta data, and featured image.
 msgstr ""
 
 #: enable-abilities-for-mcp.php:1255
-#: includes/abilities.php:1226
+#: includes/abilities.php:1272
 msgid "Get Categories"
 msgstr ""
 
@@ -109,7 +109,7 @@ msgid "List all categories with ID, name, slug, and post count."
 msgstr ""
 
 #: enable-abilities-for-mcp.php:1259
-#: includes/abilities.php:1290
+#: includes/abilities.php:1336
 msgid "Get Tags"
 msgstr ""
 
@@ -118,7 +118,7 @@ msgid "List all tags with ID, name, slug, and post count."
 msgstr ""
 
 #: enable-abilities-for-mcp.php:1263
-#: includes/abilities.php:1358
+#: includes/abilities.php:1404
 msgid "Get Pages"
 msgstr ""
 
@@ -127,7 +127,7 @@ msgid "List site pages with title, status, and hierarchy."
 msgstr ""
 
 #: enable-abilities-for-mcp.php:1267
-#: includes/abilities.php:1143
+#: includes/abilities.php:1183
 msgid "Get Single Page"
 msgstr ""
 
@@ -136,7 +136,7 @@ msgid "Full page detail by ID, including content, template, hierarchy, and SEO m
 msgstr ""
 
 #: enable-abilities-for-mcp.php:1271
-#: includes/abilities.php:1449
+#: includes/abilities.php:1495
 msgid "Get Comments"
 msgstr ""
 
@@ -145,7 +145,7 @@ msgid "List comments with filters by status, post, and count."
 msgstr ""
 
 #: enable-abilities-for-mcp.php:1275
-#: includes/abilities.php:1538
+#: includes/abilities.php:1584
 msgid "Get Media"
 msgstr ""
 
@@ -154,7 +154,7 @@ msgid "List media library files with filters by type."
 msgstr ""
 
 #: enable-abilities-for-mcp.php:1279
-#: includes/abilities.php:1625
+#: includes/abilities.php:1671
 msgid "Get Users"
 msgstr ""
 
@@ -171,7 +171,7 @@ msgid "Create or modify content. Require appropriate MCP user permissions."
 msgstr ""
 
 #: enable-abilities-for-mcp.php:1291
-#: includes/abilities.php:1695
+#: includes/abilities.php:1741
 msgid "Create Post"
 msgstr ""
 
@@ -180,7 +180,7 @@ msgid "Create a new post with title, content, categories, tags, featured image, 
 msgstr ""
 
 #: enable-abilities-for-mcp.php:1295
-#: includes/abilities.php:1887
+#: includes/abilities.php:1933
 msgid "Update Post"
 msgstr ""
 
@@ -189,7 +189,7 @@ msgid "Modify an existing post. Only updates the fields provided."
 msgstr ""
 
 #: enable-abilities-for-mcp.php:1299
-#: includes/abilities.php:2030
+#: includes/abilities.php:2076
 msgid "Delete Post"
 msgstr ""
 
@@ -198,7 +198,7 @@ msgid "Send a post to trash or permanently delete it."
 msgstr ""
 
 #: enable-abilities-for-mcp.php:1303
-#: includes/abilities.php:2098
+#: includes/abilities.php:2144
 msgid "Create Category"
 msgstr ""
 
@@ -207,7 +207,7 @@ msgid "Create a new category with name, slug, description, and parent."
 msgstr ""
 
 #: enable-abilities-for-mcp.php:1307
-#: includes/abilities.php:2181
+#: includes/abilities.php:2227
 msgid "Create Tag"
 msgstr ""
 
@@ -216,7 +216,7 @@ msgid "Create a new tag with name, slug, and description."
 msgstr ""
 
 #: enable-abilities-for-mcp.php:1311
-#: includes/abilities.php:2256
+#: includes/abilities.php:2302
 msgid "Create Page"
 msgstr ""
 
@@ -225,7 +225,7 @@ msgid "Create a new page with title, content, status, and parent page."
 msgstr ""
 
 #: enable-abilities-for-mcp.php:1315
-#: includes/abilities.php:2353
+#: includes/abilities.php:2399
 msgid "Moderate Comment"
 msgstr ""
 
@@ -234,7 +234,7 @@ msgid "Change comment status: approve, hold, spam, or trash."
 msgstr ""
 
 #: enable-abilities-for-mcp.php:1319
-#: includes/abilities.php:2435
+#: includes/abilities.php:2481
 msgid "Reply to Comment"
 msgstr ""
 
@@ -243,7 +243,7 @@ msgid "Reply to an existing comment as the authenticated user."
 msgstr ""
 
 #: enable-abilities-for-mcp.php:1323
-#: includes/abilities.php:2514
+#: includes/abilities.php:2560
 msgid "Update Comment"
 msgstr ""
 
@@ -252,7 +252,7 @@ msgid "Update content, author name, email, or WordPress user of an existing comm
 msgstr ""
 
 #: enable-abilities-for-mcp.php:1327
-#: includes/abilities.php:2635
+#: includes/abilities.php:2681
 msgid "Upload Image from URL"
 msgstr ""
 
@@ -279,7 +279,7 @@ msgid "Check whether the file for an upload link has arrived and get its attachm
 msgstr ""
 
 #: enable-abilities-for-mcp.php:1341
-#: includes/abilities.php:2807
+#: includes/abilities.php:2853
 msgid "Duplicate Post / Page / CPT"
 msgstr ""
 
@@ -288,7 +288,7 @@ msgid "Create an exact copy of any post, page, or CPT item — including all met
 msgstr ""
 
 #: enable-abilities-for-mcp.php:1345
-#: includes/abilities.php:6481
+#: includes/abilities.php:6538
 msgid "Assign Post Terms"
 msgstr ""
 
@@ -305,7 +305,7 @@ msgid "Query and update Rank Math SEO metadata on posts and pages."
 msgstr ""
 
 #: enable-abilities-for-mcp.php:1357
-#: includes/abilities.php:2943
+#: includes/abilities.php:2993
 msgid "Get Rank Math Metadata"
 msgstr ""
 
@@ -314,7 +314,7 @@ msgid "Get Rank Math SEO metadata for a post or page: title, description, keywor
 msgstr ""
 
 #: enable-abilities-for-mcp.php:1361
-#: includes/abilities.php:3068
+#: includes/abilities.php:3118
 msgid "Update Rank Math SEO / Focus Keyword"
 msgstr ""
 
@@ -323,7 +323,7 @@ msgid "Update focus keyword, SEO title, description, canonical URL, robots, and 
 msgstr ""
 
 #: enable-abilities-for-mcp.php:1365
-#: includes/abilities.php:3351
+#: includes/abilities.php:3401
 msgid "Update Rank Math Schema"
 msgstr ""
 
@@ -340,7 +340,7 @@ msgid "Query and update SEOPress metadata on posts and pages."
 msgstr ""
 
 #: enable-abilities-for-mcp.php:1377
-#: includes/abilities.php:3429
+#: includes/abilities.php:3479
 msgid "Get SEOPress Metadata"
 msgstr ""
 
@@ -349,7 +349,7 @@ msgid "Get SEOPress metadata for a post or page: title, description, focus keywo
 msgstr ""
 
 #: enable-abilities-for-mcp.php:1381
-#: includes/abilities.php:3512
+#: includes/abilities.php:3562
 msgid "Update SEOPress Metadata"
 msgstr ""
 
@@ -358,7 +358,7 @@ msgid "Update SEOPress SEO title, description, focus keyword, canonical URL, rob
 msgstr ""
 
 #: enable-abilities-for-mcp.php:1385
-#: includes/abilities.php:3719
+#: includes/abilities.php:3769
 msgid "Get SEOPress Content Analysis"
 msgstr ""
 
@@ -375,7 +375,7 @@ msgid "Query and update Yoast SEO metadata on posts and pages."
 msgstr ""
 
 #: enable-abilities-for-mcp.php:1397
-#: includes/abilities.php:3888
+#: includes/abilities.php:3938
 msgid "Get Yoast SEO Metadata"
 msgstr ""
 
@@ -384,7 +384,7 @@ msgid "Get Yoast SEO metadata for a post or page: title, description, focus keyp
 msgstr ""
 
 #: enable-abilities-for-mcp.php:1401
-#: includes/abilities.php:3967
+#: includes/abilities.php:4017
 msgid "Update Yoast SEO Metadata"
 msgstr ""
 
@@ -393,7 +393,7 @@ msgid "Update Yoast SEO title, description, focus keyphrase, canonical URL, robo
 msgstr ""
 
 #: enable-abilities-for-mcp.php:1405
-#: includes/abilities.php:4703
+#: includes/abilities.php:4753
 msgid "Get Yoast Sitemap Index"
 msgstr ""
 
@@ -402,7 +402,7 @@ msgid "Fetch and parse the Yoast SEO sitemap index, returning the list of all si
 msgstr ""
 
 #: enable-abilities-for-mcp.php:1411
-#: includes/abilities.php:777
+#: includes/abilities.php:811
 msgid "Navigation Menus"
 msgstr ""
 
@@ -411,7 +411,7 @@ msgid "Inspect and manage navigation menus, their items, and theme locations."
 msgstr ""
 
 #: enable-abilities-for-mcp.php:1416
-#: includes/abilities.php:11320
+#: includes/abilities.php:11386
 msgid "Create Menu"
 msgstr ""
 
@@ -420,7 +420,7 @@ msgid "Creates a new, empty navigation menu with the given name."
 msgstr ""
 
 #: enable-abilities-for-mcp.php:1420
-#: includes/abilities.php:11378
+#: includes/abilities.php:11444
 msgid "List Menus"
 msgstr ""
 
@@ -429,7 +429,7 @@ msgid "Lists every menu with its id, slug, and item count, plus the theme locati
 msgstr ""
 
 #: enable-abilities-for-mcp.php:1424
-#: includes/abilities.php:11432
+#: includes/abilities.php:11498
 msgid "Get Menu"
 msgstr ""
 
@@ -438,7 +438,7 @@ msgid "Returns every item of one menu with hierarchy, destination, and position.
 msgstr ""
 
 #: enable-abilities-for-mcp.php:1428
-#: includes/abilities.php:11496
+#: includes/abilities.php:11562
 msgid "Add Menu Item"
 msgstr ""
 
@@ -447,7 +447,7 @@ msgid "Adds a page, post, category, tag, or custom URL to a menu, with optional 
 msgstr ""
 
 #: enable-abilities-for-mcp.php:1432
-#: includes/abilities.php:11606
+#: includes/abilities.php:11672
 msgid "Update Menu Item"
 msgstr ""
 
@@ -456,7 +456,7 @@ msgid "Updates the title, custom URL, parent, or position of one menu item."
 msgstr ""
 
 #: enable-abilities-for-mcp.php:1436
-#: includes/abilities.php:11686
+#: includes/abilities.php:11752
 msgid "Remove Menu Item"
 msgstr ""
 
@@ -465,7 +465,7 @@ msgid "Permanently removes one item from a menu. Destructive — opt-in required
 msgstr ""
 
 #: enable-abilities-for-mcp.php:1441
-#: includes/abilities.php:11736
+#: includes/abilities.php:11802
 msgid "Assign Menu Location"
 msgstr ""
 
@@ -474,7 +474,7 @@ msgid "Assigns a menu to a theme location. Changes site-wide navigation — opt-
 msgstr ""
 
 #: enable-abilities-for-mcp.php:1446
-#: includes/abilities.php:11801
+#: includes/abilities.php:11867
 msgid "Delete Menu"
 msgstr ""
 
@@ -491,7 +491,7 @@ msgid "Auxiliary tools that complement the workflow."
 msgstr ""
 
 #: enable-abilities-for-mcp.php:1458
-#: includes/abilities.php:4793
+#: includes/abilities.php:4843
 msgid "Search and Replace"
 msgstr ""
 
@@ -500,7 +500,7 @@ msgid "Search for text in a post content and replace it with another."
 msgstr ""
 
 #: enable-abilities-for-mcp.php:1462
-#: includes/abilities.php:4882
+#: includes/abilities.php:4932
 msgid "Site Statistics"
 msgstr ""
 
@@ -509,7 +509,7 @@ msgid "Site summary: total posts, pages, categories, tags, comments, and users."
 msgstr ""
 
 #: enable-abilities-for-mcp.php:1466
-#: includes/abilities.php:4957
+#: includes/abilities.php:5007
 msgid "Update Post Meta"
 msgstr ""
 
@@ -518,7 +518,7 @@ msgid "Write any post meta field by exact key. Requires edit_post capability on 
 msgstr ""
 
 #: enable-abilities-for-mcp.php:1470
-#: includes/abilities.php:5055
+#: includes/abilities.php:5105
 msgid "Get Post Meta"
 msgstr ""
 
@@ -527,7 +527,7 @@ msgid "Read any single post meta field by exact key. Returns the value and wheth
 msgstr ""
 
 #: enable-abilities-for-mcp.php:1474
-#: includes/abilities.php:5127
+#: includes/abilities.php:5177
 msgid "Get Active Plugins"
 msgstr ""
 
@@ -536,7 +536,7 @@ msgid "Returns all active plugins with name, version, and detected capabilities 
 msgstr ""
 
 #: enable-abilities-for-mcp.php:1478
-#: includes/abilities.php:5239
+#: includes/abilities.php:5289
 msgid "Clear Cache"
 msgstr ""
 
@@ -553,7 +553,7 @@ msgid "Create, read, and update PHP code snippets via the Code Snippets plugin. 
 msgstr ""
 
 #: enable-abilities-for-mcp.php:1491
-#: includes/abilities.php:4162
+#: includes/abilities.php:4212
 msgid "Create Code Snippet"
 msgstr ""
 
@@ -562,7 +562,7 @@ msgid "Creates a PHP snippet (always inactive). Validates syntax, blocks dangero
 msgstr ""
 
 #: enable-abilities-for-mcp.php:1495
-#: includes/abilities.php:4285
+#: includes/abilities.php:4335
 msgid "List Code Snippets"
 msgstr ""
 
@@ -571,7 +571,7 @@ msgid "List snippets with name, type, scope, active state, and tags. The code it
 msgstr ""
 
 #: enable-abilities-for-mcp.php:1499
-#: includes/abilities.php:4372
+#: includes/abilities.php:4422
 msgid "Get Code Snippet"
 msgstr ""
 
@@ -580,7 +580,7 @@ msgid "Read one snippet by ID, including its code."
 msgstr ""
 
 #: enable-abilities-for-mcp.php:1503
-#: includes/abilities.php:4433
+#: includes/abilities.php:4483
 msgid "Update Code Snippet"
 msgstr ""
 
@@ -589,7 +589,7 @@ msgid "Change a PHP snippet's name, description, code, scope, or tags. New code 
 msgstr ""
 
 #: enable-abilities-for-mcp.php:1508
-#: includes/abilities.php:4590
+#: includes/abilities.php:4640
 msgid "Set Code Snippet Active"
 msgstr ""
 
@@ -598,7 +598,7 @@ msgid "Deactivate a snippet, or request its activation. Activation is never auto
 msgstr ""
 
 #: enable-abilities-for-mcp.php:1515
-#: includes/abilities.php:801
+#: includes/abilities.php:835
 msgid "Multilanguage"
 msgstr ""
 
@@ -607,7 +607,7 @@ msgid "List languages, create and link translations, and assign languages to pos
 msgstr ""
 
 #: enable-abilities-for-mcp.php:1522
-#: includes/abilities.php:8025
+#: includes/abilities.php:8082
 msgid "List Languages"
 msgstr ""
 
@@ -616,7 +616,7 @@ msgid "List available languages from Polylang, WPML, or Linguator AI."
 msgstr ""
 
 #: enable-abilities-for-mcp.php:1526
-#: includes/abilities.php:8217
+#: includes/abilities.php:8274
 msgid "Create Post Translation"
 msgstr ""
 
@@ -625,7 +625,7 @@ msgid "Create the translation of a post in a target language and link it to the 
 msgstr ""
 
 #: enable-abilities-for-mcp.php:1530
-#: includes/abilities.php:8061
+#: includes/abilities.php:8118
 msgid "Set Post Language"
 msgstr ""
 
@@ -634,7 +634,7 @@ msgid "Assign a language code to an existing post via Polylang, WPML, or Linguat
 msgstr ""
 
 #: enable-abilities-for-mcp.php:1534
-#: includes/abilities.php:8108
+#: includes/abilities.php:8165
 msgid "Link Post Translation"
 msgstr ""
 
@@ -643,7 +643,7 @@ msgid "Link two posts as translations of each other in the same translation grou
 msgstr ""
 
 #: enable-abilities-for-mcp.php:1538
-#: includes/abilities.php:8163
+#: includes/abilities.php:8220
 msgid "Get Post Translations"
 msgstr ""
 
@@ -652,7 +652,7 @@ msgid "Return the full translation map for a post: language, post ID, title, per
 msgstr ""
 
 #: enable-abilities-for-mcp.php:1542
-#: includes/abilities.php:8485
+#: includes/abilities.php:8542
 msgid "Create Term Translation"
 msgstr ""
 
@@ -661,7 +661,7 @@ msgid "Create the translation of a category, tag, or custom taxonomy term and li
 msgstr ""
 
 #: enable-abilities-for-mcp.php:1546
-#: includes/abilities.php:8318
+#: includes/abilities.php:8375
 msgid "Set Term Language"
 msgstr ""
 
@@ -670,7 +670,7 @@ msgid "Assign a language code to an existing taxonomy term via Polylang, WPML, o
 msgstr ""
 
 #: enable-abilities-for-mcp.php:1550
-#: includes/abilities.php:8366
+#: includes/abilities.php:8423
 msgid "Link Term Translation"
 msgstr ""
 
@@ -679,7 +679,7 @@ msgid "Link two taxonomy terms as translations of each other in the same transla
 msgstr ""
 
 #: enable-abilities-for-mcp.php:1554
-#: includes/abilities.php:8427
+#: includes/abilities.php:8484
 msgid "Get Term Translations"
 msgstr ""
 
@@ -688,7 +688,7 @@ msgid "Return the full translation map for a taxonomy term: language, term ID, n
 msgstr ""
 
 #: enable-abilities-for-mcp.php:1560
-#: includes/abilities.php:785
+#: includes/abilities.php:819
 msgid "WooCommerce"
 msgstr ""
 
@@ -753,7 +753,7 @@ msgid "List customers with email, name, total spent, and order count. Supports s
 msgstr ""
 
 #: enable-abilities-for-mcp.php:1597
-#: includes/abilities.php:793
+#: includes/abilities.php:827
 msgid "The Events Calendar"
 msgstr ""
 
@@ -794,7 +794,7 @@ msgid "Update an existing event: title, description, start/end dates, timezone, 
 msgstr ""
 
 #: enable-abilities-for-mcp.php:1621
-#: includes/abilities.php:769
+#: includes/abilities.php:803
 msgid "Custom Post Types"
 msgstr ""
 
@@ -803,7 +803,7 @@ msgid "Discover and manage Custom Post Types registered by plugins or themes. Ex
 msgstr ""
 
 #: enable-abilities-for-mcp.php:1628
-#: includes/abilities.php:5376
+#: includes/abilities.php:5426
 msgid "List Post Types"
 msgstr ""
 
@@ -812,7 +812,7 @@ msgid "List all public Custom Post Types with their labels, taxonomies, supporte
 msgstr ""
 
 #: enable-abilities-for-mcp.php:1632
-#: includes/abilities.php:5469
+#: includes/abilities.php:5519
 msgid "Get CPT Items"
 msgstr ""
 
@@ -829,7 +829,7 @@ msgid "Get full detail of a CPT item by ID, including content, meta data, taxono
 msgstr ""
 
 #: enable-abilities-for-mcp.php:1640
-#: includes/abilities.php:5776
+#: includes/abilities.php:5833
 msgid "Create CPT Item"
 msgstr ""
 
@@ -838,7 +838,7 @@ msgid "Create a new item in any CPT with title, content, status, taxonomies, and
 msgstr ""
 
 #: enable-abilities-for-mcp.php:1644
-#: includes/abilities.php:5974
+#: includes/abilities.php:6031
 msgid "Update CPT Item"
 msgstr ""
 
@@ -847,7 +847,7 @@ msgid "Update an existing CPT item. Only modifies the fields provided."
 msgstr ""
 
 #: enable-abilities-for-mcp.php:1648
-#: includes/abilities.php:6167
+#: includes/abilities.php:6224
 msgid "Delete CPT Item"
 msgstr ""
 
@@ -856,7 +856,7 @@ msgid "Send a CPT item to trash or permanently delete it."
 msgstr ""
 
 #: enable-abilities-for-mcp.php:1652
-#: includes/abilities.php:6252
+#: includes/abilities.php:6309
 msgid "Get CPT Taxonomies"
 msgstr ""
 
@@ -873,7 +873,7 @@ msgid "Assign taxonomy terms to a CPT item. Can add to or replace existing terms
 msgstr ""
 
 #: enable-abilities-for-mcp.php:1660
-#: includes/abilities.php:6616
+#: includes/abilities.php:6673
 msgid "Get Term Meta"
 msgstr ""
 
@@ -882,7 +882,7 @@ msgid "Read any single term meta field by exact key, or all meta for a term. Req
 msgstr ""
 
 #: enable-abilities-for-mcp.php:1664
-#: includes/abilities.php:6718
+#: includes/abilities.php:6775
 msgid "Update Term Meta"
 msgstr ""
 
@@ -891,7 +891,7 @@ msgid "Write any term meta field by exact key. Requires edit_term capability."
 msgstr ""
 
 #: enable-abilities-for-mcp.php:1668
-#: includes/abilities.php:6802
+#: includes/abilities.php:6859
 msgid "Update Term"
 msgstr ""
 
@@ -908,7 +908,7 @@ msgid "Read and write JetEngine Options Pages fields. Requires JetEngine with th
 msgstr ""
 
 #: enable-abilities-for-mcp.php:1681
-#: includes/abilities.php:8587
+#: includes/abilities.php:8644
 msgid "List Options Pages"
 msgstr ""
 
@@ -917,7 +917,7 @@ msgid "List all registered JetEngine Options Pages with their field schema (no v
 msgstr ""
 
 #: enable-abilities-for-mcp.php:1686
-#: includes/abilities.php:8663
+#: includes/abilities.php:8720
 msgid "Get Options Page"
 msgstr ""
 
@@ -926,7 +926,7 @@ msgid "Return all fields with their current stored values for a given Options Pa
 msgstr ""
 
 #: enable-abilities-for-mcp.php:1691
-#: includes/abilities.php:8773
+#: includes/abilities.php:8830
 msgid "Update Options Page Field"
 msgstr ""
 
@@ -935,7 +935,7 @@ msgid "Write a new value to a single field of a JetEngine Options Page. Destruct
 msgstr ""
 
 #: enable-abilities-for-mcp.php:1698
-#: includes/abilities.php:849
+#: includes/abilities.php:883
 msgid "JetEngine Query Builder"
 msgstr ""
 
@@ -968,7 +968,7 @@ msgid "Update an existing query's name, type, or arguments. Destructive — opt-
 msgstr ""
 
 #: enable-abilities-for-mcp.php:1722
-#: includes/abilities.php:817
+#: includes/abilities.php:851
 msgid "Elementor"
 msgstr ""
 
@@ -1001,7 +1001,7 @@ msgid "Edit the settings of an Elementor element by id (static content/styles). 
 msgstr ""
 
 #: enable-abilities-for-mcp.php:1745
-#: includes/abilities.php:825
+#: includes/abilities.php:859
 msgid "LearnDash"
 msgstr ""
 
@@ -1063,7 +1063,7 @@ msgid "Remove a user's access to a LearnDash course. Requires manage_options. De
 msgstr ""
 
 #: enable-abilities-for-mcp.php:1784
-#: includes/abilities.php:833
+#: includes/abilities.php:867
 msgid "Tutor LMS"
 msgstr ""
 
@@ -1124,7 +1124,7 @@ msgid "Read, validate, and manage the site llms.txt file — the AI-crawler guid
 msgstr ""
 
 #: enable-abilities-for-mcp.php:1838
-#: includes/abilities.php:10632
+#: includes/abilities.php:10698
 msgid "Get llms.txt"
 msgstr ""
 
@@ -1133,7 +1133,7 @@ msgid "Fetch the site llms.txt, detect which component serves it, and validate i
 msgstr ""
 
 #: enable-abilities-for-mcp.php:1842
-#: includes/abilities.php:10746
+#: includes/abilities.php:10812
 msgid "Update llms.txt"
 msgstr ""
 
@@ -1142,7 +1142,7 @@ msgid "Write the llms.txt content (SEOPress Pro option when active, or a virtual
 msgstr ""
 
 #: enable-abilities-for-mcp.php:1849
-#: includes/abilities.php:841
+#: includes/abilities.php:875
 msgid "Accessibility (WCAG)"
 msgstr ""
 
@@ -1151,7 +1151,7 @@ msgid "Detect accessibility issues WordPress can diagnose server-side. Does not 
 msgstr ""
 
 #: enable-abilities-for-mcp.php:1854
-#: includes/abilities.php:11177
+#: includes/abilities.php:11243
 msgid "Get Accessibility Snapshot"
 msgstr ""
 
@@ -1160,7 +1160,7 @@ msgid "Scan the media library for images missing alt text (WCAG 1.1.1), paginate
 msgstr ""
 
 #: enable-abilities-for-mcp.php:1860
-#: includes/abilities.php:857
+#: includes/abilities.php:891
 msgid "FSE Block Templates"
 msgstr ""
 
@@ -1269,1654 +1269,1658 @@ msgid "This content type is not publicly accessible."
 msgstr ""
 
 #. translators: %s: requested post status
-#: includes/abilities.php:332
+#: includes/abilities.php:366
 #, php-format
 msgid "Unknown post status \"%s\". Use \"any\" or a status registered on this site."
 msgstr ""
 
 #. translators: %s: meta key
-#: includes/abilities.php:364
+#: includes/abilities.php:398
 #, php-format
 msgid "The meta key \"%s\" is reserved by WordPress and cannot be written."
 msgstr ""
 
 #. translators: %s: meta key
-#: includes/abilities.php:379
+#: includes/abilities.php:413
 #, php-format
 msgid "The meta key \"%s\" is protected and you are not allowed to write it."
 msgstr ""
 
-#: includes/abilities.php:426
+#: includes/abilities.php:460
 msgid "meta_value needs a meta_key."
 msgstr ""
 
-#: includes/abilities.php:433
+#: includes/abilities.php:467
 msgid "You do not have permission to filter content by meta."
 msgstr ""
 
 #. translators: %s: meta key
-#: includes/abilities.php:441
+#: includes/abilities.php:475
 #, php-format
 msgid "The meta key \"%s\" is protected and you are not allowed to filter by it."
 msgstr ""
 
 #. translators: %s: term name
-#: includes/abilities.php:483
+#: includes/abilities.php:517
 #, php-format
 msgid "The term \"%s\" does not exist and you are not allowed to create terms in this taxonomy."
 msgstr ""
 
 #. translators: %s: ability name
-#: includes/abilities.php:714
+#: includes/abilities.php:748
 #, php-format
 msgid "The ability \"%s\" has been disabled. Enable it in the plugin settings before calling it."
 msgstr ""
 
-#: includes/abilities.php:745
+#: includes/abilities.php:779
 msgid "Content Management"
 msgstr ""
 
-#: includes/abilities.php:746
+#: includes/abilities.php:780
 msgid "Abilities to create, read, update, and delete blog content."
 msgstr ""
 
-#: includes/abilities.php:753
+#: includes/abilities.php:787
 msgid "User Management"
 msgstr ""
 
-#: includes/abilities.php:754
+#: includes/abilities.php:788
 msgid "Abilities to query site user information."
 msgstr ""
 
-#: includes/abilities.php:762
+#: includes/abilities.php:796
 msgid "Abilities to get general information and site statistics."
 msgstr ""
 
-#: includes/abilities.php:770
+#: includes/abilities.php:804
 msgid "Abilities to discover and manage custom post types registered by plugins or themes."
 msgstr ""
 
-#: includes/abilities.php:778
+#: includes/abilities.php:812
 msgid "Abilities to inspect and manage navigation menus, their items, and theme locations."
 msgstr ""
 
-#: includes/abilities.php:786
+#: includes/abilities.php:820
 msgid "Abilities to manage WooCommerce products, orders, and customers."
 msgstr ""
 
-#: includes/abilities.php:794
+#: includes/abilities.php:828
 msgid "Abilities to list, get, create, and update events from The Events Calendar."
 msgstr ""
 
-#: includes/abilities.php:802
+#: includes/abilities.php:836
 msgid "Abilities to manage post languages and translation groups via Polylang or WPML."
 msgstr ""
 
-#: includes/abilities.php:809
+#: includes/abilities.php:843
 msgid "JetEngine Options Pages"
 msgstr ""
 
-#: includes/abilities.php:810
+#: includes/abilities.php:844
 msgid "Abilities to read and write JetEngine Options Pages fields. Requires JetEngine with the Options Pages module enabled."
 msgstr ""
 
-#: includes/abilities.php:818
+#: includes/abilities.php:852
 msgid "Abilities to read and edit Elementor page and template data."
 msgstr ""
 
-#: includes/abilities.php:826
+#: includes/abilities.php:860
 msgid "Abilities to manage LearnDash courses, lessons, quizzes, and user enrollments."
 msgstr ""
 
-#: includes/abilities.php:834
+#: includes/abilities.php:868
 msgid "Abilities to manage Tutor LMS courses, lesson videos, user progress, quiz results, and enrollments."
 msgstr ""
 
-#: includes/abilities.php:842
+#: includes/abilities.php:876
 msgid "Abilities to detect and help fix accessibility issues WordPress can diagnose server-side."
 msgstr ""
 
-#: includes/abilities.php:850
+#: includes/abilities.php:884
 msgid "Abilities to list, read, and update JetEngine Query Builder queries."
 msgstr ""
 
-#: includes/abilities.php:858
+#: includes/abilities.php:892
 msgid "Abilities to list, read, and edit Full Site Editing block templates and template parts."
 msgstr ""
 
-#: includes/abilities.php:889
+#: includes/abilities.php:923
 msgid "Retrieves a list of blog posts with optional filters by status, category, count, and order."
 msgstr ""
 
-#: includes/abilities.php:1056
+#: includes/abilities.php:1090
 msgid "Retrieves all details of a specific post by ID, including full content, metadata, and featured image."
 msgstr ""
 
-#: includes/abilities.php:1144
+#: includes/abilities.php:1184
 msgid "Retrieves all details of a specific page by ID, including full content, template, hierarchy, and SEO metadata."
 msgstr ""
 
-#: includes/abilities.php:1227
+#: includes/abilities.php:1273
 msgid "Retrieves all blog categories with their ID, name, slug, description, and post count."
 msgstr ""
 
-#: includes/abilities.php:1291
+#: includes/abilities.php:1337
 msgid "Retrieves all blog tags with their ID, name, slug, and post count."
 msgstr ""
 
-#: includes/abilities.php:1359
+#: includes/abilities.php:1405
 msgid "Retrieves site pages with their title, status, content, and hierarchy (parent/child)."
 msgstr ""
 
-#: includes/abilities.php:1450
+#: includes/abilities.php:1496
 msgid "Retrieves blog comments with optional filters by status, post, and count. Useful for moderation and analysis."
 msgstr ""
 
-#: includes/abilities.php:1539
+#: includes/abilities.php:1585
 msgid "Retrieves media library files (images, videos, documents) with filters by MIME type and search."
 msgstr ""
 
-#: includes/abilities.php:1626
+#: includes/abilities.php:1672
 msgid "Retrieves the list of site users with their ID, name, email, and role. Useful for assigning post authors."
 msgstr ""
 
-#: includes/abilities.php:1696
+#: includes/abilities.php:1742
 msgid "Creates a new blog post. Accepts title, HTML content, excerpt, categories, tags, featured image, and status. Defaults to draft."
 msgstr ""
 
-#: includes/abilities.php:1888
+#: includes/abilities.php:1934
 msgid "Updates an existing post. Only the provided fields are modified, others remain unchanged."
 msgstr ""
 
-#: includes/abilities.php:2031
+#: includes/abilities.php:2077
 msgid "Sends a post to trash or permanently deletes it. Defaults to trash."
 msgstr ""
 
-#: includes/abilities.php:2099
+#: includes/abilities.php:2145
 msgid "Creates a new blog category with name, slug, description, and parent category (optional)."
 msgstr ""
 
-#: includes/abilities.php:2182
+#: includes/abilities.php:2228
 msgid "Creates a new blog tag with name, slug, and description."
 msgstr ""
 
-#: includes/abilities.php:2257
+#: includes/abilities.php:2303
 msgid "Creates a new WordPress page with title, content, status, and parent page (for hierarchy)."
 msgstr ""
 
-#: includes/abilities.php:2354
+#: includes/abilities.php:2400
 msgid "Changes a comment status: approve, hold, mark as spam, or send to trash."
 msgstr ""
 
-#: includes/abilities.php:2436
+#: includes/abilities.php:2482
 msgid "Replies to an existing comment on a post or page. The reply is published as the current authenticated user."
 msgstr ""
 
-#: includes/abilities.php:2515
+#: includes/abilities.php:2561
 msgid "Updates an existing comment. Allows changing the content, author name, author email, and the WordPress user associated with the comment."
 msgstr ""
 
-#: includes/abilities.php:2636
+#: includes/abilities.php:2682
 msgid "Downloads an image from an external URL and registers it in the WordPress media library. Optionally assigns it as featured image for a post. Returns the attachment ID and local URL."
 msgstr ""
 
-#: includes/abilities.php:2713
-#: includes/abilities.php:7942
+#: includes/abilities.php:2759
+#: includes/abilities.php:7999
 #: includes/multilanguage.php:998
 msgid "You do not have permission to edit this post."
 msgstr ""
 
-#: includes/abilities.php:2808
+#: includes/abilities.php:2854
 msgid "Creates an exact copy of any post, page, or custom post type item — including all post meta (ACF, SEO, featured image) and taxonomy terms. The duplicate is saved as draft by default. Returns the new post ID and edit URL."
 msgstr ""
 
-#: includes/abilities.php:2845
+#: includes/abilities.php:2891
 msgid "Post not found or type cannot be duplicated."
 msgstr ""
 
-#: includes/abilities.php:2848
-#: includes/abilities.php:7692
-#: includes/abilities.php:9674
+#: includes/abilities.php:2894
+#: includes/abilities.php:7749
+#: includes/abilities.php:9740
 #: includes/multilanguage.php:895
 msgid "You do not have permission to read this post."
 msgstr ""
 
-#: includes/abilities.php:2851
-#: includes/abilities.php:5853
+#: includes/abilities.php:2898
+msgid "This post is password-protected. Only users who can edit it can duplicate it."
+msgstr ""
+
+#: includes/abilities.php:2901
+#: includes/abilities.php:5910
 #: includes/multilanguage.php:945
 msgid "You do not have permission to create items of this type."
 msgstr ""
 
-#: includes/abilities.php:2944
+#: includes/abilities.php:2994
 msgid "Retrieves all Rank Math SEO metadata for a post or page: title, description, keywords, robots, advanced robots, Open Graph, Twitter Card, schema, breadcrumb, cornerstone, and SEO score."
 msgstr ""
 
-#: includes/abilities.php:3069
+#: includes/abilities.php:3119
 msgid "Updates Rank Math SEO metadata on a post or page (rank_math_focus_keyword, rank_math_title, rank_math_description, etc). Use this ability to set or change the focus keyword, SEO title, meta description, canonical URL, robots, Open Graph, Twitter Card, breadcrumb, schema snippet, cornerstone, and pillar content. Only the provided fields are modified."
 msgstr ""
 
-#: includes/abilities.php:3352
+#: includes/abilities.php:3402
 msgid "Writes a structured-data schema block (e.g. FAQPage, Article, Product) to a Rank Math schema meta key. The schema_data object is sanitized and stored as a PHP-serialized array, exactly as Rank Math expects, so it renders as JSON-LD in <head>. Use this to add or replace a schema block on any post or page."
 msgstr ""
 
-#: includes/abilities.php:3360
+#: includes/abilities.php:3410
 msgid "ID of the post or page to update."
 msgstr ""
 
-#: includes/abilities.php:3364
+#: includes/abilities.php:3414
 msgid "Schema type suffix used as the Rank Math meta key name (rank_math_schema_{type}). Examples: FAQPage, Article, Product, VideoObject."
 msgstr ""
 
-#: includes/abilities.php:3375
+#: includes/abilities.php:3425
 msgid "The schema object to store. Must be a valid JSON object matching the chosen schema_type. String values are sanitized; URL fields (url, image, @context, sameAs, etc.) are run through esc_url_raw()."
 msgstr ""
 
-#: includes/abilities.php:3430
+#: includes/abilities.php:3480
 msgid "Retrieves all SEOPress metadata for a post or page: title, description, focus keyword, robots directives, canonical URL, Open Graph, and Twitter Card."
 msgstr ""
 
-#: includes/abilities.php:3513
+#: includes/abilities.php:3563
 msgid "Updates SEOPress metadata on a post or page (_seopress_titles_title, _seopress_titles_desc, etc). Use this to set or change the SEO title, meta description, focus keyword, canonical URL, robots directives, and Open Graph / Twitter Card fields. Only the provided fields are modified."
 msgstr ""
 
-#: includes/abilities.php:3720
+#: includes/abilities.php:3770
 msgid "Retrieves the SEOPress content analysis for a post or page: every check (meta title, meta description, headings, internal links, structured data, image alt texts, etc.) with its impact level and recommendation text. Set refresh=true to run a fresh analysis of the rendered page before reading the results — recommended after updating content or metadata. Requires SEOPress 7.5+."
 msgstr ""
 
-#: includes/abilities.php:3889
+#: includes/abilities.php:3939
 msgid "Retrieves all Yoast SEO metadata for a post or page: title, description, focus keyphrase, canonical URL, robots (noindex/nofollow/advanced), Open Graph, and Twitter Card."
 msgstr ""
 
-#: includes/abilities.php:3968
+#: includes/abilities.php:4018
 msgid "Updates Yoast SEO metadata on a post or page (_yoast_wpseo_title, _yoast_wpseo_metadesc, etc). Use this to set or change the SEO title, meta description, focus keyphrase, canonical URL, robots, and Open Graph / Twitter Card fields. Only the provided fields are modified."
 msgstr ""
 
-#: includes/abilities.php:4163
+#: includes/abilities.php:4213
 msgid "Creates a PHP code snippet via the Code Snippets plugin. The snippet is always saved as inactive: activating it needs an administrator to confirm it in wp-admin (see ewpa/set-code-snippet-active). Validates PHP syntax, blocks dangerous functions, and fires an audit action hook after saving."
 msgstr ""
 
 #. translators: 1: snippet title, 2: snippet ID, 3: edit URL
-#: includes/abilities.php:4263
+#: includes/abilities.php:4313
 #, php-format
 msgid "Snippet '%1$s' (ID %2$d) created as INACTIVE. An administrator can activate it from %3$s, or you can request activation with ewpa/set-code-snippet-active."
 msgstr ""
 
-#: includes/abilities.php:4286
+#: includes/abilities.php:4336
 msgid "Lists the snippets stored by the Code Snippets plugin with ID, name, description, type, scope, active state, tags, and priority. The code itself is not included; use ewpa/get-code-snippet to read one snippet. Snippets in the trash are skipped."
 msgstr ""
 
-#: includes/abilities.php:4373
+#: includes/abilities.php:4423
 msgid "Returns one snippet from the Code Snippets plugin by ID, including its code, type, scope, active state, tags, and priority."
 msgstr ""
 
-#: includes/abilities.php:4434
+#: includes/abilities.php:4484
 msgid "Updates an existing PHP snippet of the Code Snippets plugin. Only the fields you pass are changed: name, description, code, scope, or tags. New code is validated like ewpa/create-code-snippet. If the snippet is active and its code changes, it is deactivated and needs a new, human-confirmed activation. Opt-in, disabled by default."
 msgstr ""
 
-#: includes/abilities.php:4591
+#: includes/abilities.php:4641
 msgid "Deactivates a Code Snippets snippet immediately, or requests its activation. Activation is never done directly: it returns a confirmation link in wp-admin where an administrator reviews the code and approves or rejects it. Share that link with the site administrator. Opt-in, disabled by default."
 msgstr ""
 
-#: includes/abilities.php:4704
+#: includes/abilities.php:4754
 msgid "Fetches and parses the Yoast SEO sitemap index for this site, returning the list of all sitemap URLs and their last modification date."
 msgstr ""
 
-#: includes/abilities.php:4794
+#: includes/abilities.php:4844
 msgid "Searches for text in a specific post content and replaces it with another. Useful for corrections and updates."
 msgstr ""
 
-#: includes/abilities.php:4883
+#: includes/abilities.php:4933
 msgid "Returns a summary with the total posts, pages, categories, tags, comments, and users of the site."
 msgstr ""
 
-#: includes/abilities.php:4958
+#: includes/abilities.php:5008
 msgid "Writes any post meta field by exact key. Use this when you know the exact meta key required by a specific SEO plugin or custom field (e.g. _genesis_title for The SEO Framework, _seopress_titles_title for SEOPress). Requires edit_post capability on the target post. Protected keys (leading underscore) require a site administrator, or an explicit authorization of that key for that user (register_post_meta auth_callback or the auth_post_meta_{key} filter)."
 msgstr ""
 
-#: includes/abilities.php:5056
+#: includes/abilities.php:5106
 msgid "Reads any single post meta field by exact key. Useful for SEO plugins and custom fields not covered by dedicated sections (e.g. _genesis_title for The SEO Framework, _aioseo_title for AIOSEO). Requires edit_post capability on the target post."
 msgstr ""
 
-#: includes/abilities.php:5063
+#: includes/abilities.php:5113
 msgid "ID of the post or page to read."
 msgstr ""
 
-#: includes/abilities.php:5067
+#: includes/abilities.php:5117
 msgid "Exact meta key to read (e.g. _genesis_title, _aioseo_title, _custom_field)."
 msgstr ""
 
-#: includes/abilities.php:5128
+#: includes/abilities.php:5178
 msgid "Returns a list of all currently active plugins on the site, including name, version, and detected capabilities (multilanguage, SEO, WooCommerce, etc.)."
 msgstr ""
 
-#: includes/abilities.php:5240
+#: includes/abilities.php:5290
 msgid "Purges the page cache for a single post/page (post_id) or the whole site (no post_id, requires manage_options). Detects the active cache plugin automatically: WP Rocket, LiteSpeed Cache, W3 Total Cache, WP Super Cache, or WP Fastest Cache. Call this after write abilities that modify post meta directly (update-seopress, update-post-meta, elementor-update-element, SEO fixes): those writes do not fire save_post, so cache plugins keep serving the OLD rendered HTML — audits and visitors see stale titles and meta descriptions until the cache is purged."
 msgstr ""
 
-#: includes/abilities.php:5377
+#: includes/abilities.php:5427
 msgid "Lists all custom post types registered on the site, with their configuration, supported features, and associated taxonomies."
 msgstr ""
 
-#: includes/abilities.php:5447
+#: includes/abilities.php:5497
 msgid "No custom post types detected on this site."
 msgstr ""
 
-#: includes/abilities.php:5470
+#: includes/abilities.php:5520
 msgid "Retrieves a list of items from a specific custom post type with filtering, search, and taxonomy query support."
 msgstr ""
 
-#: includes/abilities.php:5478
+#: includes/abilities.php:5528
 msgid "The custom post type slug (e.g. product, portfolio)."
 msgstr ""
 
-#: includes/abilities.php:5482
+#: includes/abilities.php:5532
 msgid "Number of items to return (default 20, max 100)."
 msgstr ""
 
-#: includes/abilities.php:5486
+#: includes/abilities.php:5536
 msgid "Filter by status: any status registered on the site (e.g. publish, draft, pending, private, future, trash or a custom one such as wc-processing) or \"any\" (default publish). Anything but publish needs an editing capability for the post type."
 msgstr ""
 
-#: includes/abilities.php:5490
+#: includes/abilities.php:5540
 msgid "Order by: date, title, modified, menu_order, ID, rand (default date)."
 msgstr ""
 
-#: includes/abilities.php:5494
+#: includes/abilities.php:5544
 msgid "Sort direction: ASC or DESC (default DESC)."
 msgstr ""
 
-#: includes/abilities.php:5498
+#: includes/abilities.php:5548
 msgid "Search keyword to filter items."
 msgstr ""
 
-#: includes/abilities.php:5502
+#: includes/abilities.php:5552
 msgid "Taxonomy query array. Each item: {taxonomy, terms, field (slug|id), operator (IN|NOT IN|AND)}."
 msgstr ""
 
-#: includes/abilities.php:5655
+#: includes/abilities.php:5705
 msgid "Get CPT Item"
 msgstr ""
 
-#: includes/abilities.php:5656
+#: includes/abilities.php:5706
 msgid "Retrieves full details of a single custom post type item, including all meta fields, taxonomies, and content."
 msgstr ""
 
-#: includes/abilities.php:5664
+#: includes/abilities.php:5714
 msgid "The ID of the item to retrieve."
 msgstr ""
 
-#: includes/abilities.php:5696
-#: includes/abilities.php:6044
-#: includes/abilities.php:6201
-#: includes/abilities.php:6391
-#: includes/abilities.php:6523
+#: includes/abilities.php:5750
+#: includes/abilities.php:6101
+#: includes/abilities.php:6258
+#: includes/abilities.php:6448
+#: includes/abilities.php:6580
 msgid "Item not found."
 msgstr ""
 
-#: includes/abilities.php:5777
+#: includes/abilities.php:5834
 msgid "Creates a new item in a custom post type. Content is optional as some CPTs store data in custom fields instead."
 msgstr ""
 
-#: includes/abilities.php:5785
-#: includes/abilities.php:6261
+#: includes/abilities.php:5842
+#: includes/abilities.php:6318
 msgid "The custom post type slug."
 msgstr ""
 
-#: includes/abilities.php:5789
+#: includes/abilities.php:5846
 msgid "The item title."
 msgstr ""
 
-#: includes/abilities.php:5793
+#: includes/abilities.php:5850
 msgid "The item content (optional — some CPTs store data in meta fields instead)."
 msgstr ""
 
-#: includes/abilities.php:5797
+#: includes/abilities.php:5854
 msgid "The item excerpt."
 msgstr ""
 
-#: includes/abilities.php:5801
+#: includes/abilities.php:5858
 msgid "Post status: draft, publish, pending, private (default draft)."
 msgstr ""
 
-#: includes/abilities.php:5805
+#: includes/abilities.php:5862
 msgid "Attachment ID for the featured image."
 msgstr ""
 
-#: includes/abilities.php:5809
+#: includes/abilities.php:5866
 msgid "Parent item ID (for hierarchical CPTs)."
 msgstr ""
 
-#: includes/abilities.php:5813
+#: includes/abilities.php:5870
 msgid "Menu order value."
 msgstr ""
 
-#: includes/abilities.php:5817
+#: includes/abilities.php:5874
 msgid "Author user ID."
 msgstr ""
 
-#: includes/abilities.php:5821
+#: includes/abilities.php:5878
 msgid "The URL slug for the item."
 msgstr ""
 
-#: includes/abilities.php:5825
+#: includes/abilities.php:5882
 msgid "Object mapping taxonomy slugs to arrays of term slugs or IDs. Example: {\"product_cat\": [\"clothing\"], \"product_tag\": [\"sale\"]}."
 msgstr ""
 
-#: includes/abilities.php:5829
-#: includes/abilities.php:6023
+#: includes/abilities.php:5886
+#: includes/abilities.php:6080
 msgid "Object mapping meta keys to values. Supports plugin meta like _price, _sku, ACF fields, etc."
 msgstr ""
 
-#: includes/abilities.php:5879
-#: includes/abilities.php:6085
+#: includes/abilities.php:5936
+#: includes/abilities.php:6142
 msgid "The parent item does not exist."
 msgstr ""
 
-#: includes/abilities.php:5882
-#: includes/abilities.php:6088
+#: includes/abilities.php:5939
+#: includes/abilities.php:6145
 msgid "You do not have permission to use the selected parent item."
 msgstr ""
 
-#: includes/abilities.php:5896
+#: includes/abilities.php:5953
 msgid "The author does not exist."
 msgstr ""
 
 #. translators: %s: post type label
-#: includes/abilities.php:5954
+#: includes/abilities.php:6011
 #, php-format
 msgid "%s created successfully."
 msgstr ""
 
-#: includes/abilities.php:5975
+#: includes/abilities.php:6032
 msgid "Updates an existing custom post type item. Only provided fields are modified (partial update)."
 msgstr ""
 
-#: includes/abilities.php:5983
+#: includes/abilities.php:6040
 msgid "The ID of the item to update."
 msgstr ""
 
-#: includes/abilities.php:5987
+#: includes/abilities.php:6044
 msgid "New title."
 msgstr ""
 
-#: includes/abilities.php:5991
+#: includes/abilities.php:6048
 msgid "New content (optional — some CPTs use meta fields instead)."
 msgstr ""
 
-#: includes/abilities.php:5995
+#: includes/abilities.php:6052
 msgid "New excerpt."
 msgstr ""
 
-#: includes/abilities.php:5999
+#: includes/abilities.php:6056
 msgid "New status: draft, publish, pending, private."
 msgstr ""
 
-#: includes/abilities.php:6003
+#: includes/abilities.php:6060
 msgid "Attachment ID for the featured image. Pass 0 to remove."
 msgstr ""
 
-#: includes/abilities.php:6007
+#: includes/abilities.php:6064
 msgid "New parent item ID for hierarchical CPTs. Pass 0 to detach."
 msgstr ""
 
-#: includes/abilities.php:6011
+#: includes/abilities.php:6068
 msgid "New menu order value, used to sort items manually."
 msgstr ""
 
-#: includes/abilities.php:6015
+#: includes/abilities.php:6072
 msgid "New URL slug."
 msgstr ""
 
-#: includes/abilities.php:6019
+#: includes/abilities.php:6076
 msgid "Object mapping taxonomy slugs to arrays of term slugs or IDs. Replaces existing terms."
 msgstr ""
 
-#: includes/abilities.php:6053
-#: includes/abilities.php:6400
-#: includes/abilities.php:6531
+#: includes/abilities.php:6110
+#: includes/abilities.php:6457
+#: includes/abilities.php:6588
 msgid "You do not have permission to edit this item."
 msgstr ""
 
-#: includes/abilities.php:6082
+#: includes/abilities.php:6139
 msgid "An item cannot be its own parent."
 msgstr ""
 
 #. translators: %s: post type label
-#: includes/abilities.php:6147
+#: includes/abilities.php:6204
 #, php-format
 msgid "%s updated successfully."
 msgstr ""
 
-#: includes/abilities.php:6168
+#: includes/abilities.php:6225
 msgid "Deletes a custom post type item. By default moves to trash; use force_delete to permanently remove."
 msgstr ""
 
-#: includes/abilities.php:6176
+#: includes/abilities.php:6233
 msgid "The ID of the item to delete."
 msgstr ""
 
-#: includes/abilities.php:6180
+#: includes/abilities.php:6237
 msgid "If true, permanently deletes instead of trashing (default false)."
 msgstr ""
 
-#: includes/abilities.php:6210
+#: includes/abilities.php:6267
 msgid "You do not have permission to delete this item."
 msgstr ""
 
-#: includes/abilities.php:6217
+#: includes/abilities.php:6274
 msgid "Failed to delete the item."
 msgstr ""
 
 #. translators: %s: post type label
-#: includes/abilities.php:6227
+#: includes/abilities.php:6284
 #, php-format
 msgid "%s permanently deleted."
 msgstr ""
 
 #. translators: %s: post type label
-#: includes/abilities.php:6232
+#: includes/abilities.php:6289
 #, php-format
 msgid "%s moved to trash."
 msgstr ""
 
-#: includes/abilities.php:6253
+#: includes/abilities.php:6310
 msgid "Retrieves all taxonomies associated with a custom post type, including their terms."
 msgstr ""
 
-#: includes/abilities.php:6265
+#: includes/abilities.php:6322
 msgid "If true, only show terms with posts (default false)."
 msgstr ""
 
-#: includes/abilities.php:6269
+#: includes/abilities.php:6326
 msgid "Max number of terms per taxonomy (default 100, max 500)."
 msgstr ""
 
-#: includes/abilities.php:6349
+#: includes/abilities.php:6406
 msgid "Assign CPT Terms"
 msgstr ""
 
-#: includes/abilities.php:6350
+#: includes/abilities.php:6407
 msgid "Assigns taxonomy terms to a custom post type item. Can replace or append terms."
 msgstr ""
 
-#: includes/abilities.php:6358
+#: includes/abilities.php:6415
 msgid "The ID of the item to assign terms to."
 msgstr ""
 
-#: includes/abilities.php:6362
-#: includes/abilities.php:6494
+#: includes/abilities.php:6419
+#: includes/abilities.php:6551
 msgid "The taxonomy slug."
 msgstr ""
 
-#: includes/abilities.php:6366
-#: includes/abilities.php:6498
+#: includes/abilities.php:6423
+#: includes/abilities.php:6555
 msgid "Array of term slugs or IDs to assign."
 msgstr ""
 
-#: includes/abilities.php:6370
-#: includes/abilities.php:6502
+#: includes/abilities.php:6427
+#: includes/abilities.php:6559
 msgid "If true, appends terms instead of replacing (default false)."
 msgstr ""
 
-#: includes/abilities.php:6406
-#: includes/abilities.php:6537
+#: includes/abilities.php:6463
+#: includes/abilities.php:6594
 msgid "The specified taxonomy does not exist."
 msgstr ""
 
 #. translators: %1$s: taxonomy slug, %2$s: post type label
 #. translators: %1$s: taxonomy slug, %2$s: post type
-#: includes/abilities.php:6414
-#: includes/abilities.php:6545
+#: includes/abilities.php:6471
+#: includes/abilities.php:6602
 #, php-format
 msgid "The taxonomy \"%1$s\" is not associated with the \"%2$s\" post type."
 msgstr ""
 
-#: includes/abilities.php:6423
-#: includes/abilities.php:6554
+#: includes/abilities.php:6480
+#: includes/abilities.php:6611
 msgid "You do not have permission to assign terms for this taxonomy."
 msgstr ""
 
 #. translators: %1$d: number of terms, %2$s: taxonomy label
-#: includes/abilities.php:6460
-#: includes/abilities.php:6591
+#: includes/abilities.php:6517
+#: includes/abilities.php:6648
 #, php-format
 msgid "%1$d term(s) assigned for %2$s."
 msgstr ""
 
-#: includes/abilities.php:6482
+#: includes/abilities.php:6539
 msgid "Assigns taxonomy terms to a post or page. For a custom taxonomy registered on the built-in post/page types (e.g. by a companion plugin) — native categories and tags on posts already have dedicated abilities via ewpa/update-post. Can replace or append terms."
 msgstr ""
 
-#: includes/abilities.php:6490
+#: includes/abilities.php:6547
 msgid "The ID of the post or page to assign terms to."
 msgstr ""
 
-#: includes/abilities.php:6527
+#: includes/abilities.php:6584
 msgid "This ability only assigns terms to posts and pages. Use ewpa/assign-cpt-terms for custom post types."
 msgstr ""
 
-#: includes/abilities.php:6617
+#: includes/abilities.php:6674
 msgid "Reads term meta for a taxonomy term. Pass meta_key to read a single field by exact key, or omit it to return all meta fields for the term."
 msgstr ""
 
-#: includes/abilities.php:6625
-#: includes/abilities.php:6727
-#: includes/abilities.php:6811
+#: includes/abilities.php:6682
+#: includes/abilities.php:6784
+#: includes/abilities.php:6868
 msgid "Taxonomy slug the term belongs to (e.g. category, tour_categoria)."
 msgstr ""
 
-#: includes/abilities.php:6629
+#: includes/abilities.php:6686
 msgid "ID of the term to read."
 msgstr ""
 
-#: includes/abilities.php:6633
+#: includes/abilities.php:6690
 msgid "Exact meta key to read. Omit to return every meta field for the term."
 msgstr ""
 
-#: includes/abilities.php:6661
-#: includes/abilities.php:6765
-#: includes/abilities.php:6855
+#: includes/abilities.php:6718
+#: includes/abilities.php:6822
+#: includes/abilities.php:6912
 msgid "Term not found for the given taxonomy."
 msgstr ""
 
-#: includes/abilities.php:6719
+#: includes/abilities.php:6776
 msgid "Writes a term meta field by exact key. Requires edit_term capability on the target term."
 msgstr ""
 
-#: includes/abilities.php:6731
-#: includes/abilities.php:6815
+#: includes/abilities.php:6788
+#: includes/abilities.php:6872
 msgid "ID of the term to update."
 msgstr ""
 
-#: includes/abilities.php:6735
+#: includes/abilities.php:6792
 msgid "Exact meta key to write."
 msgstr ""
 
-#: includes/abilities.php:6739
+#: includes/abilities.php:6796
 msgid "Value to store. Always stored as a string."
 msgstr ""
 
 #. translators: 1: meta key, 2: term id
-#: includes/abilities.php:6777
+#: includes/abilities.php:6834
 #, php-format
 msgid "Meta key \"%1$s\" updated for term %2$d."
 msgstr ""
 
-#: includes/abilities.php:6803
+#: includes/abilities.php:6860
 msgid "Updates the core (non-meta) fields of an existing taxonomy term: name, slug, description, or parent. Only the provided fields are modified."
 msgstr ""
 
-#: includes/abilities.php:6819
+#: includes/abilities.php:6876
 msgid "New term name."
 msgstr ""
 
-#: includes/abilities.php:6823
+#: includes/abilities.php:6880
 msgid "New term slug."
 msgstr ""
 
-#: includes/abilities.php:6827
+#: includes/abilities.php:6884
 msgid "New term description."
 msgstr ""
 
-#: includes/abilities.php:6831
+#: includes/abilities.php:6888
 msgid "New parent term ID (0 = no parent)."
 msgstr ""
 
-#: includes/abilities.php:6873
+#: includes/abilities.php:6930
 msgid "Provide at least one of: name, slug, description, parent."
 msgstr ""
 
 #. translators: %d: term id
-#: includes/abilities.php:6890
+#: includes/abilities.php:6947
 #, php-format
 msgid "Term %d updated."
 msgstr ""
 
-#: includes/abilities.php:6917
+#: includes/abilities.php:6974
 msgid "List WooCommerce products"
 msgstr ""
 
-#: includes/abilities.php:6919
+#: includes/abilities.php:6976
 msgid "Returns a paginated list of WooCommerce products with price, stock, and status."
 msgstr ""
 
-#: includes/abilities.php:6925
+#: includes/abilities.php:6982
 msgid "Product status: publish, draft, pending. Default: publish."
 msgstr ""
 
-#: includes/abilities.php:6929
-#: includes/abilities.php:7227
-#: includes/abilities.php:7474
-#: includes/abilities.php:7569
+#: includes/abilities.php:6986
+#: includes/abilities.php:7284
+#: includes/abilities.php:7531
+#: includes/abilities.php:7626
 msgid "Results per page (1–100). Default: 10."
 msgstr ""
 
-#: includes/abilities.php:6933
-#: includes/abilities.php:7231
-#: includes/abilities.php:7478
-#: includes/abilities.php:7573
-#: includes/abilities.php:9593
-#: includes/abilities.php:10199
-#: includes/abilities.php:11189
+#: includes/abilities.php:6990
+#: includes/abilities.php:7288
+#: includes/abilities.php:7535
+#: includes/abilities.php:7630
+#: includes/abilities.php:9659
+#: includes/abilities.php:10265
+#: includes/abilities.php:11255
 msgid "Page number. Default: 1."
 msgstr ""
 
-#: includes/abilities.php:6937
+#: includes/abilities.php:6994
 msgid "Keyword search in product name."
 msgstr ""
 
-#: includes/abilities.php:6941
+#: includes/abilities.php:6998
 msgid "Filter by product category slug."
 msgstr ""
 
-#: includes/abilities.php:6945
+#: includes/abilities.php:7002
 msgid "Order by: date, price, popularity, rating. Default: date."
 msgstr ""
 
-#: includes/abilities.php:6949
-#: includes/abilities.php:7490
+#: includes/abilities.php:7006
+#: includes/abilities.php:7547
 msgid "Sort order: ASC or DESC. Default: DESC."
 msgstr ""
 
-#: includes/abilities.php:7022
+#: includes/abilities.php:7079
 msgid "Get WooCommerce product"
 msgstr ""
 
-#: includes/abilities.php:7024
+#: includes/abilities.php:7081
 msgid "Returns full details of a single WooCommerce product by ID."
 msgstr ""
 
-#: includes/abilities.php:7030
-#: includes/abilities.php:7125
+#: includes/abilities.php:7087
+#: includes/abilities.php:7182
 msgid "The product post ID."
 msgstr ""
 
-#: includes/abilities.php:7043
-#: includes/abilities.php:7162
+#: includes/abilities.php:7100
+#: includes/abilities.php:7219
 msgid "Product not found."
 msgstr ""
 
-#: includes/abilities.php:7117
+#: includes/abilities.php:7174
 msgid "Update WooCommerce product"
 msgstr ""
 
-#: includes/abilities.php:7119
+#: includes/abilities.php:7176
 msgid "Updates price, stock, status, or description of a WooCommerce product using WooCommerce hooks."
 msgstr ""
 
-#: includes/abilities.php:7129
+#: includes/abilities.php:7186
 msgid "New regular price (numeric string)."
 msgstr ""
 
-#: includes/abilities.php:7133
+#: includes/abilities.php:7190
 msgid "New sale price (numeric string, empty to clear)."
 msgstr ""
 
-#: includes/abilities.php:7137
+#: includes/abilities.php:7194
 msgid "New stock quantity. Requires manage_stock to be enabled."
 msgstr ""
 
-#: includes/abilities.php:7141
+#: includes/abilities.php:7198
 msgid "Stock status: instock, outofstock, onbackorder."
 msgstr ""
 
-#: includes/abilities.php:7145
+#: includes/abilities.php:7202
 msgid "Product status: publish, draft, pending."
 msgstr ""
 
-#: includes/abilities.php:7149
+#: includes/abilities.php:7206
 msgid "Full product description."
 msgstr ""
 
-#: includes/abilities.php:7198
+#: includes/abilities.php:7255
 msgid "Product updated successfully."
 msgstr ""
 
-#: includes/abilities.php:7215
+#: includes/abilities.php:7272
 msgid "List WooCommerce orders"
 msgstr ""
 
-#: includes/abilities.php:7217
+#: includes/abilities.php:7274
 msgid "Returns a paginated list of WooCommerce orders. HPOS-compatible."
 msgstr ""
 
-#: includes/abilities.php:7223
+#: includes/abilities.php:7280
 msgid "Order status: pending, processing, on-hold, completed, cancelled, refunded, failed. Default: any."
 msgstr ""
 
-#: includes/abilities.php:7235
+#: includes/abilities.php:7292
 msgid "Filter by customer user ID."
 msgstr ""
 
-#: includes/abilities.php:7239
+#: includes/abilities.php:7296
 msgid "Filter orders created after this date (YYYY-MM-DD)."
 msgstr ""
 
-#: includes/abilities.php:7243
+#: includes/abilities.php:7300
 msgid "Filter orders created before this date (YYYY-MM-DD)."
 msgstr ""
 
-#: includes/abilities.php:7313
+#: includes/abilities.php:7370
 msgid "Get WooCommerce order"
 msgstr ""
 
-#: includes/abilities.php:7315
+#: includes/abilities.php:7372
 msgid "Returns full details of a single WooCommerce order including line items and billing address. HPOS-compatible."
 msgstr ""
 
-#: includes/abilities.php:7321
-#: includes/abilities.php:7410
+#: includes/abilities.php:7378
+#: includes/abilities.php:7467
 msgid "The order ID."
 msgstr ""
 
-#: includes/abilities.php:7334
-#: includes/abilities.php:7431
+#: includes/abilities.php:7391
+#: includes/abilities.php:7488
 msgid "Order not found."
 msgstr ""
 
-#: includes/abilities.php:7402
+#: includes/abilities.php:7459
 msgid "Update WooCommerce order status"
 msgstr ""
 
-#: includes/abilities.php:7404
+#: includes/abilities.php:7461
 msgid "Changes the status of a WooCommerce order and optionally adds a note. HPOS-compatible."
 msgstr ""
 
-#: includes/abilities.php:7414
+#: includes/abilities.php:7471
 msgid "New status: pending, processing, on-hold, completed, cancelled, refunded, failed."
 msgstr ""
 
-#: includes/abilities.php:7418
+#: includes/abilities.php:7475
 msgid "Optional note to add to the order."
 msgstr ""
 
-#: includes/abilities.php:7439
+#: includes/abilities.php:7496
 msgid "Invalid order status."
 msgstr ""
 
-#: includes/abilities.php:7449
+#: includes/abilities.php:7506
 msgid "Order status updated."
 msgstr ""
 
-#: includes/abilities.php:7466
+#: includes/abilities.php:7523
 msgid "List WooCommerce customers"
 msgstr ""
 
-#: includes/abilities.php:7468
+#: includes/abilities.php:7525
 msgid "Returns a list of WooCommerce customers with order stats."
 msgstr ""
 
-#: includes/abilities.php:7482
+#: includes/abilities.php:7539
 msgid "Search by name or email."
 msgstr ""
 
-#: includes/abilities.php:7486
+#: includes/abilities.php:7543
 msgid "Order by: registered, name, email. Default: registered."
 msgstr ""
 
-#: includes/abilities.php:7561
+#: includes/abilities.php:7618
 msgid "List Events Calendar events"
 msgstr ""
 
-#: includes/abilities.php:7563
+#: includes/abilities.php:7620
 msgid "Returns a list of upcoming or filtered events from The Events Calendar."
 msgstr ""
 
-#: includes/abilities.php:7577
+#: includes/abilities.php:7634
 msgid "Return events starting after this date (YYYY-MM-DD). Default: today."
 msgstr ""
 
-#: includes/abilities.php:7581
+#: includes/abilities.php:7638
 msgid "Return events starting before this date (YYYY-MM-DD)."
 msgstr ""
 
-#: includes/abilities.php:7585
+#: includes/abilities.php:7642
 msgid "Keyword search in event title."
 msgstr ""
 
-#: includes/abilities.php:7668
+#: includes/abilities.php:7725
 msgid "Get Events Calendar event"
 msgstr ""
 
-#: includes/abilities.php:7670
+#: includes/abilities.php:7727
 msgid "Returns full details of a single event including venue address and organizer."
 msgstr ""
 
-#: includes/abilities.php:7676
-#: includes/abilities.php:7886
+#: includes/abilities.php:7733
+#: includes/abilities.php:7943
 msgid "The event post ID."
 msgstr ""
 
-#: includes/abilities.php:7689
-#: includes/abilities.php:7939
+#: includes/abilities.php:7746
+#: includes/abilities.php:7996
 msgid "Event not found."
 msgstr ""
 
-#: includes/abilities.php:7763
+#: includes/abilities.php:7820
 msgid "Create Events Calendar event"
 msgstr ""
 
-#: includes/abilities.php:7765
+#: includes/abilities.php:7822
 msgid "Creates a new event in The Events Calendar with title, dates, and optional venue."
 msgstr ""
 
-#: includes/abilities.php:7771
+#: includes/abilities.php:7828
 msgid "Event title."
 msgstr ""
 
-#: includes/abilities.php:7775
+#: includes/abilities.php:7832
 msgid "Event description (HTML allowed)."
 msgstr ""
 
-#: includes/abilities.php:7779
+#: includes/abilities.php:7836
 msgid "Start date and time (YYYY-MM-DD HH:MM:SS)."
 msgstr ""
 
-#: includes/abilities.php:7783
+#: includes/abilities.php:7840
 msgid "End date and time (YYYY-MM-DD HH:MM:SS)."
 msgstr ""
 
-#: includes/abilities.php:7787
+#: includes/abilities.php:7844
 msgid "Timezone string, e.g. America/New_York. Defaults to site timezone."
 msgstr ""
 
-#: includes/abilities.php:7791
+#: includes/abilities.php:7848
 msgid "Existing tribe_venue post ID to link."
 msgstr ""
 
-#: includes/abilities.php:7795
+#: includes/abilities.php:7852
 msgid "Existing tribe_organizer post ID to link."
 msgstr ""
 
-#: includes/abilities.php:7799
+#: includes/abilities.php:7856
 msgid "Ticket/admission cost (free-form string)."
 msgstr ""
 
-#: includes/abilities.php:7803
-#: includes/abilities.php:7922
+#: includes/abilities.php:7860
+#: includes/abilities.php:7979
 msgid "External event URL."
 msgstr ""
 
-#: includes/abilities.php:7807
+#: includes/abilities.php:7864
 msgid "Post status: publish, draft. Default: publish."
 msgstr ""
 
-#: includes/abilities.php:7861
+#: includes/abilities.php:7918
 msgid "Event created successfully."
 msgstr ""
 
-#: includes/abilities.php:7878
+#: includes/abilities.php:7935
 msgid "Update Events Calendar event"
 msgstr ""
 
-#: includes/abilities.php:7880
+#: includes/abilities.php:7937
 msgid "Updates an existing event's dates, title, description, venue, or status."
 msgstr ""
 
-#: includes/abilities.php:7890
+#: includes/abilities.php:7947
 msgid "New event title."
 msgstr ""
 
-#: includes/abilities.php:7894
+#: includes/abilities.php:7951
 msgid "New event description."
 msgstr ""
 
-#: includes/abilities.php:7898
+#: includes/abilities.php:7955
 msgid "New start date and time (YYYY-MM-DD HH:MM:SS)."
 msgstr ""
 
-#: includes/abilities.php:7902
+#: includes/abilities.php:7959
 msgid "New end date and time (YYYY-MM-DD HH:MM:SS)."
 msgstr ""
 
-#: includes/abilities.php:7906
+#: includes/abilities.php:7963
 msgid "Timezone string."
 msgstr ""
 
-#: includes/abilities.php:7910
+#: includes/abilities.php:7967
 msgid "Venue post ID to link."
 msgstr ""
 
-#: includes/abilities.php:7914
+#: includes/abilities.php:7971
 msgid "Organizer post ID to link."
 msgstr ""
 
-#: includes/abilities.php:7918
+#: includes/abilities.php:7975
 msgid "Admission cost."
 msgstr ""
 
-#: includes/abilities.php:7926
+#: includes/abilities.php:7983
 msgid "Post status: publish, draft, private."
 msgstr ""
 
-#: includes/abilities.php:8000
+#: includes/abilities.php:8057
 msgid "Event updated successfully."
 msgstr ""
 
-#: includes/abilities.php:8026
+#: includes/abilities.php:8083
 msgid "Lists available languages from Polylang, WPML, or Linguator AI."
 msgstr ""
 
-#: includes/abilities.php:8062
+#: includes/abilities.php:8119
 msgid "Assigns a language to an existing post via Polylang, WPML, or Linguator AI."
 msgstr ""
 
-#: includes/abilities.php:8109
+#: includes/abilities.php:8166
 msgid "Links two posts as translations of each other via Polylang, WPML, or Linguator AI. Both posts must already exist."
 msgstr ""
 
-#: includes/abilities.php:8164
+#: includes/abilities.php:8221
 msgid "Returns the full translation map for a post via Polylang, WPML, or Linguator AI."
 msgstr ""
 
-#: includes/abilities.php:8218
+#: includes/abilities.php:8275
 msgid "Creates the translation of an existing post in a target language and links it to the source post. Translate the source text yourself and pass the result in \"title\", \"content\" and \"excerpt\" — this ability does not call any translation service. Taxonomies, custom fields and the featured image are copied from the source; on Linguator AI the plugin's own duplication engine is used, so the result matches what its bulk translation screen produces. Fields left empty keep the source value. If a translation already exists in that language it is updated instead of duplicated, and only the fields you pass are changed. Use ewpa/list-languages to discover the available language slugs."
 msgstr ""
 
-#: includes/abilities.php:8225
+#: includes/abilities.php:8282
 msgid "ID of the source post to translate. It must already have a language assigned."
 msgstr ""
 
-#: includes/abilities.php:8229
-#: includes/abilities.php:8497
+#: includes/abilities.php:8286
+#: includes/abilities.php:8554
 msgid "Target language slug, e.g. \"it\" or \"de\". See ewpa/list-languages."
 msgstr ""
 
-#: includes/abilities.php:8233
+#: includes/abilities.php:8290
 msgid "Translated post title."
 msgstr ""
 
-#: includes/abilities.php:8237
+#: includes/abilities.php:8294
 msgid "Translated post content. Keep the source markup (HTML or Gutenberg block comments) intact and translate only the text."
 msgstr ""
 
-#: includes/abilities.php:8241
+#: includes/abilities.php:8298
 msgid "Translated excerpt. Optional."
 msgstr ""
 
-#: includes/abilities.php:8245
+#: includes/abilities.php:8302
 msgid "Translated post slug. Optional."
 msgstr ""
 
-#: includes/abilities.php:8250
+#: includes/abilities.php:8307
 msgid "Status of the translated post. Defaults to the backend default (draft on Linguator AI)."
 msgstr ""
 
-#: includes/abilities.php:8319
+#: includes/abilities.php:8376
 msgid "Assigns a language to an existing taxonomy term (category, tag, or any custom taxonomy) via Polylang, WPML, or Linguator AI."
 msgstr ""
 
-#: includes/abilities.php:8326
-#: includes/abilities.php:8435
+#: includes/abilities.php:8383
+#: includes/abilities.php:8492
 msgid "ID of the term."
 msgstr ""
 
-#: includes/abilities.php:8330
+#: includes/abilities.php:8387
 msgid "Language slug, e.g. \"it\" or \"de\". See ewpa/list-languages."
 msgstr ""
 
-#: includes/abilities.php:8367
+#: includes/abilities.php:8424
 msgid "Links two taxonomy terms as translations of each other via Polylang, WPML, or Linguator AI. Both terms must belong to the same taxonomy."
 msgstr ""
 
-#: includes/abilities.php:8374
+#: includes/abilities.php:8431
 msgid "ID of the source term."
 msgstr ""
 
-#: includes/abilities.php:8378
+#: includes/abilities.php:8435
 msgid "ID of the translated term."
 msgstr ""
 
-#: includes/abilities.php:8382
+#: includes/abilities.php:8439
 msgid "Language slug of the translated term. See ewpa/list-languages."
 msgstr ""
 
-#: includes/abilities.php:8428
+#: includes/abilities.php:8485
 msgid "Returns the full translation map for a taxonomy term: language, term ID, name, slug, description, post count, and archive URL for each available translation."
 msgstr ""
 
-#: includes/abilities.php:8486
+#: includes/abilities.php:8543
 msgid "Creates the translation of a taxonomy term (category, tag, or custom taxonomy) in a target language and links it to the source term. Translate the source strings yourself and pass them in \"name\" and \"description\" — this ability does not call any translation service. Term meta is copied from the source and the parent term is remapped to its target-language counterpart when one exists. Fields left empty keep the source value. If a translation already exists in that language it is updated instead of duplicated, and only the fields you pass are changed. Use ewpa/list-languages to discover the available language slugs."
 msgstr ""
 
-#: includes/abilities.php:8493
+#: includes/abilities.php:8550
 msgid "ID of the source term to translate. It must already have a language assigned."
 msgstr ""
 
-#: includes/abilities.php:8501
+#: includes/abilities.php:8558
 msgid "Translated term name."
 msgstr ""
 
-#: includes/abilities.php:8505
+#: includes/abilities.php:8562
 msgid "Translated term slug. Optional; defaults to a slug derived from the translated name."
 msgstr ""
 
-#: includes/abilities.php:8509
+#: includes/abilities.php:8566
 msgid "Translated term description. Optional."
 msgstr ""
 
-#: includes/abilities.php:8588
+#: includes/abilities.php:8645
 msgid "Lists all registered JetEngine Options Pages with their field schema. Does not return field values. Requires JetEngine with the Options Pages module enabled."
 msgstr ""
 
-#: includes/abilities.php:8618
-#: includes/abilities.php:8711
-#: includes/abilities.php:8809
+#: includes/abilities.php:8675
+#: includes/abilities.php:8768
+#: includes/abilities.php:8866
 msgid "JetEngine is not active or Options Pages module is disabled."
 msgstr ""
 
-#: includes/abilities.php:8664
+#: includes/abilities.php:8721
 msgid "Returns all fields with their current stored values for a given JetEngine Options Page slug. Requires JetEngine with the Options Pages module enabled."
 msgstr ""
 
-#: includes/abilities.php:8719
-#: includes/abilities.php:8821
+#: includes/abilities.php:8776
+#: includes/abilities.php:8878
 msgid "Options page not found."
 msgstr ""
 
-#: includes/abilities.php:8774
+#: includes/abilities.php:8831
 msgid "Writes a new value to a single field of a JetEngine Options Page. Supports text, number, select, checkbox, repeater, and most other field types. UI-only types (html, tab, accordion, endpoint) are rejected. For repeater fields call ewpa/je-get-options-page first to see the repeater_fields structure, then pass an array of row objects. Requires JetEngine with the Options Pages module enabled."
 msgstr ""
 
-#: includes/abilities.php:8834
+#: includes/abilities.php:8891
 msgid "Field not found in this options page."
 msgstr ""
 
 #. translators: %s: field type name
-#: includes/abilities.php:8841
+#: includes/abilities.php:8898
 #, php-format
 msgid "Field type '%s' cannot be updated via this ability."
 msgstr ""
 
-#: includes/abilities.php:8855
+#: includes/abilities.php:8912
 msgid "Field updated successfully."
 msgstr ""
 
-#: includes/abilities.php:8892
+#: includes/abilities.php:8949
 msgid "List JetEngine Queries"
 msgstr ""
 
-#: includes/abilities.php:8893
+#: includes/abilities.php:8950
 msgid "Lists all Query Builder queries registered in JetEngine, with id, name, and query type."
 msgstr ""
 
-#: includes/abilities.php:8907
-#: includes/abilities.php:8976
-#: includes/abilities.php:9052
+#: includes/abilities.php:8964
+#: includes/abilities.php:9033
+#: includes/abilities.php:9109
 msgid "JetEngine Query Builder is not active."
 msgstr ""
 
-#: includes/abilities.php:8949
+#: includes/abilities.php:9006
 msgid "Get JetEngine Query"
 msgstr ""
 
-#: includes/abilities.php:8950
+#: includes/abilities.php:9007
 msgid "Gets the full settings of one JetEngine Query Builder query by id: query type, its type-specific arguments (WP_Query-style for posts/terms/users/comments, raw SQL for sql), API and cache settings."
 msgstr ""
 
-#: includes/abilities.php:8958
+#: includes/abilities.php:9015
 msgid "ID of the query to read."
 msgstr ""
 
-#: includes/abilities.php:8983
-#: includes/abilities.php:9060
+#: includes/abilities.php:9040
+#: includes/abilities.php:9117
 msgid "Query not found."
 msgstr ""
 
-#: includes/abilities.php:9013
+#: includes/abilities.php:9070
 msgid "Update JetEngine Query"
 msgstr ""
 
-#: includes/abilities.php:9014
+#: includes/abilities.php:9071
 msgid "Updates an existing JetEngine Query Builder query by id — the missing counterpart to JetEngine's own native \"Add Query\" MCP tool, which has no edit equivalent. Only the provided fields are changed: name, query_type, and/or query_args (same shape JetEngine's own Add Query tool expects — WP_Query-style for posts/terms/users/comments, {\"sql\": \"...\"} for sql). Destructive — opt-in, disabled by default."
 msgstr ""
 
-#: includes/abilities.php:9022
+#: includes/abilities.php:9079
 msgid "ID of the query to update."
 msgstr ""
 
-#: includes/abilities.php:9026
+#: includes/abilities.php:9083
 msgid "New name for the query."
 msgstr ""
 
-#: includes/abilities.php:9030
+#: includes/abilities.php:9087
 msgid "New query type (e.g. posts, terms, users, comments, sql). Leave unset to keep the current type."
 msgstr ""
 
-#: includes/abilities.php:9034
+#: includes/abilities.php:9091
 msgid "Replacement arguments for the query type (WP_Query-style for posts/terms/users/comments, {\"sql\": \"...\"} for sql). Replaces the existing type-specific arguments entirely when provided."
 msgstr ""
 
-#: includes/abilities.php:9067
+#: includes/abilities.php:9124
 msgid "Could not determine the query type — pass query_type explicitly."
 msgstr ""
 
-#: includes/abilities.php:9105
+#: includes/abilities.php:9162
 msgid "JetEngine could not update the query."
 msgstr ""
 
 #. translators: %d: query id
-#: includes/abilities.php:9114
+#: includes/abilities.php:9171
 #, php-format
 msgid "Query %d updated."
 msgstr ""
 
-#: includes/abilities.php:9138
+#: includes/abilities.php:9195
 msgid "Elementor: Bind Dynamic Field"
 msgstr ""
 
-#: includes/abilities.php:9139
+#: includes/abilities.php:9196
 msgid "Binds a single Elementor widget setting to a dynamic tag. source=post_title uses the native Post Title tag; source=meta uses a JetEngine dynamic field reading the given meta_key. Edits _elementor_data server-side, validates the tree, injects the __dynamic__ binding using Elementor own tag encoder, saves, and clears Elementor cache. Requires Elementor (Elementor Pro for post_title, JetEngine for meta)."
 msgstr ""
 
-#: includes/abilities.php:9202
+#: includes/abilities.php:9259
 msgid "Elementor is not active on this site."
 msgstr ""
 
-#: includes/abilities.php:9207
+#: includes/abilities.php:9264
 msgid "Elementor dynamic tags manager not available."
 msgstr ""
 
-#: includes/abilities.php:9229
+#: includes/abilities.php:9286
 msgid "This post has no _elementor_data (is it built with Elementor?)."
 msgstr ""
 
-#: includes/abilities.php:9234
-#: includes/abilities.php:9376
-#: includes/abilities.php:9512
+#: includes/abilities.php:9291
+#: includes/abilities.php:9433
+#: includes/abilities.php:9578
 msgid "Could not parse _elementor_data."
 msgstr ""
 
-#: includes/abilities.php:9242
+#: includes/abilities.php:9299
 msgid "meta_key is required when source=meta."
 msgstr ""
 
-#: includes/abilities.php:9250
+#: includes/abilities.php:9307
 msgid "source must be \"post_title\" or \"meta\"."
 msgstr ""
 
-#: includes/abilities.php:9291
+#: includes/abilities.php:9348
 msgid "Element id not found in _elementor_data."
 msgstr ""
 
-#: includes/abilities.php:9296
-#: includes/abilities.php:9540
+#: includes/abilities.php:9353
+#: includes/abilities.php:9606
 msgid "Failed to encode the modified Elementor data."
 msgstr ""
 
-#: includes/abilities.php:9311
+#: includes/abilities.php:9368
 msgid "Dynamic binding applied successfully."
 msgstr ""
 
-#: includes/abilities.php:9333
+#: includes/abilities.php:9390
 msgid "Elementor: Get Structure"
 msgstr ""
 
-#: includes/abilities.php:9334
+#: includes/abilities.php:9391
 msgid "Returns a compact, flattened tree of an Elementor page/template: every element with its id, depth, type, and a short text preview. Read-only. Use this to locate element ids before editing."
 msgstr ""
 
-#: includes/abilities.php:9372
-#: includes/abilities.php:9508
+#: includes/abilities.php:9429
+#: includes/abilities.php:9574
 msgid "This post has no _elementor_data."
 msgstr ""
 
-#: includes/abilities.php:9437
+#: includes/abilities.php:9494
 msgid "Elementor: Update Element"
 msgstr ""
 
-#: includes/abilities.php:9438
+#: includes/abilities.php:9495
 msgid "Updates the settings of a single Elementor element by id (static content or styles). Provided keys are merged into the element settings; other keys are preserved. Examples: {\"title\":\"New heading\"} for a heading, {\"text\":\"Click\"} for a button, {\"editor\":\"<p>HTML</p>\"} for a text-editor. Saves and clears Elementor cache. Batch mode: pass an edits[] array to update multiple elements in a single call."
 msgstr ""
 
-#: includes/abilities.php:9503
+#: includes/abilities.php:9560
 msgid "Provide either (element_id + settings) or a non-empty edits[] array."
 msgstr ""
 
-#: includes/abilities.php:9535
+#: includes/abilities.php:9601
 msgid "None of the given element ids were found in _elementor_data."
 msgstr ""
 
 #. translators: 1: updated count, 2: not-found count
-#: includes/abilities.php:9554
+#: includes/abilities.php:9620
 #, php-format
 msgid "%1$d element(s) updated, %2$d not found."
 msgstr ""
 
-#: includes/abilities.php:9582
+#: includes/abilities.php:9648
 msgid "LearnDash: List Courses"
 msgstr ""
 
-#: includes/abilities.php:9584
+#: includes/abilities.php:9650
 msgid "Returns a paginated list of published LearnDash courses with title, slug, permalink, and enrolled user count."
 msgstr ""
 
-#: includes/abilities.php:9589
-#: includes/abilities.php:10195
+#: includes/abilities.php:9655
+#: includes/abilities.php:10261
 msgid "Number of courses to return (1–100). Default: 20."
 msgstr ""
 
-#: includes/abilities.php:9597
-#: includes/abilities.php:10203
+#: includes/abilities.php:9663
+#: includes/abilities.php:10269
 msgid "Filter by course title."
 msgstr ""
 
-#: includes/abilities.php:9651
+#: includes/abilities.php:9717
 msgid "LearnDash: Get Course"
 msgstr ""
 
-#: includes/abilities.php:9653
+#: includes/abilities.php:9719
 msgid "Returns full detail for a single LearnDash course: title, description, permalink, ordered lessons with their topics, and course-level quizzes."
 msgstr ""
 
-#: includes/abilities.php:9660
+#: includes/abilities.php:9726
 msgid "The course post ID."
 msgstr ""
 
-#: includes/abilities.php:9671
-#: includes/abilities.php:9767
-#: includes/abilities.php:9927
-#: includes/abilities.php:9991
-#: includes/abilities.php:10515
+#: includes/abilities.php:9737
+#: includes/abilities.php:9833
+#: includes/abilities.php:9993
+#: includes/abilities.php:10057
+#: includes/abilities.php:10581
 msgid "Course not found."
 msgstr ""
 
-#: includes/abilities.php:9738
+#: includes/abilities.php:9804
 msgid "LearnDash: Get User Progress"
 msgstr ""
 
-#: includes/abilities.php:9740
+#: includes/abilities.php:9806
 msgid "Returns a user's progress in a specific LearnDash course: enrollment status, steps completed/total, percentage, and completion flag."
 msgstr ""
 
-#: includes/abilities.php:9747
-#: includes/abilities.php:9815
-#: includes/abilities.php:9908
-#: includes/abilities.php:9972
-#: includes/abilities.php:10342
-#: includes/abilities.php:10415
-#: includes/abilities.php:10495
-#: includes/abilities.php:10568
+#: includes/abilities.php:9813
+#: includes/abilities.php:9881
+#: includes/abilities.php:9974
+#: includes/abilities.php:10038
+#: includes/abilities.php:10408
+#: includes/abilities.php:10481
+#: includes/abilities.php:10561
+#: includes/abilities.php:10634
 msgid "WordPress user ID."
 msgstr ""
 
-#: includes/abilities.php:9751
-#: includes/abilities.php:9912
-#: includes/abilities.php:9976
-#: includes/abilities.php:10265
-#: includes/abilities.php:10346
-#: includes/abilities.php:10499
-#: includes/abilities.php:10572
+#: includes/abilities.php:9817
+#: includes/abilities.php:9978
+#: includes/abilities.php:10042
+#: includes/abilities.php:10331
+#: includes/abilities.php:10412
+#: includes/abilities.php:10565
+#: includes/abilities.php:10638
 msgid "Course post ID."
 msgstr ""
 
-#: includes/abilities.php:9763
-#: includes/abilities.php:9836
-#: includes/abilities.php:9923
-#: includes/abilities.php:9987
-#: includes/abilities.php:10511
+#: includes/abilities.php:9829
+#: includes/abilities.php:9902
+#: includes/abilities.php:9989
+#: includes/abilities.php:10053
+#: includes/abilities.php:10577
 msgid "User not found."
 msgstr ""
 
-#: includes/abilities.php:9806
+#: includes/abilities.php:9872
 msgid "LearnDash: Get Quiz Results"
 msgstr ""
 
-#: includes/abilities.php:9808
+#: includes/abilities.php:9874
 msgid "Returns quiz attempt history for a user, optionally filtered by quiz ID. Sorted newest first."
 msgstr ""
 
-#: includes/abilities.php:9819
+#: includes/abilities.php:9885
 msgid "Filter by specific quiz post ID (optional)."
 msgstr ""
 
-#: includes/abilities.php:9823
+#: includes/abilities.php:9889
 msgid "Max attempts to return (1–50). Default: 10."
 msgstr ""
 
-#: includes/abilities.php:9899
+#: includes/abilities.php:9965
 msgid "LearnDash: Enroll User"
 msgstr ""
 
-#: includes/abilities.php:9901
+#: includes/abilities.php:9967
 msgid "Enrolls a user in a LearnDash course. Requires manage_options. Opt-in required — disabled by default."
 msgstr ""
 
-#: includes/abilities.php:9932
-#: includes/abilities.php:10522
+#: includes/abilities.php:9998
+#: includes/abilities.php:10588
 msgid "User already enrolled in this course."
 msgstr ""
 
-#: includes/abilities.php:9941
-#: includes/abilities.php:10537
+#: includes/abilities.php:10007
+#: includes/abilities.php:10603
 msgid "User enrolled successfully."
 msgstr ""
 
-#: includes/abilities.php:9963
+#: includes/abilities.php:10029
 msgid "LearnDash: Unenroll User"
 msgstr ""
 
-#: includes/abilities.php:9965
+#: includes/abilities.php:10031
 msgid "Removes a user's access to a LearnDash course. Requires manage_options. Opt-in required — disabled by default."
 msgstr ""
 
-#: includes/abilities.php:9996
+#: includes/abilities.php:10062
 msgid "User was not enrolled in this course."
 msgstr ""
 
-#: includes/abilities.php:10005
+#: includes/abilities.php:10071
 msgid "User unenrolled successfully."
 msgstr ""
 
-#: includes/abilities.php:10032
+#: includes/abilities.php:10098
 msgid "Tutor LMS: Get Lesson Video"
 msgstr ""
 
-#: includes/abilities.php:10034
+#: includes/abilities.php:10100
 msgid "Reads the video source configuration of a Tutor LMS lesson (source type, source value, and runtime), via tutor_utils()->get_video(). Requires edit_post capability on the lesson."
 msgstr ""
 
-#: includes/abilities.php:10041
-#: includes/abilities.php:10099
+#: includes/abilities.php:10107
+#: includes/abilities.php:10165
 msgid "Lesson post ID."
 msgstr ""
 
-#: includes/abilities.php:10090
+#: includes/abilities.php:10156
 msgid "Tutor LMS: Update Lesson Video"
 msgstr ""
 
-#: includes/abilities.php:10092
+#: includes/abilities.php:10158
 msgid "Sets a Tutor LMS lesson's video source (external URL, YouTube, Vimeo, HTML5, or a third-party source such as Bunny.net) via tutor_utils()->update_video(), the same function Tutor's own editor uses. Always writes the video meta as a native PHP array, avoiding the string-only storage of ewpa/update-post-meta that Tutor cannot read back. Requires edit_post capability on the lesson."
 msgstr ""
 
-#: includes/abilities.php:10103
+#: includes/abilities.php:10169
 msgid "Video source type (e.g. html5, external_url, youtube, vimeo, embedded, shortcode, or a third-party source registered via the tutor_preferred_video_sources filter, such as bunnynet)."
 msgstr ""
 
-#: includes/abilities.php:10107
+#: includes/abilities.php:10173
 msgid "The value for that source — e.g. the playable URL for external_url/bunnynet, or the video ID for youtube/vimeo."
 msgstr ""
 
-#: includes/abilities.php:10111
+#: includes/abilities.php:10177
 msgid "Video runtime — hours. Default \"0\"."
 msgstr ""
 
-#: includes/abilities.php:10115
+#: includes/abilities.php:10181
 msgid "Video runtime — minutes. Default \"0\"."
 msgstr ""
 
-#: includes/abilities.php:10119
+#: includes/abilities.php:10185
 msgid "Video runtime — seconds. Default \"0\"."
 msgstr ""
 
-#: includes/abilities.php:10187
+#: includes/abilities.php:10253
 msgid "Tutor LMS: List Courses"
 msgstr ""
 
-#: includes/abilities.php:10189
+#: includes/abilities.php:10255
 msgid "Returns a paginated list of published Tutor LMS courses with title, slug, permalink, and enrolled user count."
 msgstr ""
 
-#: includes/abilities.php:10256
+#: includes/abilities.php:10322
 msgid "Tutor LMS: Get Course"
 msgstr ""
 
-#: includes/abilities.php:10258
+#: includes/abilities.php:10324
 msgid "Returns full detail for a single Tutor LMS course: title, description, permalink, and its topics with ordered lessons, quizzes, and assignments."
 msgstr ""
 
-#: includes/abilities.php:10333
+#: includes/abilities.php:10399
 msgid "Tutor LMS: Get User Progress"
 msgstr ""
 
-#: includes/abilities.php:10335
+#: includes/abilities.php:10401
 msgid "A user's progress in a specific Tutor LMS course: enrollment status and date, steps completed/total, and completion percentage."
 msgstr ""
 
-#: includes/abilities.php:10406
+#: includes/abilities.php:10472
 msgid "Tutor LMS: Get Quiz Results"
 msgstr ""
 
-#: includes/abilities.php:10408
+#: includes/abilities.php:10474
 msgid "Quiz attempt history for a user (optionally filtered by quiz ID): score, total marks, pass/fail result, and timestamps. Sorted newest first."
 msgstr ""
 
-#: includes/abilities.php:10419
+#: includes/abilities.php:10485
 msgid "Optional. Restrict results to a single quiz."
 msgstr ""
 
-#: includes/abilities.php:10486
+#: includes/abilities.php:10552
 msgid "Tutor LMS: Enroll User"
 msgstr ""
 
-#: includes/abilities.php:10488
+#: includes/abilities.php:10554
 msgid "Enrolls a user in a Tutor LMS course. Requires manage_options. Opt-in required — disabled by default."
 msgstr ""
 
-#: includes/abilities.php:10529
+#: includes/abilities.php:10595
 msgid "Enrollment failed."
 msgstr ""
 
-#: includes/abilities.php:10559
+#: includes/abilities.php:10625
 msgid "Tutor LMS: Unenroll User"
 msgstr ""
 
-#: includes/abilities.php:10561
+#: includes/abilities.php:10627
 msgid "Cancels a user's enrollment in a Tutor LMS course (sets the enrollment status to cancel). Requires manage_options. Opt-in required — disabled by default."
 msgstr ""
 
-#: includes/abilities.php:10585
+#: includes/abilities.php:10651
 msgid "User is not enrolled in this course."
 msgstr ""
 
-#: includes/abilities.php:10603
+#: includes/abilities.php:10669
 msgid "User's enrollment cancelled successfully."
 msgstr ""
 
-#: includes/abilities.php:10633
+#: includes/abilities.php:10699
 msgid "Fetches the site llms.txt file (the AI-crawler guidance file, llmstxt.org spec), detects which component serves it (SEOPress Pro, physical file, this plugin, third-party, or none), and validates it: H1 header present, blockquote summary, Markdown links, raw HTML entities, size. Returns the content plus a list of issues with severity, so an agent can diagnose why a Lighthouse \"Agentic Browsing\" audit fails."
 msgstr ""
 
-#: includes/abilities.php:10747
+#: includes/abilities.php:10813
 msgid "Writes the site llms.txt content (Markdown, llmstxt.org spec: H1 title, optional blockquote summary, H2 sections with link lists). Routes automatically: if SEOPress Pro is active it writes the SEOPress option (its dynamic placeholders like {{latest_posts:5}}, {{featured_products:3}}, {{site_name}} keep working); otherwise this plugin serves the content itself at /llms.txt. Refuses to act when a physical file or a third-party plugin already provides it. Content is validated before saving — an H1 first line is mandatory."
 msgstr ""
 
-#: includes/abilities.php:10864
+#: includes/abilities.php:10930
 msgid "List FSE Templates"
 msgstr ""
 
-#: includes/abilities.php:10865
+#: includes/abilities.php:10931
 msgid "Lists all wp_template and wp_template_part entries for the active theme, merging theme-file defaults with database overrides. Each entry reports whether it is a theme default or a user-edited (customized) override."
 msgstr ""
 
-#: includes/abilities.php:10889
-#: includes/abilities.php:10975
-#: includes/abilities.php:11062
+#: includes/abilities.php:10955
+#: includes/abilities.php:11041
+#: includes/abilities.php:11128
 msgid "This WordPress version does not support block templates."
 msgstr ""
 
-#: includes/abilities.php:10940
+#: includes/abilities.php:11006
 msgid "Get FSE Template"
 msgstr ""
 
-#: includes/abilities.php:10941
+#: includes/abilities.php:11007
 msgid "Gets the full block markup (post_content) for one wp_template or wp_template_part entry of the active theme, by slug."
 msgstr ""
 
-#: includes/abilities.php:10981
-#: includes/abilities.php:11070
+#: includes/abilities.php:11047
+#: includes/abilities.php:11136
 msgid "template_type must be wp_template or wp_template_part."
 msgstr ""
 
-#: includes/abilities.php:10988
+#: includes/abilities.php:11054
 msgid "Template not found for the active theme."
 msgstr ""
 
-#: includes/abilities.php:11021
+#: includes/abilities.php:11087
 msgid "Update FSE Template"
 msgstr ""
 
-#: includes/abilities.php:11022
+#: includes/abilities.php:11088
 msgid "Writes new block markup to an existing wp_template or wp_template_part of the active theme. If the template is currently a theme-file default, creates a user-edited database override instead of touching the theme file. Rejects content with unbalanced block-comment delimiters — the most common sign of truncated or corrupted markup. Changes site-wide appearance (a header/footer template affects every page that uses it) — opt-in, disabled by default."
 msgstr ""
 
-#: includes/abilities.php:11074
+#: includes/abilities.php:11140
 msgid "content cannot be empty."
 msgstr ""
 
-#: includes/abilities.php:11083
+#: includes/abilities.php:11149
 msgid "content has unbalanced block-comment delimiters (mismatched <!-- / -->). This usually means the markup was truncated or corrupted — refusing to write it."
 msgstr ""
 
-#: includes/abilities.php:11090
+#: includes/abilities.php:11156
 msgid "Template not found for the active theme. This ability only updates templates that already exist (theme default or override) — it does not create new template slugs."
 msgstr ""
 
-#: includes/abilities.php:11111
+#: includes/abilities.php:11177
 msgid "Existing template override updated."
 msgstr ""
 
-#: includes/abilities.php:11143
+#: includes/abilities.php:11209
 msgid "Theme default was not yet customized — created a new database override."
 msgstr ""
 
-#: includes/abilities.php:11178
+#: includes/abilities.php:11244
 msgid "Scans the media library for images missing alt text (WCAG 1.1.1 Non-text Content) and returns a paginated list so they can be fixed via ewpa/update-post-meta (_wp_attachment_image_alt) or a dedicated media-editing ability. Read-only; does not check rendered pages for color contrast, ARIA, or keyboard navigation — use a browser-based tool (e.g. Lighthouse) for those."
 msgstr ""
 
-#: includes/abilities.php:11185
+#: includes/abilities.php:11251
 msgid "Number of missing-alt images to return per page (1-100). Default: 20."
 msgstr ""
 
-#: includes/abilities.php:11321
+#: includes/abilities.php:11387
 msgid "Creates a new, empty navigation menu with the given name. Use ewpa/add-menu-item to populate it and ewpa/assign-menu-location to display it."
 msgstr ""
 
-#: includes/abilities.php:11379
+#: includes/abilities.php:11445
 msgid "Lists every navigation menu with its id, slug, and item count, plus the theme menu locations and which menu each one displays."
 msgstr ""
 
-#: includes/abilities.php:11433
+#: includes/abilities.php:11499
 msgid "Returns every item of one menu with its hierarchy: id, title, url, target type (post_type, taxonomy, or custom), linked object, parent item, and position."
 msgstr ""
 
-#: includes/abilities.php:11497
+#: includes/abilities.php:11563
 msgid "Adds an item to a menu: a page, post, or CPT item (object_id), a category or tag (taxonomy + object_id), or a custom URL. Supports parent item and position."
 msgstr ""
 
-#: includes/abilities.php:11607
+#: includes/abilities.php:11673
 msgid "Updates one menu item: title, custom URL, parent item, or position. Fields not provided keep their current value."
 msgstr ""
 
-#: includes/abilities.php:11687
+#: includes/abilities.php:11753
 msgid "Permanently removes one item from a menu. Children of the removed item are kept and become top-level. Destructive — opt-in required."
 msgstr ""
 
-#: includes/abilities.php:11737
+#: includes/abilities.php:11803
 msgid "Assigns a menu to a theme location (or clears the location with menu_id 0). Changes site-wide navigation. Opt-in required."
 msgstr ""
 
-#: includes/abilities.php:11802
+#: includes/abilities.php:11868
 msgid "Permanently deletes a menu and all of its items, and clears it from any theme location it was assigned to. Destructive — opt-in required."
 msgstr ""
 

@@ -368,6 +368,10 @@ class SFWD_LMS {
 }
 
 class Ewpa_Test_Tutor_Utils {
+	public function get_topics( $course_id ) {
+		return null;
+	}
+
 	public function get_course_completed_percent( $course_id, $user_id, $stats = false ) {
 		return array(
 			'completed_percent' => 40,
@@ -468,6 +472,31 @@ function wp_get_attachment_url( $attachment_id ) {
 
 function wp_strip_all_tags( $text ) {
 	return strip_tags( (string) $text );
+}
+
+function get_the_post_thumbnail_url( $post_id, $size = 'post-thumbnail' ) {
+	return false;
+}
+
+function get_page_template_slug( $post_id ) {
+	return '';
+}
+
+function wp_json_encode( $value, $flags = 0, $depth = 512 ) {
+	return json_encode( $value, $flags, $depth );
+}
+
+/**
+ * Keeps what wp_kses_post() does to the payloads these checks send: it drops
+ * script and style elements and event-handler attributes, and leaves allowed
+ * markup such as <p> alone.
+ *
+ * @param string $value HTML.
+ * @return string
+ */
+function wp_kses_post( $value ) {
+	$value = preg_replace( '#<(script|style)\b[^>]*>.*?</\1>#is', '', (string) $value );
+	return preg_replace( '#\s+on[a-z]+\s*=\s*("[^"]*"|\'[^\']*\'|[^\s>]+)#i', '', $value );
 }
 
 function learndash_get_course_lessons_list( $course ) {
@@ -608,6 +637,8 @@ function ewpa_fake_post( int $id, string $type, int $author, string $status ) {
 		'post_author'    => $author,
 		'post_status'    => $status,
 		'post_date'      => '2026-01-01 00:00:00',
+		'post_modified'  => '2026-01-01 00:00:00',
+		'post_password'  => '',
 		'post_parent'    => 0,
 		'menu_order'     => 0,
 		'comment_status' => 'open',
@@ -2550,6 +2581,245 @@ foreach ( array( 'ewpa/wc-update-order-status' => 'edit_shop_orders', 'ewpa/wc-u
 	$GLOBALS['ewpa_caps'] = array( 'read', 'read_private_products', 'read_private_shop_orders' );
 	ewpa_check( $ewpa_wc_label . '_refuses_a_read_only_user', true !== ewpa_callback_permission( $ewpa_wc_ability ) );
 }
+
+/*
+ * ==========================================================================
+ * T3.1 — password-protected content (audit C2, 2.16.0)
+ *
+ * As in the core REST posts controller, a password-protected post keeps its
+ * content and excerpt hidden from a user who cannot edit it. Post 101, page 131,
+ * course 110, event 202 and LearnDash course 121 are published by user 3, so the
+ * Contributor (user 2) can read them but not edit them.
+ * ==========================================================================
+ */
+
+/**
+ * Puts a password and an excerpt on the given posts.
+ *
+ * @param int[] $ids Post IDs.
+ */
+function ewpa_protect_posts( array $ids ): void {
+	foreach ( $ids as $id ) {
+		$GLOBALS['ewpa_posts'][ $id ]->post_password = 'secret';
+		$GLOBALS['ewpa_posts'][ $id ]->post_excerpt  = 'Teaser ' . $id;
+	}
+}
+
+$ewpa_single_readers = array(
+	'get_post'        => array( 'ewpa/get-post', array( 'post_id' => 101 ), 101 ),
+	'get_page'        => array( 'ewpa/get-page', array( 'page_id' => 131 ), 131 ),
+	'get_cpt_item'    => array( 'ewpa/get-cpt-item', array( 'post_id' => 110 ), 110 ),
+);
+
+foreach ( $ewpa_single_readers as $ewpa_label => list( $ewpa_ability, $ewpa_input, $ewpa_id ) ) {
+	ewpa_reset();
+	ewpa_protect_posts( array( $ewpa_id ) );
+	$result = ewpa_callback( $ewpa_ability )( $ewpa_input );
+	ewpa_check(
+		$ewpa_label . '_hides_protected_content_from_a_reader_who_cannot_edit',
+		! is_wp_error( $result ) && '' === $result['post_content'] && '' === $result['post_excerpt'] && true === ( $result['password_protected'] ?? null )
+	);
+	ewpa_check(
+		$ewpa_label . '_still_returns_the_title_of_a_protected_post',
+		! is_wp_error( $result ) && 'Post ' . $ewpa_id === $result['post_title']
+	);
+
+	ewpa_reset();
+	ewpa_become_admin();
+	ewpa_protect_posts( array( $ewpa_id ) );
+	$result = ewpa_callback( $ewpa_ability )( $ewpa_input );
+	ewpa_check(
+		$ewpa_label . '_returns_protected_content_to_a_user_who_can_edit',
+		! is_wp_error( $result ) && 'Body ' . $ewpa_id === $result['post_content'] && 'Teaser ' . $ewpa_id === $result['post_excerpt'] && true === ( $result['password_protected'] ?? null )
+	);
+
+	// Previous behavior: a post without a password is returned in full.
+	ewpa_reset();
+	$result = ewpa_callback( $ewpa_ability )( $ewpa_input );
+	ewpa_check(
+		$ewpa_label . '_returns_unprotected_content_to_a_reader',
+		! is_wp_error( $result ) && 'Body ' . $ewpa_id === $result['post_content'] && false === ( $result['password_protected'] ?? null )
+	);
+}
+
+$ewpa_description_readers = array(
+	'tec_get_event'    => array( 'ewpa/tec-get-event', array( 'event_id' => 202 ), 202 ),
+	'ld_get_course'    => array( 'ewpa/ld-get-course', array( 'course_id' => 121 ), 121 ),
+	'tutor_get_course' => array( 'ewpa/tutor-get-course', array( 'course_id' => 110 ), 110 ),
+);
+
+foreach ( $ewpa_description_readers as $ewpa_label => list( $ewpa_ability, $ewpa_input, $ewpa_id ) ) {
+	ewpa_reset();
+	ewpa_protect_posts( array( $ewpa_id ) );
+	$result = ewpa_callback( $ewpa_ability )( $ewpa_input );
+	ewpa_check(
+		$ewpa_label . '_hides_a_protected_description_from_a_reader_who_cannot_edit',
+		! is_wp_error( $result ) && '' === $result['description']
+	);
+
+	ewpa_reset();
+	ewpa_become_admin();
+	ewpa_protect_posts( array( $ewpa_id ) );
+	$result = ewpa_callback( $ewpa_ability )( $ewpa_input );
+	ewpa_check(
+		$ewpa_label . '_returns_a_protected_description_to_a_user_who_can_edit',
+		! is_wp_error( $result ) && 'Body ' . $ewpa_id === $result['description']
+	);
+
+	// Previous behavior: an unprotected description is returned.
+	ewpa_reset();
+	$result = ewpa_callback( $ewpa_ability )( $ewpa_input );
+	ewpa_check(
+		$ewpa_label . '_returns_an_unprotected_description_to_a_reader',
+		! is_wp_error( $result ) && 'Body ' . $ewpa_id === $result['description']
+	);
+}
+
+/**
+ * Finds one row of a listing result by ID.
+ *
+ * @param mixed $result Listing result.
+ * @param int   $id     Post ID.
+ * @return array|null
+ */
+function ewpa_row( $result, int $id ) {
+	foreach ( is_array( $result ) ? $result : array() as $row ) {
+		if ( (int) $row['ID'] === $id ) {
+			return $row;
+		}
+	}
+	return null;
+}
+
+$ewpa_listings = array(
+	'get_posts'     => array( 'ewpa/get-posts', ewpa_list_input(), 101 ),
+	'get_cpt_items' => array(
+		'ewpa/get-cpt-items',
+		array(
+			'post_type' => 'courses',
+			'order'     => 'DESC',
+		),
+		110,
+	),
+);
+
+foreach ( $ewpa_listings as $ewpa_label => list( $ewpa_ability, $ewpa_input, $ewpa_id ) ) {
+	ewpa_reset();
+	ewpa_protect_posts( array( $ewpa_id ) );
+	$ewpa_found = ewpa_row( ewpa_callback( $ewpa_ability )( $ewpa_input ), $ewpa_id );
+	ewpa_check(
+		$ewpa_label . '_hides_the_excerpt_of_a_protected_post_from_a_reader',
+		null !== $ewpa_found && '' === $ewpa_found['post_excerpt']
+	);
+
+	ewpa_reset();
+	ewpa_become_admin();
+	ewpa_protect_posts( array( $ewpa_id ) );
+	$ewpa_found = ewpa_row( ewpa_callback( $ewpa_ability )( $ewpa_input ), $ewpa_id );
+	ewpa_check(
+		$ewpa_label . '_returns_the_excerpt_of_a_protected_post_to_a_user_who_can_edit',
+		null !== $ewpa_found && 'Teaser ' . $ewpa_id === $ewpa_found['post_excerpt']
+	);
+
+	// Previous behavior: an unprotected excerpt is listed.
+	ewpa_reset();
+	$GLOBALS['ewpa_posts'][ $ewpa_id ]->post_excerpt = 'Open teaser';
+	$ewpa_found = ewpa_row( ewpa_callback( $ewpa_ability )( $ewpa_input ), $ewpa_id );
+	ewpa_check(
+		$ewpa_label . '_lists_an_unprotected_excerpt',
+		null !== $ewpa_found && 'Open teaser' === $ewpa_found['post_excerpt']
+	);
+}
+
+ewpa_reset();
+ewpa_protect_posts( array( 101 ) );
+$result = ewpa_callback( 'ewpa/duplicate-post' )( array( 'post_id' => 101 ) );
+ewpa_check( 'duplicate_refuses_a_protected_source_the_user_cannot_edit', ewpa_is_error( $result, 'forbidden' ) );
+ewpa_check( 'duplicate_does_not_insert_a_copy_of_a_protected_source', array() === $GLOBALS['ewpa_inserted'] );
+
+ewpa_reset();
+ewpa_become_admin();
+ewpa_protect_posts( array( 101 ) );
+$result = ewpa_callback( 'ewpa/duplicate-post' )( array( 'post_id' => 101 ) );
+ewpa_check(
+	'duplicate_copies_a_protected_source_for_a_user_who_can_edit_it',
+	! is_wp_error( $result ) && 'Body 101' === $GLOBALS['ewpa_posts'][ $result['new_post_id'] ]->post_content
+);
+
+/*
+ * ==========================================================================
+ * T3.2 — elementor-update-element HTML (audit C1, 2.16.0)
+ *
+ * Settings from a user without unfiltered_html go through wp_kses_post(), at
+ * every depth; non-string values and users with unfiltered_html are untouched.
+ * Post 102 is the Contributor's own draft.
+ * ==========================================================================
+ */
+
+/**
+ * Gives post 102 one Elementor text-editor element and sends it an update.
+ *
+ * @return array Settings stored for the element after the call, or [] on error.
+ */
+function ewpa_update_elementor_element(): array {
+	$GLOBALS['ewpa_meta'][102]['_elementor_data'] = json_encode(
+		array(
+			array(
+				'id'       => 'sec1',
+				'elements' => array(
+					array(
+						'id'       => 'abc',
+						'settings' => array( 'editor' => '<p>Old</p>' ),
+					),
+				),
+			),
+		)
+	);
+
+	$result = ewpa_callback( 'ewpa/elementor-update-element' )(
+		array(
+			'post_id'    => 102,
+			'element_id' => 'abc',
+			'settings'   => array(
+				'editor' => '<p>Hi</p><script>alert(1)</script>',
+				'size'   => 12,
+				'items'  => array(
+					array( 'html' => '<img src="x.png" onerror="alert(2)">' ),
+				),
+			),
+		)
+	);
+	if ( is_wp_error( $result ) ) {
+		return array();
+	}
+
+	$data = json_decode( $GLOBALS['ewpa_meta'][102]['_elementor_data'], true );
+	return $data[0]['elements'][0]['settings'] ?? array();
+}
+
+ewpa_reset();
+$ewpa_settings = ewpa_update_elementor_element();
+ewpa_check(
+	'elementor_update_strips_script_from_a_user_without_unfiltered_html',
+	'<p>Hi</p>' === ( $ewpa_settings['editor'] ?? null )
+);
+ewpa_check(
+	'elementor_update_strips_nested_event_handlers_from_a_user_without_unfiltered_html',
+	'<img src="x.png">' === ( $ewpa_settings['items'][0]['html'] ?? null )
+);
+ewpa_check(
+	'elementor_update_keeps_non_string_settings',
+	12 === ( $ewpa_settings['size'] ?? null )
+);
+
+ewpa_reset();
+$GLOBALS['ewpa_caps'][] = 'unfiltered_html';
+$ewpa_settings          = ewpa_update_elementor_element();
+ewpa_check(
+	'elementor_update_keeps_raw_html_for_a_user_with_unfiltered_html',
+	'<p>Hi</p><script>alert(1)</script>' === ( $ewpa_settings['editor'] ?? null )
+		&& '<img src="x.png" onerror="alert(2)">' === ( $ewpa_settings['items'][0]['html'] ?? null )
+);
 
 echo PHP_EOL;
 if ( $ewpa_failures > 0 ) {
