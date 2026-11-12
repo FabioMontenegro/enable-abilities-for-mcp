@@ -358,7 +358,7 @@ Yes — strict OAuth clients require a direct `200` on `/.well-known/oauth-autho
 == Upgrade Notice ==
 
 = 2.16.0 =
-New opt-in abilities to upload an image from your computer through a temporary, single-use link, so the file never passes through the conversation. Also a security fix: password-protected posts no longer give away their content to users who cannot edit them, and the Elementor element editor filters HTML for users without `unfiltered_html`.
+Security fix: password-protected posts no longer give away their content to users who cannot edit them, and Elementor element edits filter HTML like core. Adds opt-in abilities to upload an image through a temporary, single-use link.
 
 = 2.15.0 =
 `create-post` can write custom fields in the same call, and `get-posts` can filter by custom field, so an agent can check whether a post already exists before creating it again. Nothing changes for calls that do not use them.
