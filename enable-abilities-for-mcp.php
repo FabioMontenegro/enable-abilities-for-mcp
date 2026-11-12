@@ -47,6 +47,7 @@ require_once EWPA_PLUGIN_DIR . 'includes/admin.php';
 require_once EWPA_PLUGIN_DIR . 'includes/multilanguage.php';
 require_once EWPA_PLUGIN_DIR . 'includes/code-snippets.php';
 require_once EWPA_PLUGIN_DIR . 'includes/abilities.php';
+require_once EWPA_PLUGIN_DIR . 'includes/upload-links.php';
 require_once EWPA_PLUGIN_DIR . 'includes/thirdparty.php';
 require_once EWPA_PLUGIN_DIR . 'includes/oauth-connectors.php';
 require_once EWPA_PLUGIN_DIR . 'includes/oauth-sessions.php';
@@ -1286,51 +1287,61 @@ function ewpa_get_abilities_registry() {
 			'section_icon'  => 'dashicons-edit',
 			'section_badge' => 'warning',
 			'abilities'     => array(
-				'ewpa/create-post'       => array(
+				'ewpa/create-post'        => array(
 					'label' => __( 'Create Post', 'enable-abilities-for-mcp' ),
 					'desc'  => __( 'Create a new post with title, content, categories, tags, featured image, and more.', 'enable-abilities-for-mcp' ),
 				),
-				'ewpa/update-post'       => array(
+				'ewpa/update-post'        => array(
 					'label' => __( 'Update Post', 'enable-abilities-for-mcp' ),
 					'desc'  => __( 'Modify an existing post. Only updates the fields provided.', 'enable-abilities-for-mcp' ),
 				),
-				'ewpa/delete-post'       => array(
+				'ewpa/delete-post'        => array(
 					'label' => __( 'Delete Post', 'enable-abilities-for-mcp' ),
 					'desc'  => __( 'Send a post to trash or permanently delete it.', 'enable-abilities-for-mcp' ),
 				),
-				'ewpa/create-category'   => array(
+				'ewpa/create-category'    => array(
 					'label' => __( 'Create Category', 'enable-abilities-for-mcp' ),
 					'desc'  => __( 'Create a new category with name, slug, description, and parent.', 'enable-abilities-for-mcp' ),
 				),
-				'ewpa/create-tag'        => array(
+				'ewpa/create-tag'         => array(
 					'label' => __( 'Create Tag', 'enable-abilities-for-mcp' ),
 					'desc'  => __( 'Create a new tag with name, slug, and description.', 'enable-abilities-for-mcp' ),
 				),
-				'ewpa/create-page'       => array(
+				'ewpa/create-page'        => array(
 					'label' => __( 'Create Page', 'enable-abilities-for-mcp' ),
 					'desc'  => __( 'Create a new page with title, content, status, and parent page.', 'enable-abilities-for-mcp' ),
 				),
-				'ewpa/moderate-comment'  => array(
+				'ewpa/moderate-comment'   => array(
 					'label' => __( 'Moderate Comment', 'enable-abilities-for-mcp' ),
 					'desc'  => __( 'Change comment status: approve, hold, spam, or trash.', 'enable-abilities-for-mcp' ),
 				),
-				'ewpa/reply-comment'     => array(
+				'ewpa/reply-comment'      => array(
 					'label' => __( 'Reply to Comment', 'enable-abilities-for-mcp' ),
 					'desc'  => __( 'Reply to an existing comment as the authenticated user.', 'enable-abilities-for-mcp' ),
 				),
-				'ewpa/update-comment'    => array(
+				'ewpa/update-comment'     => array(
 					'label' => __( 'Update Comment', 'enable-abilities-for-mcp' ),
 					'desc'  => __( 'Update content, author name, email, or WordPress user of an existing comment.', 'enable-abilities-for-mcp' ),
 				),
-				'ewpa/upload-image'      => array(
+				'ewpa/upload-image'       => array(
 					'label' => __( 'Upload Image from URL', 'enable-abilities-for-mcp' ),
 					'desc'  => __( 'Download an image from an external URL and register it in the media library. Returns the attachment ID.', 'enable-abilities-for-mcp' ),
 				),
-				'ewpa/duplicate-post'    => array(
+				'ewpa/create-upload-link' => array(
+					'label'   => __( 'Create Upload Link', 'enable-abilities-for-mcp' ),
+					'desc'    => __( 'Create a temporary, single-use link to upload an image from the user\'s computer straight to the media library, without passing the file through the conversation. Images only. Opt-in required.', 'enable-abilities-for-mcp' ),
+					'default' => false,
+				),
+				'ewpa/get-upload-status'  => array(
+					'label'   => __( 'Get Upload Status', 'enable-abilities-for-mcp' ),
+					'desc'    => __( 'Check whether the file for an upload link has arrived and get its attachment ID. Opt-in required.', 'enable-abilities-for-mcp' ),
+					'default' => false,
+				),
+				'ewpa/duplicate-post'     => array(
 					'label' => __( 'Duplicate Post / Page / CPT', 'enable-abilities-for-mcp' ),
 					'desc'  => __( 'Create an exact copy of any post, page, or CPT item — including all meta and taxonomy terms. The duplicate is saved as draft by default.', 'enable-abilities-for-mcp' ),
 				),
-				'ewpa/assign-post-terms' => array(
+				'ewpa/assign-post-terms'  => array(
 					'label' => __( 'Assign Post Terms', 'enable-abilities-for-mcp' ),
 					'desc'  => __( 'Assign a custom taxonomy\'s terms to a post or page (e.g. a taxonomy registered by a companion plugin). Native categories and tags are already covered by ewpa/update-post.', 'enable-abilities-for-mcp' ),
 				),
