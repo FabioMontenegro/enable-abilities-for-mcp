@@ -5,11 +5,11 @@ Tags: mcp, ai, rest-api, content-management, woocommerce
 Requires at least: 6.9
 Tested up to: 7.1
 Requires PHP: 8.0
-Stable tag: 2.15.0
+Stable tag: 2.16.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
-Connect Claude, ChatGPT & any MCP client to WordPress. 112 abilities: content, SEO, WooCommerce, FSE, LMS & more. Free & self-hosted.
+Connect Claude, ChatGPT & any MCP client to WordPress. 114 abilities: content, SEO, WooCommerce, FSE, LMS & more. Free & self-hosted.
 
 == Description ==
 
@@ -40,7 +40,7 @@ Prefer tokens? Application Passwords (per-user) and a single-admin Bearer token 
 
 = Features =
 
-* **112 abilities** organized in 21 categories: Core, Read, Write, SEO (Rank Math), SEO (SEOPress), SEO (Yoast), Navigation Menus, Utility, Multilanguage, Custom Post Types, WooCommerce, The Events Calendar, Code Snippets, JetEngine Options Pages, JetEngine Query Builder, Elementor, LearnDash, Tutor LMS, AI Agent Readiness (llms.txt), FSE Block Templates, and Accessibility (WCAG)
+* **114 abilities** organized in 21 categories: Core, Read, Write, SEO (Rank Math), SEO (SEOPress), SEO (Yoast), Navigation Menus, Utility, Multilanguage, Custom Post Types, WooCommerce, The Events Calendar, Code Snippets, JetEngine Options Pages, JetEngine Query Builder, Elementor, LearnDash, Tutor LMS, AI Agent Readiness (llms.txt), FSE Block Templates, and Accessibility (WCAG)
 * **WooCommerce integration** — dedicated abilities to manage products, orders, and customers using the native WooCommerce API (HPOS-compatible, formally declared)
 * **The Events Calendar integration** — list, get, create, and update events with venue, organizer, and date filters
 * **claude.ai OAuth custom connector** — connect from claude.ai (web, mobile, or desktop) with zero local setup: an embedded OAuth 2.1 server with Client ID Metadata Document (CIMD) support lets each user log in with their own WordPress account and role
@@ -260,6 +260,12 @@ Yes — strict OAuth clients require a direct `200` on `/.well-known/oauth-autho
 
 == Changelog ==
 
+= 2.16.0 =
+* New: `ewpa/create-upload-link` gets an image from the user's computer into the media library without the file passing through the conversation. Sending a file as base64 makes the model type out the whole file, which is slow, expensive and usually fails on size. Instead the ability returns a temporary link: an assistant that can run commands sends the file with a single `PUT`, and one that cannot (Claude Desktop, claude.ai) hands the user a small upload page to drop the image on. The link works once, for 10 minutes, for the user who created it, who must still be able to upload files when it is used. Only JPEG, PNG, GIF, WebP and AVIF are accepted, checked by content and not just by name, up to the site's upload limit capped at 20 MB. Each user can hold five unused links at a time. Only a hash of the link is stored. Opt-in.
+* New: `ewpa/get-upload-status` tells the assistant whether the file has arrived and returns the attachment ID and URL. A link that belongs to someone else reads as expired, so it cannot be used to probe other users' uploads. Opt-in.
+* New: filters `ewpa_upload_link_ttl`, `ewpa_upload_link_max_bytes` and `ewpa_upload_link_max_active` adjust the link lifetime, the size cap and the per-user limit.
+* Updated: Total abilities: 114 in 21 categories.
+
 = 2.15.0 =
 * New: `ewpa/create-post` accepts `meta`, an object of custom fields written in the same request that creates the post. An agent that tags each post with its own run ID can now find, after a timeout or a retry, the post an earlier attempt already created, instead of publishing it twice. Protected keys (those starting with an underscore) still need an administrator, and if any key is refused the post is deleted again, so a failed call never leaves a half-written post behind.
 * New: `ewpa/get-posts` filters by custom field with `meta_key`, and optionally `meta_value` for an exact match. Filtering needs an editing capability, since it reveals which posts carry a value; protected keys need an administrator. `meta_value` on its own is refused rather than ignored. Drafts by other authors stay hidden exactly as before.
@@ -348,6 +354,9 @@ Yes — strict OAuth clients require a direct `200` on `/.well-known/oauth-autho
 * See [changelog.txt](https://plugins.trac.wordpress.org/browser/enable-abilities-for-mcp/trunk/changelog.txt) for the full history of older versions.
 
 == Upgrade Notice ==
+
+= 2.16.0 =
+New opt-in abilities to upload an image from your computer through a temporary, single-use link, so the file never passes through the conversation. Nothing changes until you turn them on.
 
 = 2.15.0 =
 `create-post` can write custom fields in the same call, and `get-posts` can filter by custom field, so an agent can check whether a post already exists before creating it again. Nothing changes for calls that do not use them.

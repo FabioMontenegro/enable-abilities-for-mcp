@@ -7,7 +7,7 @@
 
 Let AI assistants like Claude manage your WordPress site through the [Model Context Protocol](https://modelcontextprotocol.io/) — with full control over exactly what they can and cannot do.
 
-**112 abilities in 21 categories**, each one individually toggleable from the dashboard: content, SEO (Rank Math / SEOPress / Yoast), navigation menus, WooCommerce, Elementor, LearnDash, Tutor LMS, JetEngine (Options Pages + Query Builder), multilanguage, `llms.txt`, FSE block templates, accessibility (WCAG), cache purge, and more.
+**114 abilities in 21 categories**, each one individually toggleable from the dashboard: content, SEO (Rank Math / SEOPress / Yoast), navigation menus, WooCommerce, Elementor, LearnDash, Tutor LMS, JetEngine (Options Pages + Query Builder), multilanguage, `llms.txt`, FSE block templates, accessibility (WCAG), cache purge, and more.
 
 ## How it works
 
@@ -17,7 +17,7 @@ This plugin completes the stack:
 
 ```
 Claude / MCP client  ──►  MCP Adapter  ──►  Abilities API  ──►  Enable Abilities for MCP
-                                                                (112 abilities + per-ability toggles
+                                                                (114 abilities + per-ability toggles
                                                                  + auth + activity log)
 ```
 
@@ -32,7 +32,7 @@ Claude / MCP client  ──►  MCP Adapter  ──►  Abilities API  ──►
 |---|---|---|
 | **WordPress Core** | 3 | Native site/user/environment info, exposed to MCP by this plugin |
 | **Read** | 9 | Posts, pages, categories, tags, comments, media, users — with filters, including posts by custom-field key and value |
-| **Write** | 12 | Create/update/delete posts and pages (custom fields can be written in the same call that creates the post), moderate and reply to comments, upload images from URL, duplicate any post/page/CPT with meta and taxonomies, assign custom taxonomy terms to a post/page |
+| **Write** | 14 | Create/update/delete posts and pages (custom fields can be written in the same call that creates the post), moderate and reply to comments, upload images from URL or from the user's computer through a single-use link (the file never passes through the conversation), duplicate any post/page/CPT with meta and taxonomies, assign custom taxonomy terms to a post/page |
 | **SEO — Rank Math** | 3 | Read/write all meta + write structured-data schema blocks (FAQPage, Article, Product…) as JSON-LD |
 | **SEO — SEOPress** | 3 | Read/write all meta + **content analysis**: every SEOPress check (headings, internal links, schemas…) with impact level and recommendation, optionally re-analyzing the rendered page first |
 | **SEO — Yoast SEO** | 3 | Read/write all meta + sitemap index |
