@@ -127,8 +127,13 @@ echo "\n== what the loader asks WordPress for ==\n";
 
 $ewpa_loaded = false;
 if ( preg_match( '/^function ewpa_load_textdomain\s*\(.*?^\}/ms', $ewpa_plugin_source, $ewpa_matches ) ) {
-	// __FILE__ inside eval() is not the plugin file, so put the plugin file back.
-	eval( str_replace( '__FILE__', var_export( $ewpa_source, true ), $ewpa_matches[0] ) ); // phpcs:ignore Squiz.PHP.Eval.Discouraged -- loads the shipped function instead of a copy of it.
+	// __FILE__ and __DIR__ inside eval() do not point at the plugin, so put the plugin back.
+	$ewpa_body = str_replace(
+		array( '__FILE__', '__DIR__' ),
+		array( var_export( $ewpa_source, true ), var_export( dirname( $ewpa_source ), true ) ),
+		$ewpa_matches[0]
+	);
+	eval( $ewpa_body ); // phpcs:ignore Squiz.PHP.Eval.Discouraged -- loads the shipped function instead of a copy of it.
 	$ewpa_loaded = true;
 }
 ewpa_check( 'loader_function_exists', $ewpa_loaded, 'ewpa_load_textdomain() not found' );

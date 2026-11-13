@@ -50,7 +50,7 @@ function ewpa_load_textdomain(): void {
 	load_plugin_textdomain( $domain, false, dirname( plugin_basename( __FILE__ ) ) . '/languages' );
 
 	load_textdomain( $domain, WP_LANG_DIR . '/plugins/' . $domain . '-' . $locale . '.mo', $locale );
-	load_textdomain( $domain, dirname( __FILE__ ) . '/languages/' . $domain . '-' . $locale . '.mo', $locale );
+	load_textdomain( $domain, __DIR__ . '/languages/' . $domain . '-' . $locale . '.mo', $locale );
 }
 
 // Declare WooCommerce HPOS (High-Performance Order Storage) compatibility.
