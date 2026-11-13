@@ -1092,6 +1092,16 @@ function ewpa_linguator_create_post_translation( int $source_id, string $source_
 		);
 	}
 
+	// copy_post() copies every custom field. As in the generic duplicator, a user who
+	// cannot edit the source does not get its protected meta in a post of their own.
+	if ( ! current_user_can( 'edit_post', $source_id ) ) {
+		foreach ( array_keys( (array) get_post_meta( $translated_id ) ) as $key ) {
+			if ( is_protected_meta( (string) $key, 'post' ) && 0 !== strpos( (string) $key, '_lmat_' ) ) {
+				delete_post_meta( $translated_id, $key );
+			}
+		}
+	}
+
 	// copy_post() keeps the source author; without edit_others the copy is the current user's.
 	$copy = get_post( $translated_id );
 	if ( $copy && ! ewpa_user_can_for_type( (string) $copy->post_type, 'edit_others_posts' ) && get_current_user_id() !== (int) $copy->post_author ) {
@@ -1226,8 +1236,15 @@ function ewpa_multilanguage_copy_post_meta( int $source_id, int $translated_id )
 	 */
 	$skip = (array) apply_filters( 'ewpa_translation_skipped_meta_keys', $skip, $source_id, $translated_id );
 
+	// A user who cannot edit the source may still translate it, but its protected
+	// meta stays behind: the copy is theirs, so copying it would hand it to them.
+	$withhold_protected = ! current_user_can( 'edit_post', $source_id );
+
 	foreach ( get_post_meta( $source_id ) as $key => $values ) {
 		if ( in_array( $key, $skip, true ) || 0 === strpos( (string) $key, '_lmat_' ) ) {
+			continue;
+		}
+		if ( $withhold_protected && is_protected_meta( (string) $key, 'post' ) ) {
 			continue;
 		}
 		foreach ( (array) $values as $value ) {

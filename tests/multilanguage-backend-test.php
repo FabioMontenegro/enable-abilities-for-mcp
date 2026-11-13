@@ -78,6 +78,9 @@ $cases = array(
 	'translation_belongs_to_current_user_without_edit_others',
 	'translation_keeps_source_author_with_edit_others',
 	'linguator_translation_without_edit_others_belongs_to_current_user',
+	'translation_skips_protected_meta_when_source_is_not_editable',
+	'linguator_translation_strips_protected_meta_when_source_is_not_editable',
+	'linguator_translation_keeps_protected_meta_when_source_is_editable',
 	'linguator_translation_refuses_publish_without_publish_capability',
 );
 
@@ -223,7 +226,7 @@ function ewpa_bootstrap_case( string $case ): void {
 	$GLOBALS['ewpa_added_post_meta']             = array();
 	$GLOBALS['ewpa_added_term_meta']             = array();
 
-	if ( in_array( $case, array( 'detects_polylang', 'keeps_polylang_precedence_over_linguator', 'creates_polylang_translation_by_duplicating', 'creates_polylang_term_translation_by_duplicating', 'preserves_backslashes_when_copying_source_content', 'preserves_backslashes_in_translated_content', 'preserves_backslashes_when_updating_existing_translation', 'preserves_backslashes_in_copied_post_meta', 'preserves_backslashes_in_copied_term_meta', 'preserves_backslashes_in_duplicated_term', 'lists_polylang_languages_with_term_ids', 'links_polylang_post_translation_assigning_language', 'reports_polylang_post_link_that_did_not_persist', 'links_polylang_term_translation_assigning_language', 'reports_polylang_term_link_that_did_not_persist', 'copies_post_language_without_translation_group', 'refuses_translation_when_source_is_not_readable', 'refuses_translation_into_a_type_the_user_cannot_create', 'refuses_to_overwrite_a_translation_the_user_cannot_edit', 'refuses_publishing_an_existing_translation_without_publish_capability', 'translation_refuses_publish_without_publish_capability', 'translation_belongs_to_current_user_without_edit_others', 'translation_keeps_source_author_with_edit_others' ), true ) ) {
+	if ( in_array( $case, array( 'detects_polylang', 'keeps_polylang_precedence_over_linguator', 'creates_polylang_translation_by_duplicating', 'creates_polylang_term_translation_by_duplicating', 'preserves_backslashes_when_copying_source_content', 'preserves_backslashes_in_translated_content', 'preserves_backslashes_when_updating_existing_translation', 'preserves_backslashes_in_copied_post_meta', 'preserves_backslashes_in_copied_term_meta', 'preserves_backslashes_in_duplicated_term', 'lists_polylang_languages_with_term_ids', 'links_polylang_post_translation_assigning_language', 'reports_polylang_post_link_that_did_not_persist', 'links_polylang_term_translation_assigning_language', 'reports_polylang_term_link_that_did_not_persist', 'copies_post_language_without_translation_group', 'refuses_translation_when_source_is_not_readable', 'refuses_translation_into_a_type_the_user_cannot_create', 'refuses_to_overwrite_a_translation_the_user_cannot_edit', 'refuses_publishing_an_existing_translation_without_publish_capability', 'translation_refuses_publish_without_publish_capability', 'translation_belongs_to_current_user_without_edit_others', 'translation_keeps_source_author_with_edit_others', 'translation_skips_protected_meta_when_source_is_not_editable' ), true ) ) {
 		require_once __DIR__ . '/doubles/polylang.php';
 	}
 
@@ -314,6 +317,13 @@ function ewpa_bootstrap_case( string $case ): void {
 	if ( in_array( $case, array( 'translation_belongs_to_current_user_without_edit_others', 'linguator_translation_without_edit_others_belongs_to_current_user' ), true ) ) {
 		$GLOBALS['ewpa_denied_caps']  = array( 'edit_others_posts' );
 		$GLOBALS['ewpa_current_user'] = 2;
+	}
+	if ( false !== strpos( $case, 'protected_meta' ) ) {
+		// A protected key next to a public one on the source post.
+		$GLOBALS['ewpa_post_meta'][10]['subtitle'] = array( 'Public subtitle' );
+	}
+	if ( false !== strpos( $case, 'protected_meta_when_source_is_not_editable' ) ) {
+		$GLOBALS['ewpa_denied_caps'] = array( 'edit_post:10' );
 	}
 }
 
@@ -561,6 +571,28 @@ function ewpa_run_case( string $case ): void {
 			$result = ewpa_multilanguage_create_post_translation( 10, 'it', array( 'title' => 'Ciao' ) );
 			ewpa_assert_true( ! $result instanceof WP_Error, ewpa_describe( $result ) );
 			ewpa_assert_same( 2, (int) $GLOBALS['ewpa_posts'][ $result['post_id'] ]->post_author );
+			break;
+		case 'translation_skips_protected_meta_when_source_is_not_editable':
+			// Translating someone else's post stays allowed; their protected meta is not copied.
+			$result = ewpa_multilanguage_create_post_translation( 10, 'it', array( 'title' => 'Ciao' ) );
+			ewpa_assert_true( ! $result instanceof WP_Error, ewpa_describe( $result ) );
+			$copied = $GLOBALS['ewpa_added_post_meta'][ $result['post_id'] ] ?? array();
+			ewpa_assert_same( array( 'Public subtitle' ), $copied['subtitle'] ?? null );
+			ewpa_assert_same( false, isset( $copied['_elementor_data'] ) );
+			break;
+		case 'linguator_translation_strips_protected_meta_when_source_is_not_editable':
+			$result = ewpa_multilanguage_create_post_translation( 10, 'it', array( 'title' => 'Ciao' ) );
+			ewpa_assert_true( ! $result instanceof WP_Error, ewpa_describe( $result ) );
+			$kept = $GLOBALS['ewpa_post_meta'][ $result['post_id'] ] ?? array();
+			ewpa_assert_same( array( 'Public subtitle' ), $kept['subtitle'] ?? null );
+			ewpa_assert_same( false, isset( $kept['_elementor_data'] ) );
+			break;
+		case 'linguator_translation_keeps_protected_meta_when_source_is_editable':
+			$result = ewpa_multilanguage_create_post_translation( 10, 'it', array( 'title' => 'Ciao' ) );
+			ewpa_assert_true( ! $result instanceof WP_Error, ewpa_describe( $result ) );
+			$kept = $GLOBALS['ewpa_post_meta'][ $result['post_id'] ] ?? array();
+			ewpa_assert_same( true, isset( $kept['_elementor_data'] ) );
+			ewpa_assert_same( array( 'Public subtitle' ), $kept['subtitle'] ?? null );
 			break;
 		case 'linguator_translation_refuses_publish_without_publish_capability':
 			$result = ewpa_multilanguage_create_post_translation( 10, 'it', array( 'status' => 'publish' ) );
@@ -921,6 +953,16 @@ function get_post_meta( $post_id, $key = '', $single = false ) {
 	return $GLOBALS['ewpa_post_meta'][ $post_id ] ?? array();
 }
 
+function is_protected_meta( $meta_key, $meta_type = '' ) {
+	// Core's default: a key that starts with an underscore is protected.
+	return '_' === substr( (string) $meta_key, 0, 1 );
+}
+
+function delete_post_meta( $post_id, $meta_key, $meta_value = '' ) {
+	unset( $GLOBALS['ewpa_post_meta'][ $post_id ][ $meta_key ] );
+	return true;
+}
+
 function add_post_meta( $post_id, $key, $value, $unique = false ) {
 	// Core's add_metadata() unslashes the value before storing it.
 	$GLOBALS['ewpa_added_post_meta'][ $post_id ][ $key ][] = wp_unslash( $value );
@@ -1174,6 +1216,8 @@ class Linguator_Sync_Post_Model {
 				'post_status' => 'draft',
 			)
 		);
+		// Linguator copies the source's custom fields along with the post.
+		$GLOBALS['ewpa_post_meta'][ $new_id ] = $GLOBALS['ewpa_post_meta'][ $post_id ] ?? array();
 		$GLOBALS['ewpa_linguator_post_languages'][ $new_id ] = $target_language;
 		$GLOBALS['ewpa_linguator_translations'][ $target_language ] = $new_id;
 
