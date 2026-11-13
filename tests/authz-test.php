@@ -3141,6 +3141,38 @@ ewpa_check(
 	! is_wp_error( $result ) && 'Public subtitle' === ( $result['meta']['subtitle'] ?? null )
 );
 
+/*
+ * ==========================================================================
+ * T4.5 — duplicate-post and protected meta (audit W6, 2.16.1)
+ *
+ * duplicate-post lets a reader copy a published post they cannot edit, and the
+ * copy is theirs, so get-post-meta (edit_post) then reads every key of it. The
+ * protected meta of someone else's post went through that chain. As decided for
+ * translations (T4), protected meta is not copied when the user cannot edit the
+ * source. Course 110 belongs to user 3 and carries a public and a protected key.
+ * ==========================================================================
+ */
+
+ewpa_reset();
+$result = ewpa_callback( 'ewpa/duplicate-post' )( array( 'post_id' => 110 ) );
+$ewpa_copy_meta = is_wp_error( $result ) ? null : ( $GLOBALS['ewpa_meta'][ $result['new_post_id'] ] ?? array() );
+ewpa_check(
+	'duplicate_does_not_copy_protected_meta_of_a_post_the_user_cannot_edit',
+	is_array( $ewpa_copy_meta ) && ! array_key_exists( '_internal_secret', $ewpa_copy_meta )
+);
+ewpa_check(
+	'duplicate_still_copies_public_meta_of_a_post_the_user_cannot_edit',
+	is_array( $ewpa_copy_meta ) && 'Public subtitle' === ( $ewpa_copy_meta['subtitle'] ?? null )
+);
+
+ewpa_reset();
+ewpa_become_admin();
+$result = ewpa_callback( 'ewpa/duplicate-post' )( array( 'post_id' => 110 ) );
+ewpa_check(
+	'duplicate_copies_protected_meta_for_a_user_who_can_edit_the_source',
+	! is_wp_error( $result ) && 'Protected value' === ( $GLOBALS['ewpa_meta'][ $result['new_post_id'] ]['_internal_secret'] ?? null )
+);
+
 echo PHP_EOL;
 if ( $ewpa_failures > 0 ) {
 	echo $ewpa_failures . ' check(s) FAILED out of ' . $ewpa_checks . '.' . PHP_EOL;

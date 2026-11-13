@@ -2956,8 +2956,14 @@ function ewpa_register_custom_abilities(): void {
 
 					if ( $copy_meta ) {
 						$skip = array( '_edit_lock', '_edit_last', '_wp_old_slug', '_wp_old_date' );
+						// The copy belongs to the caller, who can then read every key of it:
+						// a source they cannot edit keeps its protected meta to itself.
+						$withhold_protected = ! current_user_can( 'edit_post', $post_id );
 						foreach ( get_post_meta( $post_id ) as $key => $values ) {
 							if ( in_array( $key, $skip, true ) ) {
+								continue;
+							}
+							if ( $withhold_protected && is_protected_meta( (string) $key, 'post' ) ) {
 								continue;
 							}
 							foreach ( $values as $value ) {
