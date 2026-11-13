@@ -31,6 +31,10 @@ function ewpa_uninstall_site(): void {
 	delete_option( 'ewpa_oauth_clients' );
 	delete_option( 'ewpa_oauth_connectors_rewrite_version' );
 
+	// Upload links and their results (includes/upload-links.php).
+	// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+	$wpdb->query( $wpdb->prepare( "DELETE FROM {$wpdb->options} WHERE option_name LIKE %s OR option_name LIKE %s", $wpdb->esc_like( 'ewpa_upload_link_' ) . '%', $wpdb->esc_like( 'ewpa_upload_done_' ) . '%' ) );
+
 	$table = $wpdb->prefix . 'ewpa_activity_log';
 	// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 	$wpdb->query( "DROP TABLE IF EXISTS $table" );

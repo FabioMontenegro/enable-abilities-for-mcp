@@ -216,7 +216,7 @@ echo "\n== the release each migration first shipped in ==\n";
 /*
  * Read out of the plugin, then pinned against the published tags. Those tags are the
  * only authority on this: a migration's name is not. Checked against
- * E:\Workspace\svn-enable-abilities-for-mcp\tags, where every release lives:
+ * G:\Workspace\EnableAbilities\svn\tags, where every release lives:
  *
  *   tag 2.4.0  has none of the seven
  *   tag 2.5.0  already has v251          <- not 2.5.1, although that is its name

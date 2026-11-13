@@ -2,8 +2,8 @@
 /**
  * Plugin Name:       Enable Abilities for MCP
  * Plugin URI:        https://mcp.fabiomontenegro.com/
- * Description:       Connect Claude, ChatGPT & any MCP client to WordPress. 112 abilities: content, SEO, WooCommerce, FSE, LMS & more. Free & self-hosted.
- * Version:           2.15.0
+ * Description:       Connect Claude, ChatGPT & any MCP client to WordPress. 114 abilities: content, SEO, WooCommerce, FSE, LMS & more. Free & self-hosted.
+ * Version:           2.16.0
  * Requires at least: 6.9
  * Requires PHP:      8.0
  * Author:            Fabio Montenegro
@@ -11,6 +11,7 @@
  * License:           GPL v2 or later
  * License URI:       https://www.gnu.org/licenses/gpl-2.0.html
  * Text Domain:       enable-abilities-for-mcp
+ * Domain Path:       /languages
  *
  * @package EnableAbilitiesForMCP
  */
@@ -19,12 +20,38 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'EWPA_VERSION', '2.15.0' );
+define( 'EWPA_VERSION', '2.16.0' );
 define( 'EWPA_PLUGIN_FILE', __FILE__ );
 define( 'EWPA_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'EWPA_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 define( 'EWPA_OPTION_KEY', 'ewpa_enabled_abilities' );
 define( 'EWPA_API_KEY_OPTION', 'ewpa_api_key' );
+
+add_action( 'init', 'ewpa_load_textdomain' );
+
+/**
+ * Loads the translations bundled in languages/.
+ *
+ * Runs on init: since WordPress 6.7, loading a text domain earlier raises the
+ * "translation loading was triggered too early" notice.
+ *
+ * load_plugin_textdomain() alone only registers languages/ as a fallback: when a
+ * WordPress.org language pack exists in wp-content/languages/plugins, WordPress reads
+ * that pack only, even when it lacks strings the plugin ships translated. So both files
+ * are loaded here. WordPress returns the first file that has a string: the pack goes
+ * first so community fixes win, and the bundled catalog fills the strings it lacks.
+ *
+ * @return void
+ */
+function ewpa_load_textdomain(): void {
+	$domain = 'enable-abilities-for-mcp';
+	$locale = determine_locale();
+
+	load_plugin_textdomain( $domain, false, dirname( plugin_basename( __FILE__ ) ) . '/languages' );
+
+	load_textdomain( $domain, WP_LANG_DIR . '/plugins/' . $domain . '-' . $locale . '.mo', $locale );
+	load_textdomain( $domain, __DIR__ . '/languages/' . $domain . '-' . $locale . '.mo', $locale );
+}
 
 // Declare WooCommerce HPOS (High-Performance Order Storage) compatibility.
 add_action(
@@ -47,6 +74,7 @@ require_once EWPA_PLUGIN_DIR . 'includes/admin.php';
 require_once EWPA_PLUGIN_DIR . 'includes/multilanguage.php';
 require_once EWPA_PLUGIN_DIR . 'includes/code-snippets.php';
 require_once EWPA_PLUGIN_DIR . 'includes/abilities.php';
+require_once EWPA_PLUGIN_DIR . 'includes/upload-links.php';
 require_once EWPA_PLUGIN_DIR . 'includes/thirdparty.php';
 require_once EWPA_PLUGIN_DIR . 'includes/oauth-connectors.php';
 require_once EWPA_PLUGIN_DIR . 'includes/oauth-sessions.php';
@@ -1286,51 +1314,61 @@ function ewpa_get_abilities_registry() {
 			'section_icon'  => 'dashicons-edit',
 			'section_badge' => 'warning',
 			'abilities'     => array(
-				'ewpa/create-post'       => array(
+				'ewpa/create-post'        => array(
 					'label' => __( 'Create Post', 'enable-abilities-for-mcp' ),
 					'desc'  => __( 'Create a new post with title, content, categories, tags, featured image, and more.', 'enable-abilities-for-mcp' ),
 				),
-				'ewpa/update-post'       => array(
+				'ewpa/update-post'        => array(
 					'label' => __( 'Update Post', 'enable-abilities-for-mcp' ),
 					'desc'  => __( 'Modify an existing post. Only updates the fields provided.', 'enable-abilities-for-mcp' ),
 				),
-				'ewpa/delete-post'       => array(
+				'ewpa/delete-post'        => array(
 					'label' => __( 'Delete Post', 'enable-abilities-for-mcp' ),
 					'desc'  => __( 'Send a post to trash or permanently delete it.', 'enable-abilities-for-mcp' ),
 				),
-				'ewpa/create-category'   => array(
+				'ewpa/create-category'    => array(
 					'label' => __( 'Create Category', 'enable-abilities-for-mcp' ),
 					'desc'  => __( 'Create a new category with name, slug, description, and parent.', 'enable-abilities-for-mcp' ),
 				),
-				'ewpa/create-tag'        => array(
+				'ewpa/create-tag'         => array(
 					'label' => __( 'Create Tag', 'enable-abilities-for-mcp' ),
 					'desc'  => __( 'Create a new tag with name, slug, and description.', 'enable-abilities-for-mcp' ),
 				),
-				'ewpa/create-page'       => array(
+				'ewpa/create-page'        => array(
 					'label' => __( 'Create Page', 'enable-abilities-for-mcp' ),
 					'desc'  => __( 'Create a new page with title, content, status, and parent page.', 'enable-abilities-for-mcp' ),
 				),
-				'ewpa/moderate-comment'  => array(
+				'ewpa/moderate-comment'   => array(
 					'label' => __( 'Moderate Comment', 'enable-abilities-for-mcp' ),
 					'desc'  => __( 'Change comment status: approve, hold, spam, or trash.', 'enable-abilities-for-mcp' ),
 				),
-				'ewpa/reply-comment'     => array(
+				'ewpa/reply-comment'      => array(
 					'label' => __( 'Reply to Comment', 'enable-abilities-for-mcp' ),
 					'desc'  => __( 'Reply to an existing comment as the authenticated user.', 'enable-abilities-for-mcp' ),
 				),
-				'ewpa/update-comment'    => array(
+				'ewpa/update-comment'     => array(
 					'label' => __( 'Update Comment', 'enable-abilities-for-mcp' ),
 					'desc'  => __( 'Update content, author name, email, or WordPress user of an existing comment.', 'enable-abilities-for-mcp' ),
 				),
-				'ewpa/upload-image'      => array(
+				'ewpa/upload-image'       => array(
 					'label' => __( 'Upload Image from URL', 'enable-abilities-for-mcp' ),
 					'desc'  => __( 'Download an image from an external URL and register it in the media library. Returns the attachment ID.', 'enable-abilities-for-mcp' ),
 				),
-				'ewpa/duplicate-post'    => array(
+				'ewpa/create-upload-link' => array(
+					'label'   => __( 'Create Upload Link', 'enable-abilities-for-mcp' ),
+					'desc'    => __( 'Create a temporary, single-use link to upload an image from the user\'s computer straight to the media library, without passing the file through the conversation. Images only. Opt-in required.', 'enable-abilities-for-mcp' ),
+					'default' => false,
+				),
+				'ewpa/get-upload-status'  => array(
+					'label'   => __( 'Get Upload Status', 'enable-abilities-for-mcp' ),
+					'desc'    => __( 'Check whether the file for an upload link has arrived and get its attachment ID. Opt-in required.', 'enable-abilities-for-mcp' ),
+					'default' => false,
+				),
+				'ewpa/duplicate-post'     => array(
 					'label' => __( 'Duplicate Post / Page / CPT', 'enable-abilities-for-mcp' ),
 					'desc'  => __( 'Create an exact copy of any post, page, or CPT item — including all meta and taxonomy terms. The duplicate is saved as draft by default.', 'enable-abilities-for-mcp' ),
 				),
-				'ewpa/assign-post-terms' => array(
+				'ewpa/assign-post-terms'  => array(
 					'label' => __( 'Assign Post Terms', 'enable-abilities-for-mcp' ),
 					'desc'  => __( 'Assign a custom taxonomy\'s terms to a post or page (e.g. a taxonomy registered by a companion plugin). Native categories and tags are already covered by ewpa/update-post.', 'enable-abilities-for-mcp' ),
 				),

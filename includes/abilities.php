@@ -273,6 +273,40 @@ function ewpa_check_post_permission( $input, string $capability, string $param =
 }
 
 /**
+ * Tells whether a post's content must be withheld from the current user.
+ *
+ * Mirrors the core REST posts controller: a password-protected post keeps its
+ * content and excerpt hidden unless the user can edit the post. read_post
+ * ignores post passwords, so every reader gated on it needs this check. The
+ * abilities take no password input, so there is no "correct password" path.
+ *
+ * @param object $post Post object.
+ * @return bool True when the content and excerpt must not be returned.
+ */
+function ewpa_is_content_protected( $post ): bool {
+	return ! empty( $post->post_password ) && ! current_user_can( 'edit_post', $post->ID );
+}
+
+/**
+ * Runs wp_kses_post() over every string in a settings array, at any depth.
+ *
+ * Keys and non-string values (numbers, booleans, null) are kept as they are.
+ *
+ * @param array $settings Settings array.
+ * @return array
+ */
+function ewpa_kses_settings( array $settings ): array {
+	foreach ( $settings as $key => $value ) {
+		if ( is_array( $value ) ) {
+			$settings[ $key ] = ewpa_kses_settings( $value );
+		} elseif ( is_string( $value ) ) {
+			$settings[ $key ] = wp_kses_post( $value );
+		}
+	}
+	return $settings;
+}
+
+/**
  * Verifies that the authenticated user can edit the term referenced by $input.
  *
  * @param array  $input Ability input.
@@ -1022,7 +1056,7 @@ function ewpa_register_custom_abilities(): void {
 							'post_title'   => $post->post_title,
 							'post_status'  => $post->post_status,
 							'post_date'    => $post->post_date,
-							'post_excerpt' => $post->post_excerpt,
+							'post_excerpt' => ewpa_is_content_protected( $post ) ? '' : $post->post_excerpt,
 							'post_author'  => get_the_author_meta( 'display_name', $post->post_author ),
 							'permalink'    => get_permalink( $post->ID ),
 							'categories'   => $cats,
@@ -1068,10 +1102,14 @@ function ewpa_register_custom_abilities(): void {
 				'output_schema'       => array(
 					'type'       => 'object',
 					'properties' => array(
-						'ID'               => array( 'type' => 'integer' ),
-						'post_title'       => array( 'type' => 'string' ),
-						'post_content'     => array( 'type' => 'string' ),
-						'post_excerpt'     => array( 'type' => 'string' ),
+						'ID'                 => array( 'type' => 'integer' ),
+						'post_title'         => array( 'type' => 'string' ),
+						'post_content'       => array( 'type' => 'string' ),
+						'post_excerpt'       => array( 'type' => 'string' ),
+						'password_protected' => array(
+							'type'        => 'boolean',
+							'description' => 'True when the post has a password. Its content and excerpt are then empty unless the user can edit the post.',
+						),
 						'post_status'      => array( 'type' => 'string' ),
 						'post_date'        => array( 'type' => 'string' ),
 						'post_modified'    => array( 'type' => 'string' ),
@@ -1107,12 +1145,14 @@ function ewpa_register_custom_abilities(): void {
 					$seo_keys   = ewpa_get_seo_meta_keys();
 					$meta_title = get_post_meta( $post->ID, $seo_keys['title'], true );
 					$meta_desc  = get_post_meta( $post->ID, $seo_keys['description'], true );
+					$protected  = ewpa_is_content_protected( $post );
 
 					return array(
-						'ID'               => $post->ID,
-						'post_title'       => $post->post_title,
-						'post_content'     => $post->post_content,
-						'post_excerpt'     => $post->post_excerpt,
+						'ID'                 => $post->ID,
+						'post_title'         => $post->post_title,
+						'post_content'       => $protected ? '' : $post->post_content,
+						'post_excerpt'       => $protected ? '' : $post->post_excerpt,
+						'password_protected' => ! empty( $post->post_password ),
 						'post_status'      => $post->post_status,
 						'post_date'        => $post->post_date,
 						'post_modified'    => $post->post_modified,
@@ -1156,10 +1196,14 @@ function ewpa_register_custom_abilities(): void {
 				'output_schema'       => array(
 					'type'       => 'object',
 					'properties' => array(
-						'ID'               => array( 'type' => 'integer' ),
-						'post_title'       => array( 'type' => 'string' ),
-						'post_content'     => array( 'type' => 'string' ),
-						'post_excerpt'     => array( 'type' => 'string' ),
+						'ID'                 => array( 'type' => 'integer' ),
+						'post_title'         => array( 'type' => 'string' ),
+						'post_content'       => array( 'type' => 'string' ),
+						'post_excerpt'       => array( 'type' => 'string' ),
+						'password_protected' => array(
+							'type'        => 'boolean',
+							'description' => 'True when the page has a password. Its content and excerpt are then empty unless the user can edit the page.',
+						),
 						'post_status'      => array( 'type' => 'string' ),
 						'post_date'        => array( 'type' => 'string' ),
 						'post_modified'    => array( 'type' => 'string' ),
@@ -1189,12 +1233,14 @@ function ewpa_register_custom_abilities(): void {
 					$seo_keys   = ewpa_get_seo_meta_keys();
 					$meta_title = get_post_meta( $page->ID, $seo_keys['title'], true );
 					$meta_desc  = get_post_meta( $page->ID, $seo_keys['description'], true );
+					$protected  = ewpa_is_content_protected( $page );
 
 					return array(
-						'ID'               => $page->ID,
-						'post_title'       => $page->post_title,
-						'post_content'     => $page->post_content,
-						'post_excerpt'     => $page->post_excerpt,
+						'ID'                 => $page->ID,
+						'post_title'         => $page->post_title,
+						'post_content'       => $protected ? '' : $page->post_content,
+						'post_excerpt'       => $protected ? '' : $page->post_excerpt,
+						'password_protected' => ! empty( $page->post_password ),
 						'post_status'      => $page->post_status,
 						'post_date'        => $page->post_date,
 						'post_modified'    => $page->post_modified,
@@ -2846,6 +2892,10 @@ function ewpa_register_custom_abilities(): void {
 					}
 					if ( ! current_user_can( 'read_post', $post_id ) ) {
 						return new WP_Error( 'forbidden', __( 'You do not have permission to read this post.', 'enable-abilities-for-mcp' ) );
+					}
+					// read_post ignores post passwords: copying a protected post would hand its content to the caller.
+					if ( ewpa_is_content_protected( $post ) ) {
+						return new WP_Error( 'forbidden', __( 'This post is password-protected. Only users who can edit it can duplicate it.', 'enable-abilities-for-mcp' ) );
 					}
 					if ( ! ewpa_user_can_for_type( $post->post_type, 'create_posts' ) ) {
 						return new WP_Error( 'forbidden', __( 'You do not have permission to create items of this type.', 'enable-abilities-for-mcp' ) );
@@ -5627,7 +5677,7 @@ function ewpa_register_custom_abilities(): void {
 							'post_title'   => $p->post_title,
 							'post_status'  => $p->post_status,
 							'post_date'    => $p->post_date,
-							'post_excerpt' => $p->post_excerpt,
+							'post_excerpt' => ewpa_is_content_protected( $p ) ? '' : $p->post_excerpt,
 							'post_author'  => (int) $p->post_author,
 							'permalink'    => get_permalink( $p->ID ),
 							'post_type'    => $p->post_type,
@@ -5670,8 +5720,12 @@ function ewpa_register_custom_abilities(): void {
 					'properties' => array(
 						'ID'              => array( 'type' => 'integer' ),
 						'post_title'      => array( 'type' => 'string' ),
-						'post_content'    => array( 'type' => 'string' ),
-						'post_excerpt'    => array( 'type' => 'string' ),
+						'post_content'       => array( 'type' => 'string' ),
+						'post_excerpt'       => array( 'type' => 'string' ),
+						'password_protected' => array(
+							'type'        => 'boolean',
+							'description' => 'True when the item has a password. Its content and excerpt are then empty unless the user can edit the item.',
+						),
 						'post_status'     => array( 'type' => 'string' ),
 						'post_date'       => array( 'type' => 'string' ),
 						'post_type'       => array( 'type' => 'string' ),
@@ -5740,11 +5794,14 @@ function ewpa_register_custom_abilities(): void {
 						$featured = wp_get_attachment_url( $thumb_id );
 					}
 
+					$protected = ewpa_is_content_protected( $post );
+
 					return array(
-						'ID'              => $post->ID,
-						'post_title'      => $post->post_title,
-						'post_content'    => $post->post_content,
-						'post_excerpt'    => $post->post_excerpt,
+						'ID'                 => $post->ID,
+						'post_title'         => $post->post_title,
+						'post_content'       => $protected ? '' : $post->post_content,
+						'post_excerpt'       => $protected ? '' : $post->post_excerpt,
+						'password_protected' => ! empty( $post->post_password ),
 						'post_status'     => $post->post_status,
 						'post_date'       => $post->post_date,
 						'post_type'       => $post->post_type,
@@ -7731,7 +7788,7 @@ function ewpa_register_custom_abilities(): void {
 					return array(
 						'id'           => $post->ID,
 						'title'        => $post->post_title,
-						'description'  => $post->post_content,
+						'description'  => ewpa_is_content_protected( $post ) ? '' : $post->post_content,
 						'status'       => $post->post_status,
 						'start_date'   => get_post_meta( $event_id, '_EventStartDate', true ),
 						'end_date'     => get_post_meta( $event_id, '_EventEndDate', true ),
@@ -9503,6 +9560,15 @@ function ewpa_register_custom_abilities(): void {
 						return new WP_Error( 'no_edits', __( 'Provide either (element_id + settings) or a non-empty edits[] array.', 'enable-abilities-for-mcp' ) );
 					}
 
+					/*
+					 * This writes _elementor_data directly, so Elementor's own save path, which
+					 * filters HTML for users without unfiltered_html, never runs. Filter it here,
+					 * as WordPress does for post content.
+					 */
+					if ( ! current_user_can( 'unfiltered_html' ) ) {
+						$edits = array_map( 'ewpa_kses_settings', $edits );
+					}
+
 					$raw = get_post_meta( $post_id, '_elementor_data', true );
 					if ( empty( $raw ) ) {
 						return new WP_Error( 'no_data', __( 'This post has no _elementor_data.', 'enable-abilities-for-mcp' ) );
@@ -9607,7 +9673,6 @@ function ewpa_register_custom_abilities(): void {
 							'post_status'      => 'publish',
 							'posts_per_page'   => min( (int) ( $input['per_page'] ?? 20 ), 100 ),
 							'paged'            => max( 1, (int) ( $input['page'] ?? 1 ) ),
-							'suppress_filters' => true,
 						);
 						if ( ! empty( $input['search'] ) ) {
 							$args['s'] = sanitize_text_field( $input['search'] );
@@ -9710,7 +9775,7 @@ function ewpa_register_custom_abilities(): void {
 						return array(
 							'id'          => $course->ID,
 							'title'       => $course->post_title,
-							'description' => wp_strip_all_tags( $course->post_content ),
+							'description' => ewpa_is_content_protected( $course ) ? '' : wp_strip_all_tags( $course->post_content ),
 							'permalink'   => get_permalink( $course->ID ),
 							'lessons'     => $lessons_data,
 							'quizzes'     => $quizzes_data,
@@ -10213,7 +10278,6 @@ function ewpa_register_custom_abilities(): void {
 							'post_status'      => 'publish',
 							'posts_per_page'   => min( (int) ( $input['per_page'] ?? 20 ), 100 ),
 							'paged'            => max( 1, (int) ( $input['page'] ?? 1 ) ),
-							'suppress_filters' => true,
 						);
 						if ( ! empty( $input['search'] ) ) {
 							$args['s'] = sanitize_text_field( $input['search'] );
@@ -10306,7 +10370,7 @@ function ewpa_register_custom_abilities(): void {
 						return array(
 							'id'          => $course->ID,
 							'title'       => $course->post_title,
-							'description' => $course->post_content,
+							'description' => ewpa_is_content_protected( $course ) ? '' : $course->post_content,
 							'permalink'   => get_permalink( $course->ID ),
 							'topics'      => $topics,
 						);

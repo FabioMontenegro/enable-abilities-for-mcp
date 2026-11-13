@@ -7,7 +7,7 @@
 
 Let AI assistants like Claude manage your WordPress site through the [Model Context Protocol](https://modelcontextprotocol.io/) — with full control over exactly what they can and cannot do.
 
-**112 abilities in 21 categories**, each one individually toggleable from the dashboard: content, SEO (Rank Math / SEOPress / Yoast), navigation menus, WooCommerce, Elementor, LearnDash, Tutor LMS, JetEngine (Options Pages + Query Builder), multilanguage, `llms.txt`, FSE block templates, accessibility (WCAG), cache purge, and more.
+**114 abilities in 21 categories**, each one individually toggleable from the dashboard: content, SEO (Rank Math / SEOPress / Yoast), navigation menus, WooCommerce, Elementor, LearnDash, Tutor LMS, JetEngine (Options Pages + Query Builder), multilanguage, `llms.txt`, FSE block templates, accessibility (WCAG), cache purge, and more.
 
 ## How it works
 
@@ -17,7 +17,7 @@ This plugin completes the stack:
 
 ```
 Claude / MCP client  ──►  MCP Adapter  ──►  Abilities API  ──►  Enable Abilities for MCP
-                                                                (112 abilities + per-ability toggles
+                                                                (114 abilities + per-ability toggles
                                                                  + auth + activity log)
 ```
 
@@ -32,7 +32,7 @@ Claude / MCP client  ──►  MCP Adapter  ──►  Abilities API  ──►
 |---|---|---|
 | **WordPress Core** | 3 | Native site/user/environment info, exposed to MCP by this plugin |
 | **Read** | 9 | Posts, pages, categories, tags, comments, media, users — with filters, including posts by custom-field key and value |
-| **Write** | 12 | Create/update/delete posts and pages (custom fields can be written in the same call that creates the post), moderate and reply to comments, upload images from URL, duplicate any post/page/CPT with meta and taxonomies, assign custom taxonomy terms to a post/page |
+| **Write** | 14 | Create/update/delete posts and pages (custom fields can be written in the same call that creates the post), moderate and reply to comments, upload images from URL or from the user's computer through a single-use link (the file never passes through the conversation), duplicate any post/page/CPT with meta and taxonomies, assign custom taxonomy terms to a post/page |
 | **SEO — Rank Math** | 3 | Read/write all meta + write structured-data schema blocks (FAQPage, Article, Product…) as JSON-LD |
 | **SEO — SEOPress** | 3 | Read/write all meta + **content analysis**: every SEOPress check (headings, internal links, schemas…) with impact level and recommendation, optionally re-analyzing the rendered page first |
 | **SEO — Yoast SEO** | 3 | Read/write all meta + sitemap index |
@@ -185,6 +185,8 @@ request, and the library's own behaviour is bit-for-bit what it was.
 
 - **Read abilities ask for a read capability** — the WooCommerce readers require `read_private_shop_orders` and `read_private_products` rather than an editing capability, so a role built only to read is not refused. Plain `read` is not enough and is not meant to be: order data carries the buyer's name, address, e-mail and phone, so the role still has to be given the capability to read private records of that type. The previous editing capability is still accepted, so a role that worked before keeps working
 - **Capability checks everywhere** — every ability declares a `permission_callback`; per-post abilities check `read_post`/`edit_post` on the specific target, not just site-wide caps. Publishing requires the publish capability of that post type and is refused with an error rather than degraded to a draft; an author or a parent taken from the input is validated against `edit_others_posts` and against permission on the parent; listing non-published statuses requires an editing capability and the results are filtered per post
+- **Password-protected posts stay protected** — as in the WordPress REST API, readers return an empty content, excerpt or description for a post with a password unless the user can edit it, and the post cannot be duplicated by someone who cannot edit it
+- **HTML filtered like core** — HTML written into Elementor elements goes through `wp_kses_post()` for users without `unfiltered_html`, just as post content does
 - **OAuth 2.1 connector** — opt-in, PKCE S256, Client ID Metadata Documents restricted to trusted publishers (Claude bundled), per-user consent screen, JWT-authenticated transport
 - **Revocable OAuth sessions** — each connector session is a WordPress Application Password named `MCP OAuth – <client> – <date>`, with Last Used and Last IP filled in. Turning the OAuth switch off, changing the user's password, "Log Out Everywhere", revoking the Application Password, or deactivating the plugin ends the session; a revoked connector must be approved again and never reconnects on its own. While the switch is off the OAuth server stays off, even if another plugin boots the same OAuth library
 - **Third-party connectors** — separately opt-in; a self-registering client may only ever return users to a callback URL an administrator has listed, checked again on every authorization request
