@@ -7162,29 +7162,35 @@ function ewpa_register_custom_abilities(): void {
 						);
 					}
 
+					// As for posts: a password-protected product keeps its descriptions
+					// hidden from a user who cannot edit it.
+					$product_post = get_post( $product->get_id() );
+					$protected    = $product_post && ewpa_is_content_protected( $product_post );
+
 					return array(
-						'id'                => $product->get_id(),
-						'name'              => $product->get_name(),
-						'slug'              => $product->get_slug(),
-						'sku'               => $product->get_sku(),
-						'status'            => $product->get_status(),
-						'type'              => $product->get_type(),
-						'description'       => $product->get_description(),
-						'short_description' => $product->get_short_description(),
-						'price'             => $product->get_price(),
-						'regular_price'     => $product->get_regular_price(),
-						'sale_price'        => $product->get_sale_price(),
-						'on_sale'           => $product->is_on_sale(),
-						'stock_status'      => $product->get_stock_status(),
-						'stock_qty'         => $product->get_stock_quantity(),
-						'manage_stock'      => $product->get_manage_stock(),
-						'weight'            => $product->get_weight(),
-						'categories'        => $categories,
-						'tags'              => $tags,
-						'attributes'        => $attributes,
-						'permalink'         => get_permalink( $product->get_id() ),
-						'date_created'      => $product->get_date_created() ? $product->get_date_created()->date( 'Y-m-d H:i:s' ) : null,
-						'date_modified'     => $product->get_date_modified() ? $product->get_date_modified()->date( 'Y-m-d H:i:s' ) : null,
+						'id'                 => $product->get_id(),
+						'name'               => $product->get_name(),
+						'slug'               => $product->get_slug(),
+						'sku'                => $product->get_sku(),
+						'status'             => $product->get_status(),
+						'type'               => $product->get_type(),
+						'description'        => $protected ? '' : $product->get_description(),
+						'short_description'  => $protected ? '' : $product->get_short_description(),
+						'password_protected' => $product_post ? ! empty( $product_post->post_password ) : false,
+						'price'              => $product->get_price(),
+						'regular_price'      => $product->get_regular_price(),
+						'sale_price'         => $product->get_sale_price(),
+						'on_sale'            => $product->is_on_sale(),
+						'stock_status'       => $product->get_stock_status(),
+						'stock_qty'          => $product->get_stock_quantity(),
+						'manage_stock'       => $product->get_manage_stock(),
+						'weight'             => $product->get_weight(),
+						'categories'         => $categories,
+						'tags'               => $tags,
+						'attributes'         => $attributes,
+						'permalink'          => get_permalink( $product->get_id() ),
+						'date_created'       => $product->get_date_created() ? $product->get_date_created()->date( 'Y-m-d H:i:s' ) : null,
+						'date_modified'      => $product->get_date_modified() ? $product->get_date_modified()->date( 'Y-m-d H:i:s' ) : null,
 					);
 				},
 				'meta'                => array(

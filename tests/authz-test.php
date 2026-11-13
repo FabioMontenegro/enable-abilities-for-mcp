@@ -2860,6 +2860,15 @@ if ( ! function_exists( 'wc_get_product' ) ) {
 			if ( 'get_status' === $name ) {
 				return $this->post->post_status;
 			}
+			if ( 'get_description' === $name ) {
+				return $this->post->post_content;
+			}
+			if ( 'get_short_description' === $name ) {
+				return $this->post->post_excerpt;
+			}
+			if ( in_array( $name, array( 'get_category_ids', 'get_tag_ids', 'get_attributes' ), true ) ) {
+				return array();
+			}
 			return $this->changes[ substr( $name, 4 ) ] ?? '';
 		}
 		public function save() {
@@ -3171,6 +3180,54 @@ $result = ewpa_callback( 'ewpa/duplicate-post' )( array( 'post_id' => 110 ) );
 ewpa_check(
 	'duplicate_copies_protected_meta_for_a_user_who_can_edit_the_source',
 	! is_wp_error( $result ) && 'Protected value' === ( $GLOBALS['ewpa_meta'][ $result['new_post_id'] ]['_internal_secret'] ?? null )
+);
+
+/*
+ * ==========================================================================
+ * T4.6 — wc-get-product and password-protected products (verifier advisory, 2.16.1)
+ *
+ * As C2 did for posts: a password-protected product keeps its description and
+ * short description hidden from a user who cannot edit it. Product 300 belongs
+ * to user 3; the current user (2) is a vendor or a read-only role.
+ * ==========================================================================
+ */
+
+/**
+ * Puts a password and a short description on product 300 and reads it.
+ *
+ * @param string[] $caps Capabilities of the current user.
+ * @return mixed
+ */
+function ewpa_read_protected_product( array $caps ) {
+	ewpa_product_fixtures();
+	$GLOBALS['ewpa_caps']                     = $caps;
+	$GLOBALS['ewpa_posts'][300]->post_password = 'secret';
+	$GLOBALS['ewpa_posts'][300]->post_excerpt  = 'Short 300';
+	return ewpa_callback( 'ewpa/wc-get-product' )( array( 'product_id' => 300 ) );
+}
+
+foreach ( array(
+	'vendor'    => array( 'read', 'edit_products' ),
+	'read_only' => array( 'read', 'read_private_products' ),
+) as $ewpa_role => $ewpa_role_caps ) {
+	$result = ewpa_read_protected_product( $ewpa_role_caps );
+	ewpa_check(
+		'wc_get_product_hides_a_protected_description_from_a_' . $ewpa_role . '_role',
+		! is_wp_error( $result ) && '' === ( $result['description'] ?? null ) && '' === ( $result['short_description'] ?? null ) && true === ( $result['password_protected'] ?? null )
+	);
+}
+
+$result = ewpa_read_protected_product( array( 'read', 'edit_products', 'edit_others_products' ) );
+ewpa_check(
+	'wc_get_product_keeps_a_protected_description_for_a_user_who_can_edit_it',
+	! is_wp_error( $result ) && 'Body 300' === ( $result['description'] ?? null ) && 'Short 300' === ( $result['short_description'] ?? null )
+);
+
+ewpa_product_fixtures( array( 'read_private_products' ) );
+$result = ewpa_callback( 'ewpa/wc-get-product' )( array( 'product_id' => 300 ) );
+ewpa_check(
+	'wc_get_product_still_returns_an_unprotected_description_to_a_reader',
+	! is_wp_error( $result ) && 'Body 300' === ( $result['description'] ?? null ) && false === ( $result['password_protected'] ?? null )
 );
 
 echo PHP_EOL;
