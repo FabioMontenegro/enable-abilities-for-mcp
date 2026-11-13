@@ -2573,13 +2573,17 @@ ewpa_check(
 foreach ( array( 'ewpa/wc-update-order-status' => 'edit_shop_orders', 'ewpa/wc-update-product' => 'edit_products' ) as $ewpa_wc_ability => $ewpa_wc_cap ) {
 	$ewpa_wc_label = str_replace( array( 'ewpa/', '-' ), array( '', '_' ), $ewpa_wc_ability );
 
-	ewpa_reset();
-	$GLOBALS['ewpa_caps'] = array( 'read', $ewpa_wc_cap );
-	ewpa_check( $ewpa_wc_label . '_requires_its_write_capability', true === ewpa_callback_permission( $ewpa_wc_ability ) );
+	// wc-update-product checks the product itself (T4.1), so it gets one the user owns.
+	// The schema requires product_id, and core validates the input before this check.
+	$ewpa_wc_input = 'ewpa/wc-update-product' === $ewpa_wc_ability ? array( 'product_id' => 301 ) : array();
 
-	ewpa_reset();
+	ewpa_product_fixtures();
+	$GLOBALS['ewpa_caps'] = array( 'read', $ewpa_wc_cap );
+	ewpa_check( $ewpa_wc_label . '_requires_its_write_capability', true === ewpa_callback_permission( $ewpa_wc_ability, $ewpa_wc_input ) );
+
+	ewpa_product_fixtures();
 	$GLOBALS['ewpa_caps'] = array( 'read', 'read_private_products', 'read_private_shop_orders' );
-	ewpa_check( $ewpa_wc_label . '_refuses_a_read_only_user', true !== ewpa_callback_permission( $ewpa_wc_ability ) );
+	ewpa_check( $ewpa_wc_label . '_refuses_a_read_only_user', true !== ewpa_callback_permission( $ewpa_wc_ability, $ewpa_wc_input ) );
 }
 
 /*
@@ -2819,6 +2823,127 @@ ewpa_check(
 	'elementor_update_keeps_raw_html_for_a_user_with_unfiltered_html',
 	'<p>Hi</p><script>alert(1)</script>' === ( $ewpa_settings['editor'] ?? null )
 		&& '<img src="x.png" onerror="alert(2)">' === ( $ewpa_settings['items'][0]['html'] ?? null )
+);
+
+/*
+ * ==========================================================================
+ * T4.1 — wc-update-product checks the product, not only the role (audit W7, 2.16.1)
+ *
+ * edit_products alone let a user edit every product. A vendor role (edit_products
+ * without edit_others_products, as multi-vendor plugins grant) must reach only its
+ * own products, and a status that publishes needs publish_products, as in core.
+ * Product 300 belongs to user 3; product 301 is the current user's (2) own draft.
+ * ==========================================================================
+ */
+
+if ( ! function_exists( 'wc_get_product' ) ) {
+	/**
+	 * Product double backed by the post fixtures. save() writes the status back.
+	 */
+	class Ewpa_Test_Product {
+		/** @var object */
+		public $post;
+		/** @var array */
+		public $changes = array();
+
+		public function __construct( $post ) {
+			$this->post = $post;
+		}
+		public function get_id() {
+			return $this->post->ID;
+		}
+		public function __call( $name, $args ) {
+			if ( 0 === strpos( $name, 'set_' ) ) {
+				$this->changes[ substr( $name, 4 ) ] = $args[0] ?? null;
+				return null;
+			}
+			if ( 'get_status' === $name ) {
+				return $this->post->post_status;
+			}
+			return $this->changes[ substr( $name, 4 ) ] ?? '';
+		}
+		public function save() {
+			if ( isset( $this->changes['status'] ) ) {
+				$this->post->post_status = $this->changes['status'];
+			}
+			$GLOBALS['ewpa_saved_products'][] = $this->post->ID;
+			return $this->post->ID;
+		}
+	}
+
+	/**
+	 * @param int $id Product ID.
+	 * @return Ewpa_Test_Product|false
+	 */
+	function wc_get_product( $id ) {
+		$post = $GLOBALS['ewpa_posts'][ (int) $id ] ?? null;
+		return ( $post && 'product' === $post->post_type ) ? new Ewpa_Test_Product( $post ) : false;
+	}
+
+	/**
+	 * @param mixed $number Number.
+	 * @return string
+	 */
+	function wc_format_decimal( $number ) {
+		return (string) $number;
+	}
+}
+
+/**
+ * Adds the product fixtures and switches to a vendor.
+ *
+ * @param string[] $extra Capabilities to add to the vendor.
+ * @return void
+ */
+function ewpa_product_fixtures( array $extra = array() ): void {
+	ewpa_reset();
+	$GLOBALS['ewpa_post_types']['product'] = ewpa_fake_post_type( 'product', 'products' );
+	$GLOBALS['ewpa_posts'][300]            = ewpa_fake_post( 300, 'product', 3, 'publish' );
+	$GLOBALS['ewpa_posts'][301]            = ewpa_fake_post( 301, 'product', 2, 'draft' );
+	$GLOBALS['ewpa_saved_products']        = array();
+	$GLOBALS['ewpa_caps']                  = array_merge( array( 'read', 'edit_products' ), $extra );
+}
+
+ewpa_product_fixtures();
+ewpa_check(
+	'wc_update_product_refuses_a_vendor_on_another_users_product',
+	true !== ewpa_callback_permission( 'ewpa/wc-update-product', array( 'product_id' => 300 ) )
+);
+
+ewpa_product_fixtures();
+ewpa_check(
+	'wc_update_product_allows_a_vendor_on_its_own_product',
+	true === ewpa_callback_permission( 'ewpa/wc-update-product', array( 'product_id' => 301 ) )
+);
+
+ewpa_product_fixtures( array( 'edit_others_products', 'publish_products' ) );
+ewpa_check(
+	'wc_update_product_allows_a_shop_manager_on_any_product',
+	true === ewpa_callback_permission( 'ewpa/wc-update-product', array( 'product_id' => 300 ) )
+);
+
+ewpa_product_fixtures();
+$ewpa_result = ewpa_callback( 'ewpa/wc-update-product' )( array( 'product_id' => 301, 'status' => 'publish' ) );
+ewpa_check(
+	'wc_update_product_refuses_to_publish_without_publish_products',
+	is_wp_error( $ewpa_result )
+		&& 'draft' === $GLOBALS['ewpa_posts'][301]->post_status
+		&& array() === $GLOBALS['ewpa_saved_products'],
+	is_wp_error( $ewpa_result ) ? $ewpa_result->get_error_code() : 'status=' . $GLOBALS['ewpa_posts'][301]->post_status
+);
+
+ewpa_product_fixtures( array( 'publish_products' ) );
+$ewpa_result = ewpa_callback( 'ewpa/wc-update-product' )( array( 'product_id' => 301, 'status' => 'publish' ) );
+ewpa_check(
+	'wc_update_product_publishes_with_publish_products',
+	! is_wp_error( $ewpa_result ) && 'publish' === $GLOBALS['ewpa_posts'][301]->post_status
+);
+
+ewpa_product_fixtures();
+$ewpa_result = ewpa_callback( 'ewpa/wc-update-product' )( array( 'product_id' => 301, 'status' => 'pending', 'regular_price' => '9.5' ) );
+ewpa_check(
+	'wc_update_product_still_saves_a_non_publishing_change_for_a_vendor',
+	! is_wp_error( $ewpa_result ) && 'pending' === $GLOBALS['ewpa_posts'][301]->post_status && array( 301 ) === $GLOBALS['ewpa_saved_products']
 );
 
 echo PHP_EOL;

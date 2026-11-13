@@ -7209,7 +7209,12 @@ function ewpa_register_custom_abilities(): void {
 					'required'   => array( 'product_id' ),
 				),
 				'permission_callback' => function ( $args ) {
-					return current_user_can( 'edit_products' );
+					if ( ! current_user_can( 'edit_products' ) ) {
+						return false;
+					}
+					// edit_products alone covers every product: check this one, so a role
+					// without edit_others_products (a marketplace vendor) reaches only its own.
+					return ewpa_check_post_permission( $args, 'edit_post', 'product_id' );
 				},
 				'execute_callback'    => function ( $args ) {
 					$product_id = intval( $args['product_id'] );
@@ -7217,6 +7222,14 @@ function ewpa_register_custom_abilities(): void {
 
 					if ( ! $product ) {
 						return new WP_Error( 'not_found', __( 'Product not found.', 'enable-abilities-for-mcp' ), array( 'status' => 404 ) );
+					}
+
+					// As in core, a status that publishes needs the publish capability.
+					if ( isset( $args['status'] ) ) {
+						$new_status = sanitize_text_field( $args['status'] );
+						if ( $new_status !== $product->get_status() && ewpa_status_needs_publish_cap( $new_status ) && ! ewpa_user_can_for_type( 'product', 'publish_posts' ) ) {
+							return new WP_Error( 'forbidden_status', __( 'You are not allowed to publish products.', 'enable-abilities-for-mcp' ), array( 'status' => 403 ) );
+						}
 					}
 
 					if ( isset( $args['regular_price'] ) ) {
