@@ -11,6 +11,7 @@
  * License:           GPL v2 or later
  * License URI:       https://www.gnu.org/licenses/gpl-2.0.html
  * Text Domain:       enable-abilities-for-mcp
+ * Domain Path:       /languages
  *
  * @package EnableAbilitiesForMCP
  */
@@ -25,6 +26,32 @@ define( 'EWPA_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'EWPA_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 define( 'EWPA_OPTION_KEY', 'ewpa_enabled_abilities' );
 define( 'EWPA_API_KEY_OPTION', 'ewpa_api_key' );
+
+add_action( 'init', 'ewpa_load_textdomain' );
+
+/**
+ * Loads the translations bundled in languages/.
+ *
+ * Runs on init: since WordPress 6.7, loading a text domain earlier raises the
+ * "translation loading was triggered too early" notice.
+ *
+ * load_plugin_textdomain() alone only registers languages/ as a fallback: when a
+ * WordPress.org language pack exists in wp-content/languages/plugins, WordPress reads
+ * that pack only, even when it lacks strings the plugin ships translated. So both files
+ * are loaded here. WordPress returns the first file that has a string: the pack goes
+ * first so community fixes win, and the bundled catalog fills the strings it lacks.
+ *
+ * @return void
+ */
+function ewpa_load_textdomain(): void {
+	$domain = 'enable-abilities-for-mcp';
+	$locale = determine_locale();
+
+	load_plugin_textdomain( $domain, false, dirname( plugin_basename( __FILE__ ) ) . '/languages' );
+
+	load_textdomain( $domain, WP_LANG_DIR . '/plugins/' . $domain . '-' . $locale . '.mo', $locale );
+	load_textdomain( $domain, dirname( __FILE__ ) . '/languages/' . $domain . '-' . $locale . '.mo', $locale );
+}
 
 // Declare WooCommerce HPOS (High-Performance Order Storage) compatibility.
 add_action(
