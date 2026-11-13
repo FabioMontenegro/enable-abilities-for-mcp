@@ -820,6 +820,11 @@ function ewpa_multilanguage_get_post_translations( int $post_id ) {
 		if ( ! $translated_post ) {
 			continue;
 		}
+		// Reading the source does not grant reading its translations: another
+		// author's draft would give away its title and status.
+		if ( ! current_user_can( 'read_post', $translated_id ) ) {
+			continue;
+		}
 		$result[] = array(
 			'language'  => (string) $lang,
 			'post_id'   => $translated_id,
