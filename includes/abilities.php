@@ -1874,6 +1874,16 @@ function ewpa_register_custom_abilities(): void {
 						$post_data['post_name'] = sanitize_title( $input['slug'] );
 					}
 
+					// Linking into another post's translation group changes that group (in
+					// Polylang it replaces the translation for that language), so it needs
+					// edit rights on the original, as ewpa/link-post-translation requires.
+					if ( ! empty( $input['translation_of'] ) && ! empty( $input['language'] ) && ewpa_get_translation_plugin() ) {
+						$original_check = ewpa_check_post_permission( $input, 'edit_post', 'translation_of' );
+						if ( true !== $original_check ) {
+							return $original_check;
+						}
+					}
+
 					$post_id = wp_insert_post( $post_data, true );
 
 					if ( is_wp_error( $post_id ) ) {

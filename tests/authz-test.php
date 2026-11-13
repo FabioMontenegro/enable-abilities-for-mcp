@@ -3029,6 +3029,89 @@ ewpa_check(
 	! is_wp_error( $result ) && 'genre' === ( $GLOBALS['ewpa_set_terms'][0][2] ?? null )
 );
 
+/*
+ * ==========================================================================
+ * T4.3 — create-post translation_of needs edit rights on the original (audit W3, 2.16.1)
+ *
+ * Linking a post into another post's translation group changes that group: in
+ * Polylang it replaces the original's translation for that language, so the
+ * language switcher of someone else's post points at the new one.
+ * ewpa/link-post-translation asks for edit_post on both posts; create-post's
+ * translation_of asked for nothing. Polylang is modelled from here on only, so
+ * the sections above keep running with no translation plugin. The current user
+ * (2) is an Author; post 101 belongs to user 3, post 102 to the Author.
+ * ==========================================================================
+ */
+
+if ( ! function_exists( 'pll_set_post_language' ) ) {
+	function pll_set_post_language( $post_id, $lang ) {
+		$GLOBALS['ewpa_pll_languages'][ (int) $post_id ] = $lang;
+	}
+	function pll_get_post_translations( $post_id ) {
+		return $GLOBALS['ewpa_pll_groups'][ (int) $post_id ] ?? array();
+	}
+	function pll_save_post_translations( $translations ) {
+		$GLOBALS['ewpa_pll_saved'][] = $translations;
+		foreach ( $translations as $id ) {
+			$GLOBALS['ewpa_pll_groups'][ (int) $id ] = $translations;
+		}
+	}
+	function pll_get_post_language( $post_id, $field = 'slug' ) {
+		return $GLOBALS['ewpa_pll_languages'][ (int) $post_id ] ?? '';
+	}
+	function pll_languages_list( $args = array() ) {
+		return array( 'en', 'es' );
+	}
+}
+
+/**
+ * Resets the fixtures and makes the current user an Author with Polylang data.
+ *
+ * @return void
+ */
+function ewpa_translation_fixtures(): void {
+	ewpa_reset();
+	$GLOBALS['ewpa_caps']          = array( 'read', 'edit_posts', 'publish_posts' );
+	$GLOBALS['ewpa_pll_languages'] = array( 101 => 'en', 102 => 'en' );
+	// As in Polylang, a post with a language is in its own group.
+	$GLOBALS['ewpa_pll_groups']    = array(
+		101 => array( 'en' => 101, 'es' => 900 ),
+		102 => array( 'en' => 102 ),
+	);
+	$GLOBALS['ewpa_pll_saved']     = array();
+}
+
+ewpa_translation_fixtures();
+$result = ewpa_callback( 'ewpa/create-post' )(
+	array(
+		'title'          => 'Hijack',
+		'content'        => 'Body',
+		'status'         => 'publish',
+		'language'       => 'es',
+		'translation_of' => 101,
+	)
+);
+ewpa_check(
+	'create_post_refuses_translation_of_a_post_the_user_cannot_edit',
+	is_wp_error( $result ) && array() === $GLOBALS['ewpa_inserted'] && array() === $GLOBALS['ewpa_pll_saved'],
+	is_wp_error( $result ) ? $result->get_error_code() : 'saved=' . wp_json_encode( $GLOBALS['ewpa_pll_saved'] )
+);
+
+ewpa_translation_fixtures();
+$result = ewpa_callback( 'ewpa/create-post' )(
+	array(
+		'title'          => 'Own translation',
+		'content'        => 'Body',
+		'language'       => 'es',
+		'translation_of' => 102,
+	)
+);
+ewpa_check(
+	'create_post_still_links_a_translation_of_the_users_own_post',
+	! is_wp_error( $result ) && 1 === count( $GLOBALS['ewpa_pll_saved'] ) && 102 === ( $GLOBALS['ewpa_pll_saved'][0]['en'] ?? null ),
+	wp_json_encode( array( is_wp_error( $result ) ? $result->get_error_code() : $result, $GLOBALS['ewpa_pll_saved'] ) )
+);
+
 echo PHP_EOL;
 if ( $ewpa_failures > 0 ) {
 	echo $ewpa_failures . ' check(s) FAILED out of ' . $ewpa_checks . '.' . PHP_EOL;
