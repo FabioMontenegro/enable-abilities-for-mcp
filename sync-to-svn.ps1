@@ -9,8 +9,15 @@
 # Usage: .\sync-to-svn.ps1 [-SkipVendor]
 param([switch]$SkipVendor)
 
-$src = "e:\Workspace\Custom Plugins\enable-abilities-for-mcp\"
-$dst = "e:\Workspace\svn-enable-abilities-for-mcp\trunk\"
+# Paths are resolved from this script's location, so the layout can move:
+#   <root>\plugin\  (this repo)   and   <root>\svn\trunk\  (the WordPress.org SVN checkout)
+$src = (Resolve-Path $PSScriptRoot).Path.TrimEnd('\') + '\'
+$svnRoot = Join-Path $PSScriptRoot '..\svn'
+if (-not (Test-Path (Join-Path $svnRoot 'trunk'))) {
+    Write-Error "SVN checkout not found at $svnRoot - expected <root>\svn\trunk next to this repo"
+    exit 1
+}
+$dst = (Resolve-Path (Join-Path $svnRoot 'trunk')).Path.TrimEnd('\') + '\'
 
 # ── 1. Filtered copy: repo → trunk ─────────────────────────────────────
 # Parse .svnignore — skip comment lines and blanks
