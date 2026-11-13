@@ -1088,6 +1088,17 @@ function ewpa_linguator_create_post_translation( int $source_id, string $source_
 		);
 	}
 
+	// copy_post() copies every custom field. As in the generic duplicator, a user who
+	// cannot edit the source does not get its protected meta in a post of their own.
+	// Stripped before the status change, so publish hooks never see it.
+	if ( ! current_user_can( 'edit_post', $source_id ) ) {
+		foreach ( array_keys( (array) get_post_meta( $translated_id ) ) as $key ) {
+			if ( is_protected_meta( (string) $key, 'post' ) && 0 !== strpos( (string) $key, '_lmat_' ) ) {
+				delete_post_meta( $translated_id, $key );
+			}
+		}
+	}
+
 	if ( '' !== $requested_status && get_post_status( $translated_id ) !== $requested_status ) {
 		wp_update_post(
 			array(
@@ -1095,16 +1106,6 @@ function ewpa_linguator_create_post_translation( int $source_id, string $source_
 				'post_status' => $requested_status,
 			)
 		);
-	}
-
-	// copy_post() copies every custom field. As in the generic duplicator, a user who
-	// cannot edit the source does not get its protected meta in a post of their own.
-	if ( ! current_user_can( 'edit_post', $source_id ) ) {
-		foreach ( array_keys( (array) get_post_meta( $translated_id ) ) as $key ) {
-			if ( is_protected_meta( (string) $key, 'post' ) && 0 !== strpos( (string) $key, '_lmat_' ) ) {
-				delete_post_meta( $translated_id, $key );
-			}
-		}
 	}
 
 	// copy_post() keeps the source author; without edit_others the copy is the current user's.

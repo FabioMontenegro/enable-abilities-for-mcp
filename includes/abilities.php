@@ -5753,7 +5753,7 @@ function ewpa_register_custom_abilities(): void {
 						'post_excerpt'       => array( 'type' => 'string' ),
 						'password_protected' => array(
 							'type'        => 'boolean',
-							'description' => 'True when the item has a password. Its content and excerpt are then empty unless the user can edit the item.',
+							'description' => 'True when the item has a password. Its content, excerpt and meta are then empty unless the user can edit the item.',
 						),
 						'post_status'     => array( 'type' => 'string' ),
 						'post_date'       => array( 'type' => 'string' ),
