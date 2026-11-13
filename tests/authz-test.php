@@ -3112,6 +3112,35 @@ ewpa_check(
 	wp_json_encode( array( is_wp_error( $result ) ? $result->get_error_code() : $result, $GLOBALS['ewpa_pll_saved'] ) )
 );
 
+/*
+ * ==========================================================================
+ * T4.4 — get-cpt-item meta of a password-protected item (audit W5, 2.16.1)
+ *
+ * W5 as reported (a reader gets the public meta) is the design pinned by
+ * get_cpt_item_gives_a_reader_the_public_meta. What is left open is the
+ * password: C2 hides the content of a protected item from a reader who cannot
+ * edit it, but its meta was still returned. Course 110 belongs to user 3; the
+ * current user (2) only reads it.
+ * ==========================================================================
+ */
+
+ewpa_reset();
+$GLOBALS['ewpa_posts'][110]->post_password = 'secret';
+$result = ewpa_callback( 'ewpa/get-cpt-item' )( array( 'post_id' => 110 ) );
+ewpa_check(
+	'get_cpt_item_hides_the_meta_of_a_password_protected_item_from_a_reader',
+	! is_wp_error( $result ) && array() === ( $result['meta'] ?? null ) && true === ( $result['password_protected'] ?? null )
+);
+
+ewpa_reset();
+$GLOBALS['ewpa_posts'][110]->post_password = 'secret';
+ewpa_become_admin();
+$result = ewpa_callback( 'ewpa/get-cpt-item' )( array( 'post_id' => 110 ) );
+ewpa_check(
+	'get_cpt_item_keeps_the_meta_of_a_password_protected_item_for_an_editor',
+	! is_wp_error( $result ) && 'Public subtitle' === ( $result['meta']['subtitle'] ?? null )
+);
+
 echo PHP_EOL;
 if ( $ewpa_failures > 0 ) {
 	echo $ewpa_failures . ' check(s) FAILED out of ' . $ewpa_checks . '.' . PHP_EOL;

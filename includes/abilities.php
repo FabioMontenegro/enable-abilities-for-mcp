@@ -5797,8 +5797,9 @@ function ewpa_register_custom_abilities(): void {
 					}
 
 					// Meta fields: protected keys (leading underscore, internal data) only for users who can edit the item.
+					// A password-protected item keeps its meta hidden along with its content.
 					$can_edit = current_user_can( 'edit_post', $post_id );
-					$raw_meta = get_post_meta( $post_id );
+					$raw_meta = ewpa_is_content_protected( $post ) ? array() : get_post_meta( $post_id );
 					$meta     = array();
 					if ( is_array( $raw_meta ) ) {
 						foreach ( $raw_meta as $key => $values ) {
