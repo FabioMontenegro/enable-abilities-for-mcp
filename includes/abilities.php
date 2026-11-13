@@ -528,7 +528,8 @@ function ewpa_check_term_creation( $terms, string $taxonomy ) {
  * Checks the taxonomies input of the CPT create and update abilities.
  *
  * Mirrors the loop that assigns them: only taxonomies that exist and belong to
- * the post type are considered.
+ * the post type are considered. As in the core REST API, assigning terms needs
+ * the taxonomy's assign_terms, and creating a term also needs edit_terms.
  *
  * @param mixed  $taxonomies Taxonomy slug => terms input.
  * @param string $post_type  Post type slug.
@@ -542,6 +543,18 @@ function ewpa_check_taxonomies_input( $taxonomies, string $post_type ) {
 	foreach ( $taxonomies as $tax_slug => $terms ) {
 		$tax_slug = sanitize_key( $tax_slug );
 		if ( taxonomy_exists( $tax_slug ) && in_array( $tax_slug, get_object_taxonomies( $post_type ), true ) ) {
+			$tax_obj = get_taxonomy( $tax_slug );
+			if ( ! $tax_obj || ! current_user_can( $tax_obj->cap->assign_terms ) ) {
+				return new WP_Error(
+					'forbidden',
+					sprintf(
+						/* translators: %s: taxonomy slug */
+						__( 'You are not allowed to assign terms in the "%s" taxonomy.', 'enable-abilities-for-mcp' ),
+						$tax_slug
+					)
+				);
+			}
+
 			$check = ewpa_check_term_creation( $terms, $tax_slug );
 			if ( is_wp_error( $check ) ) {
 				return $check;
@@ -1861,6 +1874,16 @@ function ewpa_register_custom_abilities(): void {
 						$post_data['post_name'] = sanitize_title( $input['slug'] );
 					}
 
+					// Linking into another post's translation group changes that group (in
+					// Polylang it replaces the translation for that language), so it needs
+					// edit rights on the original, as ewpa/link-post-translation requires.
+					if ( ! empty( $input['translation_of'] ) && ! empty( $input['language'] ) && ewpa_get_translation_plugin() ) {
+						$original_check = ewpa_check_post_permission( $input, 'edit_post', 'translation_of' );
+						if ( true !== $original_check ) {
+							return $original_check;
+						}
+					}
+
 					$post_id = wp_insert_post( $post_data, true );
 
 					if ( is_wp_error( $post_id ) ) {
@@ -2933,8 +2956,14 @@ function ewpa_register_custom_abilities(): void {
 
 					if ( $copy_meta ) {
 						$skip = array( '_edit_lock', '_edit_last', '_wp_old_slug', '_wp_old_date' );
+						// The copy belongs to the caller, who can then read every key of it:
+						// a source they cannot edit keeps its protected meta to itself.
+						$withhold_protected = ! current_user_can( 'edit_post', $post_id );
 						foreach ( get_post_meta( $post_id ) as $key => $values ) {
 							if ( in_array( $key, $skip, true ) ) {
+								continue;
+							}
+							if ( $withhold_protected && is_protected_meta( (string) $key, 'post' ) ) {
 								continue;
 							}
 							foreach ( $values as $value ) {
@@ -5724,7 +5753,7 @@ function ewpa_register_custom_abilities(): void {
 						'post_excerpt'       => array( 'type' => 'string' ),
 						'password_protected' => array(
 							'type'        => 'boolean',
-							'description' => 'True when the item has a password. Its content and excerpt are then empty unless the user can edit the item.',
+							'description' => 'True when the item has a password. Its content, excerpt and meta are then empty unless the user can edit the item.',
 						),
 						'post_status'     => array( 'type' => 'string' ),
 						'post_date'       => array( 'type' => 'string' ),
@@ -5774,8 +5803,9 @@ function ewpa_register_custom_abilities(): void {
 					}
 
 					// Meta fields: protected keys (leading underscore, internal data) only for users who can edit the item.
+					// A password-protected item keeps its meta hidden along with its content.
 					$can_edit = current_user_can( 'edit_post', $post_id );
-					$raw_meta = get_post_meta( $post_id );
+					$raw_meta = ewpa_is_content_protected( $post ) ? array() : get_post_meta( $post_id );
 					$meta     = array();
 					if ( is_array( $raw_meta ) ) {
 						foreach ( $raw_meta as $key => $values ) {
@@ -7132,29 +7162,35 @@ function ewpa_register_custom_abilities(): void {
 						);
 					}
 
+					// As for posts: a password-protected product keeps its descriptions
+					// hidden from a user who cannot edit it.
+					$product_post = get_post( $product->get_id() );
+					$protected    = $product_post && ewpa_is_content_protected( $product_post );
+
 					return array(
-						'id'                => $product->get_id(),
-						'name'              => $product->get_name(),
-						'slug'              => $product->get_slug(),
-						'sku'               => $product->get_sku(),
-						'status'            => $product->get_status(),
-						'type'              => $product->get_type(),
-						'description'       => $product->get_description(),
-						'short_description' => $product->get_short_description(),
-						'price'             => $product->get_price(),
-						'regular_price'     => $product->get_regular_price(),
-						'sale_price'        => $product->get_sale_price(),
-						'on_sale'           => $product->is_on_sale(),
-						'stock_status'      => $product->get_stock_status(),
-						'stock_qty'         => $product->get_stock_quantity(),
-						'manage_stock'      => $product->get_manage_stock(),
-						'weight'            => $product->get_weight(),
-						'categories'        => $categories,
-						'tags'              => $tags,
-						'attributes'        => $attributes,
-						'permalink'         => get_permalink( $product->get_id() ),
-						'date_created'      => $product->get_date_created() ? $product->get_date_created()->date( 'Y-m-d H:i:s' ) : null,
-						'date_modified'     => $product->get_date_modified() ? $product->get_date_modified()->date( 'Y-m-d H:i:s' ) : null,
+						'id'                 => $product->get_id(),
+						'name'               => $product->get_name(),
+						'slug'               => $product->get_slug(),
+						'sku'                => $product->get_sku(),
+						'status'             => $product->get_status(),
+						'type'               => $product->get_type(),
+						'description'        => $protected ? '' : $product->get_description(),
+						'short_description'  => $protected ? '' : $product->get_short_description(),
+						'password_protected' => $product_post ? ! empty( $product_post->post_password ) : false,
+						'price'              => $product->get_price(),
+						'regular_price'      => $product->get_regular_price(),
+						'sale_price'         => $product->get_sale_price(),
+						'on_sale'            => $product->is_on_sale(),
+						'stock_status'       => $product->get_stock_status(),
+						'stock_qty'          => $product->get_stock_quantity(),
+						'manage_stock'       => $product->get_manage_stock(),
+						'weight'             => $product->get_weight(),
+						'categories'         => $categories,
+						'tags'               => $tags,
+						'attributes'         => $attributes,
+						'permalink'          => get_permalink( $product->get_id() ),
+						'date_created'       => $product->get_date_created() ? $product->get_date_created()->date( 'Y-m-d H:i:s' ) : null,
+						'date_modified'      => $product->get_date_modified() ? $product->get_date_modified()->date( 'Y-m-d H:i:s' ) : null,
 					);
 				},
 				'meta'                => array(
@@ -7209,7 +7245,12 @@ function ewpa_register_custom_abilities(): void {
 					'required'   => array( 'product_id' ),
 				),
 				'permission_callback' => function ( $args ) {
-					return current_user_can( 'edit_products' );
+					if ( ! current_user_can( 'edit_products' ) ) {
+						return false;
+					}
+					// edit_products alone covers every product: check this one, so a role
+					// without edit_others_products (a marketplace vendor) reaches only its own.
+					return ewpa_check_post_permission( $args, 'edit_post', 'product_id' );
 				},
 				'execute_callback'    => function ( $args ) {
 					$product_id = intval( $args['product_id'] );
@@ -7217,6 +7258,14 @@ function ewpa_register_custom_abilities(): void {
 
 					if ( ! $product ) {
 						return new WP_Error( 'not_found', __( 'Product not found.', 'enable-abilities-for-mcp' ), array( 'status' => 404 ) );
+					}
+
+					// As in core, a status that publishes needs the publish capability.
+					if ( isset( $args['status'] ) ) {
+						$new_status = sanitize_text_field( $args['status'] );
+						if ( $new_status !== $product->get_status() && ewpa_status_needs_publish_cap( $new_status ) && ! ewpa_user_can_for_type( 'product', 'publish_posts' ) ) {
+							return new WP_Error( 'forbidden_status', __( 'You are not allowed to publish products.', 'enable-abilities-for-mcp' ), array( 'status' => 403 ) );
+						}
 					}
 
 					if ( isset( $args['regular_price'] ) ) {

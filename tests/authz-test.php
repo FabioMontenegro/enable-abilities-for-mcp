@@ -2573,13 +2573,17 @@ ewpa_check(
 foreach ( array( 'ewpa/wc-update-order-status' => 'edit_shop_orders', 'ewpa/wc-update-product' => 'edit_products' ) as $ewpa_wc_ability => $ewpa_wc_cap ) {
 	$ewpa_wc_label = str_replace( array( 'ewpa/', '-' ), array( '', '_' ), $ewpa_wc_ability );
 
-	ewpa_reset();
-	$GLOBALS['ewpa_caps'] = array( 'read', $ewpa_wc_cap );
-	ewpa_check( $ewpa_wc_label . '_requires_its_write_capability', true === ewpa_callback_permission( $ewpa_wc_ability ) );
+	// wc-update-product checks the product itself (T4.1), so it gets one the user owns.
+	// The schema requires product_id, and core validates the input before this check.
+	$ewpa_wc_input = 'ewpa/wc-update-product' === $ewpa_wc_ability ? array( 'product_id' => 301 ) : array();
 
-	ewpa_reset();
+	ewpa_product_fixtures();
+	$GLOBALS['ewpa_caps'] = array( 'read', $ewpa_wc_cap );
+	ewpa_check( $ewpa_wc_label . '_requires_its_write_capability', true === ewpa_callback_permission( $ewpa_wc_ability, $ewpa_wc_input ) );
+
+	ewpa_product_fixtures();
 	$GLOBALS['ewpa_caps'] = array( 'read', 'read_private_products', 'read_private_shop_orders' );
-	ewpa_check( $ewpa_wc_label . '_refuses_a_read_only_user', true !== ewpa_callback_permission( $ewpa_wc_ability ) );
+	ewpa_check( $ewpa_wc_label . '_refuses_a_read_only_user', true !== ewpa_callback_permission( $ewpa_wc_ability, $ewpa_wc_input ) );
 }
 
 /*
@@ -2819,6 +2823,411 @@ ewpa_check(
 	'elementor_update_keeps_raw_html_for_a_user_with_unfiltered_html',
 	'<p>Hi</p><script>alert(1)</script>' === ( $ewpa_settings['editor'] ?? null )
 		&& '<img src="x.png" onerror="alert(2)">' === ( $ewpa_settings['items'][0]['html'] ?? null )
+);
+
+/*
+ * ==========================================================================
+ * T4.1 — wc-update-product checks the product, not only the role (audit W7, 2.16.1)
+ *
+ * edit_products alone let a user edit every product. A vendor role (edit_products
+ * without edit_others_products, as multi-vendor plugins grant) must reach only its
+ * own products, and a status that publishes needs publish_products, as in core.
+ * Product 300 belongs to user 3; product 301 is the current user's (2) own draft.
+ * ==========================================================================
+ */
+
+if ( ! function_exists( 'wc_get_product' ) ) {
+	/**
+	 * Product double backed by the post fixtures. save() writes the status back.
+	 */
+	class Ewpa_Test_Product {
+		/** @var object */
+		public $post;
+		/** @var array */
+		public $changes = array();
+
+		public function __construct( $post ) {
+			$this->post = $post;
+		}
+		public function get_id() {
+			return $this->post->ID;
+		}
+		public function __call( $name, $args ) {
+			if ( 0 === strpos( $name, 'set_' ) ) {
+				$this->changes[ substr( $name, 4 ) ] = $args[0] ?? null;
+				return null;
+			}
+			if ( 'get_status' === $name ) {
+				return $this->post->post_status;
+			}
+			if ( 'get_description' === $name ) {
+				return $this->post->post_content;
+			}
+			if ( 'get_short_description' === $name ) {
+				return $this->post->post_excerpt;
+			}
+			if ( in_array( $name, array( 'get_category_ids', 'get_tag_ids', 'get_attributes' ), true ) ) {
+				return array();
+			}
+			return $this->changes[ substr( $name, 4 ) ] ?? '';
+		}
+		public function save() {
+			if ( isset( $this->changes['status'] ) ) {
+				$this->post->post_status = $this->changes['status'];
+			}
+			$GLOBALS['ewpa_saved_products'][] = $this->post->ID;
+			return $this->post->ID;
+		}
+	}
+
+	/**
+	 * @param int $id Product ID.
+	 * @return Ewpa_Test_Product|false
+	 */
+	function wc_get_product( $id ) {
+		$post = $GLOBALS['ewpa_posts'][ (int) $id ] ?? null;
+		return ( $post && 'product' === $post->post_type ) ? new Ewpa_Test_Product( $post ) : false;
+	}
+
+	/**
+	 * @param mixed $number Number.
+	 * @return string
+	 */
+	function wc_format_decimal( $number ) {
+		return (string) $number;
+	}
+}
+
+/**
+ * Adds the product fixtures and switches to a vendor.
+ *
+ * @param string[] $extra Capabilities to add to the vendor.
+ * @return void
+ */
+function ewpa_product_fixtures( array $extra = array() ): void {
+	ewpa_reset();
+	$GLOBALS['ewpa_post_types']['product'] = ewpa_fake_post_type( 'product', 'products' );
+	$GLOBALS['ewpa_posts'][300]            = ewpa_fake_post( 300, 'product', 3, 'publish' );
+	$GLOBALS['ewpa_posts'][301]            = ewpa_fake_post( 301, 'product', 2, 'draft' );
+	$GLOBALS['ewpa_saved_products']        = array();
+	$GLOBALS['ewpa_caps']                  = array_merge( array( 'read', 'edit_products' ), $extra );
+}
+
+ewpa_product_fixtures();
+ewpa_check(
+	'wc_update_product_refuses_a_vendor_on_another_users_product',
+	true !== ewpa_callback_permission( 'ewpa/wc-update-product', array( 'product_id' => 300 ) )
+);
+
+ewpa_product_fixtures();
+ewpa_check(
+	'wc_update_product_allows_a_vendor_on_its_own_product',
+	true === ewpa_callback_permission( 'ewpa/wc-update-product', array( 'product_id' => 301 ) )
+);
+
+ewpa_product_fixtures( array( 'edit_others_products', 'publish_products' ) );
+ewpa_check(
+	'wc_update_product_allows_a_shop_manager_on_any_product',
+	true === ewpa_callback_permission( 'ewpa/wc-update-product', array( 'product_id' => 300 ) )
+);
+
+ewpa_product_fixtures();
+$ewpa_result = ewpa_callback( 'ewpa/wc-update-product' )( array( 'product_id' => 301, 'status' => 'publish' ) );
+ewpa_check(
+	'wc_update_product_refuses_to_publish_without_publish_products',
+	is_wp_error( $ewpa_result )
+		&& 'draft' === $GLOBALS['ewpa_posts'][301]->post_status
+		&& array() === $GLOBALS['ewpa_saved_products'],
+	is_wp_error( $ewpa_result ) ? $ewpa_result->get_error_code() : 'status=' . $GLOBALS['ewpa_posts'][301]->post_status
+);
+
+ewpa_product_fixtures( array( 'publish_products' ) );
+$ewpa_result = ewpa_callback( 'ewpa/wc-update-product' )( array( 'product_id' => 301, 'status' => 'publish' ) );
+ewpa_check(
+	'wc_update_product_publishes_with_publish_products',
+	! is_wp_error( $ewpa_result ) && 'publish' === $GLOBALS['ewpa_posts'][301]->post_status
+);
+
+ewpa_product_fixtures();
+$ewpa_result = ewpa_callback( 'ewpa/wc-update-product' )( array( 'product_id' => 301, 'status' => 'pending', 'regular_price' => '9.5' ) );
+ewpa_check(
+	'wc_update_product_still_saves_a_non_publishing_change_for_a_vendor',
+	! is_wp_error( $ewpa_result ) && 'pending' === $GLOBALS['ewpa_posts'][301]->post_status && array( 301 ) === $GLOBALS['ewpa_saved_products']
+);
+
+/*
+ * ==========================================================================
+ * T4.2 — CPT create/update check assign_terms (audit W8, 2.16.1)
+ *
+ * The CPT abilities only checked edit_terms for terms they would create. Assigning
+ * existing terms needs the taxonomy's assign_terms, as in the core REST API and in
+ * ewpa/assign-cpt-terms. "level" is a course taxonomy whose assign_terms is a
+ * capability of its own (like WooCommerce's product_cat), and the Contributor
+ * does not hold it. Course 111 is the Contributor's own draft.
+ * ==========================================================================
+ */
+
+/**
+ * Adds the "level" taxonomy with one existing term, "beginner".
+ *
+ * @return void
+ */
+function ewpa_restricted_taxonomy(): void {
+	ewpa_reset();
+	$GLOBALS['ewpa_taxonomies']['level'] = (object) array(
+		'name'        => 'level',
+		'label'       => 'Level',
+		'object_type' => array( 'courses' ),
+		'cap'         => (object) array(
+			'assign_terms' => 'assign_levels',
+			'edit_terms'   => 'manage_levels',
+		),
+	);
+	$GLOBALS['ewpa_terms']['level']    = array( 'beginner' );
+	$GLOBALS['ewpa_term_ids']['level'] = array( 9 );
+}
+
+ewpa_restricted_taxonomy();
+$result = ewpa_callback( 'ewpa/create-cpt-item' )(
+	array(
+		'post_type'  => 'courses',
+		'title'      => 'Course',
+		'taxonomies' => array( 'level' => array( 'beginner' ) ),
+	)
+);
+ewpa_check(
+	'create_cpt_item_refuses_existing_terms_without_assign_terms',
+	ewpa_is_error( $result, 'forbidden' ) && array() === $GLOBALS['ewpa_inserted'] && array() === $GLOBALS['ewpa_set_terms']
+);
+
+ewpa_restricted_taxonomy();
+$result = ewpa_callback( 'ewpa/update-cpt-item' )(
+	array(
+		'post_id'    => 111,
+		'taxonomies' => array( 'level' => array( 9 ) ),
+	)
+);
+ewpa_check(
+	'update_cpt_item_refuses_existing_terms_without_assign_terms',
+	ewpa_is_error( $result, 'forbidden' ) && array() === $GLOBALS['ewpa_set_terms']
+);
+
+ewpa_restricted_taxonomy();
+$GLOBALS['ewpa_caps'][] = 'assign_levels';
+$result = ewpa_callback( 'ewpa/update-cpt-item' )(
+	array(
+		'post_id'    => 111,
+		'taxonomies' => array( 'level' => array( 9 ) ),
+	)
+);
+ewpa_check(
+	'update_cpt_item_assigns_existing_terms_with_assign_terms',
+	! is_wp_error( $result ) && 'level' === ( $GLOBALS['ewpa_set_terms'][0][2] ?? null )
+);
+
+// Taxonomies whose assign_terms the user holds keep working as before.
+ewpa_restricted_taxonomy();
+$result = ewpa_callback( 'ewpa/update-cpt-item' )(
+	array(
+		'post_id'    => 111,
+		'taxonomies' => array( 'genre' => array( 'drama' ) ),
+	)
+);
+ewpa_check(
+	'update_cpt_item_still_assigns_terms_of_a_taxonomy_the_user_may_assign',
+	! is_wp_error( $result ) && 'genre' === ( $GLOBALS['ewpa_set_terms'][0][2] ?? null )
+);
+
+/*
+ * ==========================================================================
+ * T4.3 — create-post translation_of needs edit rights on the original (audit W3, 2.16.1)
+ *
+ * Linking a post into another post's translation group changes that group: in
+ * Polylang it replaces the original's translation for that language, so the
+ * language switcher of someone else's post points at the new one.
+ * ewpa/link-post-translation asks for edit_post on both posts; create-post's
+ * translation_of asked for nothing. Polylang is modelled from here on only, so
+ * the sections above keep running with no translation plugin. The current user
+ * (2) is an Author; post 101 belongs to user 3, post 102 to the Author.
+ * ==========================================================================
+ */
+
+if ( ! function_exists( 'pll_set_post_language' ) ) {
+	function pll_set_post_language( $post_id, $lang ) {
+		$GLOBALS['ewpa_pll_languages'][ (int) $post_id ] = $lang;
+	}
+	function pll_get_post_translations( $post_id ) {
+		return $GLOBALS['ewpa_pll_groups'][ (int) $post_id ] ?? array();
+	}
+	function pll_save_post_translations( $translations ) {
+		$GLOBALS['ewpa_pll_saved'][] = $translations;
+		foreach ( $translations as $id ) {
+			$GLOBALS['ewpa_pll_groups'][ (int) $id ] = $translations;
+		}
+	}
+	function pll_get_post_language( $post_id, $field = 'slug' ) {
+		return $GLOBALS['ewpa_pll_languages'][ (int) $post_id ] ?? '';
+	}
+	function pll_languages_list( $args = array() ) {
+		return array( 'en', 'es' );
+	}
+}
+
+/**
+ * Resets the fixtures and makes the current user an Author with Polylang data.
+ *
+ * @return void
+ */
+function ewpa_translation_fixtures(): void {
+	ewpa_reset();
+	$GLOBALS['ewpa_caps']          = array( 'read', 'edit_posts', 'publish_posts' );
+	$GLOBALS['ewpa_pll_languages'] = array( 101 => 'en', 102 => 'en' );
+	// As in Polylang, a post with a language is in its own group.
+	$GLOBALS['ewpa_pll_groups']    = array(
+		101 => array( 'en' => 101, 'es' => 900 ),
+		102 => array( 'en' => 102 ),
+	);
+	$GLOBALS['ewpa_pll_saved']     = array();
+}
+
+ewpa_translation_fixtures();
+$result = ewpa_callback( 'ewpa/create-post' )(
+	array(
+		'title'          => 'Hijack',
+		'content'        => 'Body',
+		'status'         => 'publish',
+		'language'       => 'es',
+		'translation_of' => 101,
+	)
+);
+ewpa_check(
+	'create_post_refuses_translation_of_a_post_the_user_cannot_edit',
+	is_wp_error( $result ) && array() === $GLOBALS['ewpa_inserted'] && array() === $GLOBALS['ewpa_pll_saved'],
+	is_wp_error( $result ) ? $result->get_error_code() : 'saved=' . wp_json_encode( $GLOBALS['ewpa_pll_saved'] )
+);
+
+ewpa_translation_fixtures();
+$result = ewpa_callback( 'ewpa/create-post' )(
+	array(
+		'title'          => 'Own translation',
+		'content'        => 'Body',
+		'language'       => 'es',
+		'translation_of' => 102,
+	)
+);
+ewpa_check(
+	'create_post_still_links_a_translation_of_the_users_own_post',
+	! is_wp_error( $result ) && 1 === count( $GLOBALS['ewpa_pll_saved'] ) && 102 === ( $GLOBALS['ewpa_pll_saved'][0]['en'] ?? null ),
+	wp_json_encode( array( is_wp_error( $result ) ? $result->get_error_code() : $result, $GLOBALS['ewpa_pll_saved'] ) )
+);
+
+/*
+ * ==========================================================================
+ * T4.4 — get-cpt-item meta of a password-protected item (audit W5, 2.16.1)
+ *
+ * W5 as reported (a reader gets the public meta) is the design pinned by
+ * get_cpt_item_gives_a_reader_the_public_meta. What is left open is the
+ * password: C2 hides the content of a protected item from a reader who cannot
+ * edit it, but its meta was still returned. Course 110 belongs to user 3; the
+ * current user (2) only reads it.
+ * ==========================================================================
+ */
+
+ewpa_reset();
+$GLOBALS['ewpa_posts'][110]->post_password = 'secret';
+$result = ewpa_callback( 'ewpa/get-cpt-item' )( array( 'post_id' => 110 ) );
+ewpa_check(
+	'get_cpt_item_hides_the_meta_of_a_password_protected_item_from_a_reader',
+	! is_wp_error( $result ) && array() === ( $result['meta'] ?? null ) && true === ( $result['password_protected'] ?? null )
+);
+
+ewpa_reset();
+$GLOBALS['ewpa_posts'][110]->post_password = 'secret';
+ewpa_become_admin();
+$result = ewpa_callback( 'ewpa/get-cpt-item' )( array( 'post_id' => 110 ) );
+ewpa_check(
+	'get_cpt_item_keeps_the_meta_of_a_password_protected_item_for_an_editor',
+	! is_wp_error( $result ) && 'Public subtitle' === ( $result['meta']['subtitle'] ?? null )
+);
+
+/*
+ * ==========================================================================
+ * T4.5 — duplicate-post and protected meta (audit W6, 2.16.1)
+ *
+ * duplicate-post lets a reader copy a published post they cannot edit, and the
+ * copy is theirs, so get-post-meta (edit_post) then reads every key of it. The
+ * protected meta of someone else's post went through that chain. As decided for
+ * translations (T4), protected meta is not copied when the user cannot edit the
+ * source. Course 110 belongs to user 3 and carries a public and a protected key.
+ * ==========================================================================
+ */
+
+ewpa_reset();
+$result = ewpa_callback( 'ewpa/duplicate-post' )( array( 'post_id' => 110 ) );
+$ewpa_copy_meta = is_wp_error( $result ) ? null : ( $GLOBALS['ewpa_meta'][ $result['new_post_id'] ] ?? array() );
+ewpa_check(
+	'duplicate_does_not_copy_protected_meta_of_a_post_the_user_cannot_edit',
+	is_array( $ewpa_copy_meta ) && ! array_key_exists( '_internal_secret', $ewpa_copy_meta )
+);
+ewpa_check(
+	'duplicate_still_copies_public_meta_of_a_post_the_user_cannot_edit',
+	is_array( $ewpa_copy_meta ) && 'Public subtitle' === ( $ewpa_copy_meta['subtitle'] ?? null )
+);
+
+ewpa_reset();
+ewpa_become_admin();
+$result = ewpa_callback( 'ewpa/duplicate-post' )( array( 'post_id' => 110 ) );
+ewpa_check(
+	'duplicate_copies_protected_meta_for_a_user_who_can_edit_the_source',
+	! is_wp_error( $result ) && 'Protected value' === ( $GLOBALS['ewpa_meta'][ $result['new_post_id'] ]['_internal_secret'] ?? null )
+);
+
+/*
+ * ==========================================================================
+ * T4.6 — wc-get-product and password-protected products (verifier advisory, 2.16.1)
+ *
+ * As C2 did for posts: a password-protected product keeps its description and
+ * short description hidden from a user who cannot edit it. Product 300 belongs
+ * to user 3; the current user (2) is a vendor or a read-only role.
+ * ==========================================================================
+ */
+
+/**
+ * Puts a password and a short description on product 300 and reads it.
+ *
+ * @param string[] $caps Capabilities of the current user.
+ * @return mixed
+ */
+function ewpa_read_protected_product( array $caps ) {
+	ewpa_product_fixtures();
+	$GLOBALS['ewpa_caps']                     = $caps;
+	$GLOBALS['ewpa_posts'][300]->post_password = 'secret';
+	$GLOBALS['ewpa_posts'][300]->post_excerpt  = 'Short 300';
+	return ewpa_callback( 'ewpa/wc-get-product' )( array( 'product_id' => 300 ) );
+}
+
+foreach ( array(
+	'vendor'    => array( 'read', 'edit_products' ),
+	'read_only' => array( 'read', 'read_private_products' ),
+) as $ewpa_role => $ewpa_role_caps ) {
+	$result = ewpa_read_protected_product( $ewpa_role_caps );
+	ewpa_check(
+		'wc_get_product_hides_a_protected_description_from_a_' . $ewpa_role . '_role',
+		! is_wp_error( $result ) && '' === ( $result['description'] ?? null ) && '' === ( $result['short_description'] ?? null ) && true === ( $result['password_protected'] ?? null )
+	);
+}
+
+$result = ewpa_read_protected_product( array( 'read', 'edit_products', 'edit_others_products' ) );
+ewpa_check(
+	'wc_get_product_keeps_a_protected_description_for_a_user_who_can_edit_it',
+	! is_wp_error( $result ) && 'Body 300' === ( $result['description'] ?? null ) && 'Short 300' === ( $result['short_description'] ?? null )
+);
+
+ewpa_product_fixtures( array( 'read_private_products' ) );
+$result = ewpa_callback( 'ewpa/wc-get-product' )( array( 'product_id' => 300 ) );
+ewpa_check(
+	'wc_get_product_still_returns_an_unprotected_description_to_a_reader',
+	! is_wp_error( $result ) && 'Body 300' === ( $result['description'] ?? null ) && false === ( $result['password_protected'] ?? null )
 );
 
 echo PHP_EOL;
