@@ -5,7 +5,7 @@ Tags: mcp, ai, rest-api, content-management, woocommerce
 Requires at least: 6.9
 Tested up to: 7.1
 Requires PHP: 8.0
-Stable tag: 2.16.0
+Stable tag: 2.16.1
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -260,6 +260,14 @@ Yes — strict OAuth clients require a direct `200` on `/.well-known/oauth-autho
 
 == Changelog ==
 
+= 2.16.1 =
+* Security: `ewpa/wc-update-product` checked only that the user could edit products in general. A role allowed to edit its own products but not other people's, such as a vendor on a multi-vendor marketplace, could change the price, stock, status or description of any product. It now checks the product itself, and publishing a product needs the capability to publish products.
+* Security: `ewpa/create-cpt-item` and `ewpa/update-cpt-item` now need the taxonomy's permission to assign terms, as the WordPress REST API does. They only checked the permission to create new terms, so a user could assign existing terms in a taxonomy they were not allowed to use.
+* Security: `ewpa/create-post` with `translation_of` now needs permission to edit the original post. Without it, an Author could link a post of their own as the translation of someone else's post and replace the one the language switcher showed, as `ewpa/link-post-translation` already prevented.
+* Security: translating or duplicating a post you cannot edit no longer copies its protected custom fields (those starting with an underscore) into your copy. `ewpa/create-post-translation` and `ewpa/duplicate-post` still work as before for such a post, and users who can edit the original still get a full copy. As a result, a page built with Elementor that you cannot edit is translated without its design, for an editor to complete.
+* Security: `ewpa/get-post-translations` no longer lists translations the user cannot read, which gave away the titles of other authors' drafts.
+* Security: password-protected content stays hidden from users who cannot edit it in two more places: the custom fields returned by `ewpa/get-cpt-item`, and the description and short description returned by `ewpa/wc-get-product`, which now also returns `password_protected`.
+
 = 2.16.0 =
 * New: `ewpa/create-upload-link` gets an image from the user's computer into the media library without the file passing through the conversation. Sending a file as base64 makes the model type out the whole file, which is slow, expensive and usually fails on size. Instead the ability returns a temporary link: an assistant that can run commands sends the file with a single `PUT`, and one that cannot (Claude Desktop, claude.ai) hands the user a small upload page to drop the image on. The link works once, for 10 minutes, for the user who created it, who must still be able to upload files when it is used. Only JPEG, PNG, GIF, WebP and AVIF are accepted, checked by content and not just by name, up to the site's upload limit capped at 20 MB. Each user can hold five unused links at a time. Only a hash of the link is stored. Opt-in.
 * New: `ewpa/get-upload-status` tells the assistant whether the file has arrived and returns the attachment ID and URL. A link that belongs to someone else reads as expired, so it cannot be used to probe other users' uploads. Opt-in.
@@ -357,6 +365,9 @@ Yes — strict OAuth clients require a direct `200` on `/.well-known/oauth-autho
 * See [changelog.txt](https://plugins.trac.wordpress.org/browser/enable-abilities-for-mcp/trunk/changelog.txt) for the full history of older versions.
 
 == Upgrade Notice ==
+
+= 2.16.1 =
+Security fixes: product, taxonomy and translation abilities now check the specific item, not only the role, and protected custom fields and password-protected content no longer reach users who cannot edit them. Update recommended.
 
 = 2.16.0 =
 Security fix: password-protected posts no longer give away their content to users who cannot edit them, and Elementor element edits filter HTML like core. Adds opt-in abilities to upload an image through a temporary, single-use link.
