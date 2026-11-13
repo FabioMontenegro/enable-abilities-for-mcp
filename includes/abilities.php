@@ -528,7 +528,8 @@ function ewpa_check_term_creation( $terms, string $taxonomy ) {
  * Checks the taxonomies input of the CPT create and update abilities.
  *
  * Mirrors the loop that assigns them: only taxonomies that exist and belong to
- * the post type are considered.
+ * the post type are considered. As in the core REST API, assigning terms needs
+ * the taxonomy's assign_terms, and creating a term also needs edit_terms.
  *
  * @param mixed  $taxonomies Taxonomy slug => terms input.
  * @param string $post_type  Post type slug.
@@ -542,6 +543,18 @@ function ewpa_check_taxonomies_input( $taxonomies, string $post_type ) {
 	foreach ( $taxonomies as $tax_slug => $terms ) {
 		$tax_slug = sanitize_key( $tax_slug );
 		if ( taxonomy_exists( $tax_slug ) && in_array( $tax_slug, get_object_taxonomies( $post_type ), true ) ) {
+			$tax_obj = get_taxonomy( $tax_slug );
+			if ( ! $tax_obj || ! current_user_can( $tax_obj->cap->assign_terms ) ) {
+				return new WP_Error(
+					'forbidden',
+					sprintf(
+						/* translators: %s: taxonomy slug */
+						__( 'You are not allowed to assign terms in the "%s" taxonomy.', 'enable-abilities-for-mcp' ),
+						$tax_slug
+					)
+				);
+			}
+
 			$check = ewpa_check_term_creation( $terms, $tax_slug );
 			if ( is_wp_error( $check ) ) {
 				return $check;

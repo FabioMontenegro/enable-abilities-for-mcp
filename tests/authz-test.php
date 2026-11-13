@@ -2946,6 +2946,89 @@ ewpa_check(
 	! is_wp_error( $ewpa_result ) && 'pending' === $GLOBALS['ewpa_posts'][301]->post_status && array( 301 ) === $GLOBALS['ewpa_saved_products']
 );
 
+/*
+ * ==========================================================================
+ * T4.2 — CPT create/update check assign_terms (audit W8, 2.16.1)
+ *
+ * The CPT abilities only checked edit_terms for terms they would create. Assigning
+ * existing terms needs the taxonomy's assign_terms, as in the core REST API and in
+ * ewpa/assign-cpt-terms. "level" is a course taxonomy whose assign_terms is a
+ * capability of its own (like WooCommerce's product_cat), and the Contributor
+ * does not hold it. Course 111 is the Contributor's own draft.
+ * ==========================================================================
+ */
+
+/**
+ * Adds the "level" taxonomy with one existing term, "beginner".
+ *
+ * @return void
+ */
+function ewpa_restricted_taxonomy(): void {
+	ewpa_reset();
+	$GLOBALS['ewpa_taxonomies']['level'] = (object) array(
+		'name'        => 'level',
+		'label'       => 'Level',
+		'object_type' => array( 'courses' ),
+		'cap'         => (object) array(
+			'assign_terms' => 'assign_levels',
+			'edit_terms'   => 'manage_levels',
+		),
+	);
+	$GLOBALS['ewpa_terms']['level']    = array( 'beginner' );
+	$GLOBALS['ewpa_term_ids']['level'] = array( 9 );
+}
+
+ewpa_restricted_taxonomy();
+$result = ewpa_callback( 'ewpa/create-cpt-item' )(
+	array(
+		'post_type'  => 'courses',
+		'title'      => 'Course',
+		'taxonomies' => array( 'level' => array( 'beginner' ) ),
+	)
+);
+ewpa_check(
+	'create_cpt_item_refuses_existing_terms_without_assign_terms',
+	ewpa_is_error( $result, 'forbidden' ) && array() === $GLOBALS['ewpa_inserted'] && array() === $GLOBALS['ewpa_set_terms']
+);
+
+ewpa_restricted_taxonomy();
+$result = ewpa_callback( 'ewpa/update-cpt-item' )(
+	array(
+		'post_id'    => 111,
+		'taxonomies' => array( 'level' => array( 9 ) ),
+	)
+);
+ewpa_check(
+	'update_cpt_item_refuses_existing_terms_without_assign_terms',
+	ewpa_is_error( $result, 'forbidden' ) && array() === $GLOBALS['ewpa_set_terms']
+);
+
+ewpa_restricted_taxonomy();
+$GLOBALS['ewpa_caps'][] = 'assign_levels';
+$result = ewpa_callback( 'ewpa/update-cpt-item' )(
+	array(
+		'post_id'    => 111,
+		'taxonomies' => array( 'level' => array( 9 ) ),
+	)
+);
+ewpa_check(
+	'update_cpt_item_assigns_existing_terms_with_assign_terms',
+	! is_wp_error( $result ) && 'level' === ( $GLOBALS['ewpa_set_terms'][0][2] ?? null )
+);
+
+// Taxonomies whose assign_terms the user holds keep working as before.
+ewpa_restricted_taxonomy();
+$result = ewpa_callback( 'ewpa/update-cpt-item' )(
+	array(
+		'post_id'    => 111,
+		'taxonomies' => array( 'genre' => array( 'drama' ) ),
+	)
+);
+ewpa_check(
+	'update_cpt_item_still_assigns_terms_of_a_taxonomy_the_user_may_assign',
+	! is_wp_error( $result ) && 'genre' === ( $GLOBALS['ewpa_set_terms'][0][2] ?? null )
+);
+
 echo PHP_EOL;
 if ( $ewpa_failures > 0 ) {
 	echo $ewpa_failures . ' check(s) FAILED out of ' . $ewpa_checks . '.' . PHP_EOL;
