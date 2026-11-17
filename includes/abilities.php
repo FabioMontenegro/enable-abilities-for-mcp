@@ -1783,7 +1783,7 @@ function ewpa_register_custom_abilities(): void {
 						),
 						'status'            => array(
 							'type'        => 'string',
-							'description' => 'Status: draft, publish, pending, private, future',
+							'description' => 'Status: draft, publish, pending, private, future. Default draft. publish, private and future need the publish_posts capability; without it they are refused with an error.',
 							'enum'        => array( 'draft', 'publish', 'pending', 'private', 'future' ),
 							'default'     => 'draft',
 						),
@@ -1844,13 +1844,16 @@ function ewpa_register_custom_abilities(): void {
 						'message'   => array( 'type' => 'string' ),
 					),
 				),
+				// Like core, edit_posts is enough to create a post; only a status that publishes needs publish_posts.
 				'permission_callback' => function () {
-					return current_user_can( 'publish_posts' );
+					return current_user_can( 'edit_posts' );
 				},
 				'execute_callback'    => function ( $input ) {
-					$allowed_status = array( 'draft', 'publish', 'pending', 'private', 'future' );
-					$requested      = $input['status'] ?? 'draft';
-					$status         = in_array( $requested, $allowed_status, true ) ? $requested : 'draft';
+					// A publishing status without publish_posts is refused before anything is written.
+					$status = ewpa_resolve_new_post_status( $input['status'] ?? 'draft', 'post' );
+					if ( is_wp_error( $status ) ) {
+						return $status;
+					}
 
 					$post_data = array(
 						'post_title'   => sanitize_text_field( $input['title'] ),
@@ -2350,7 +2353,7 @@ function ewpa_register_custom_abilities(): void {
 						),
 						'status'     => array(
 							'type'        => 'string',
-							'description' => 'Status: draft, publish, pending, private',
+							'description' => 'Status: draft, publish, pending, private. Default draft. publish and private need the publish_pages capability; without it they are refused with an error.',
 							'enum'        => array( 'draft', 'publish', 'pending', 'private' ),
 							'default'     => 'draft',
 						),
@@ -2379,14 +2382,17 @@ function ewpa_register_custom_abilities(): void {
 						'message'   => array( 'type' => 'string' ),
 					),
 				),
+				// Like core, edit_pages is enough to create a page; only a status that publishes needs publish_pages.
 				'permission_callback' => function () {
-					return current_user_can( 'publish_pages' );
+					return current_user_can( 'edit_pages' );
 				},
 				'execute_callback'    => function ( $input ) {
+					// Pages are never scheduled here: "future" and unknown statuses become a draft, as before.
 					$allowed_status = array( 'draft', 'publish', 'pending', 'private' );
-					$status = $input['status'] ?? 'draft';
-					if ( ! in_array( $status, $allowed_status, true ) ) {
-						$status = 'draft';
+					$requested      = $input['status'] ?? 'draft';
+					$status         = ewpa_resolve_new_post_status( in_array( $requested, $allowed_status, true ) ? $requested : 'draft', 'page' );
+					if ( is_wp_error( $status ) ) {
+						return $status;
 					}
 
 					$post_data = array(

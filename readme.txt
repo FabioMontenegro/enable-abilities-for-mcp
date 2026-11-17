@@ -218,7 +218,11 @@ Yes. On first activation, all abilities are enabled. You can disable any of them
 
 = Is it safe to enable write abilities? =
 
-Write abilities respect WordPress capabilities. For example, creating a post requires the `publish_posts` capability, and editing checks per-post permissions. The MCP user must have the appropriate WordPress role.
+Write abilities respect WordPress capabilities. For example, creating a post or page requires `edit_posts` or `edit_pages`, publishing it requires `publish_posts` or `publish_pages`, and editing checks per-post permissions. The MCP user must have the appropriate WordPress role.
+
+= Can the AI create content without publishing it? =
+
+Yes. Connect with a user whose role can edit but not publish, such as Contributor. The AI can then create and edit drafts or posts pending review, and any attempt to publish is refused with an error, so a person publishes from the WordPress admin.
 
 = Does it work on Multisite? =
 
