@@ -1528,6 +1528,46 @@ ewpa_become_admin();
 $result = ewpa_callback( 'ewpa/get-pages' )( ewpa_list_input( array( 'status' => 'any' ) ) );
 ewpa_check( 'admin_get_pages_lists_every_status', array( 130, 131 ) === ewpa_ids( $result ) );
 
+// Pagination: past the 100-page cap, the next pages are reached with "page".
+ewpa_reset();
+ewpa_become_admin();
+ewpa_callback( 'ewpa/get-pages' )(
+	ewpa_list_input(
+		array(
+			'numberposts' => 100,
+			'page'        => 3,
+		)
+	)
+);
+ewpa_check( 'get_pages_requests_the_given_page', 3 === ( ewpa_last_get_posts_args()['paged'] ?? null ) );
+ewpa_check( 'get_pages_keeps_the_page_size_while_paging', 100 === ( ewpa_last_get_posts_args()['numberposts'] ?? null ) );
+// Pages share menu_order 0 by default; without a unique tiebreaker MySQL may repeat or skip rows across pages.
+ewpa_check(
+	'get_pages_orders_by_menu_order_then_id_for_stable_paging',
+	array(
+		'menu_order' => 'ASC',
+		'ID'         => 'ASC',
+	) === ( ewpa_last_get_posts_args()['orderby'] ?? null )
+);
+
+ewpa_reset();
+ewpa_become_admin();
+ewpa_callback( 'ewpa/get-pages' )( ewpa_list_input() );
+ewpa_check( 'get_pages_defaults_to_the_first_page', 1 === ( ewpa_last_get_posts_args()['paged'] ?? null ) );
+
+foreach ( array( 0, -2, 'abc' ) as $bad_page ) {
+	ewpa_reset();
+	ewpa_become_admin();
+	ewpa_callback( 'ewpa/get-pages' )( ewpa_list_input( array( 'page' => $bad_page ) ) );
+	$requested_page = ewpa_last_get_posts_args()['paged'] ?? null;
+	ewpa_check( 'get_pages_treats_an_invalid_page_as_the_first_' . $bad_page, 1 === $requested_page );
+}
+
+ewpa_reset();
+ewpa_become_admin();
+ewpa_callback( 'ewpa/get-pages' )( ewpa_list_input( array( 'numberposts' => 500 ) ) );
+ewpa_check( 'get_pages_still_caps_the_page_size_at_100', 100 === ( ewpa_last_get_posts_args()['numberposts'] ?? null ) );
+
 foreach ( array( 'draft', 'private', 'any' ) as $status ) {
 	ewpa_reset();
 	$GLOBALS['ewpa_caps'] = array( 'read' );

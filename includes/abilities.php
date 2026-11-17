@@ -1422,10 +1422,16 @@ function ewpa_register_custom_abilities(): void {
 					'properties' => array(
 						'numberposts' => array(
 							'type'        => 'integer',
-							'description' => 'Number of pages to retrieve',
+							'description' => 'Number of pages to retrieve per call (max. 100). Use "page" to get the next ones.',
 							'default'     => 20,
 							'minimum'     => 1,
 							'maximum'     => 100,
+						),
+						'page'        => array(
+							'type'        => 'integer',
+							'description' => 'Page of results to retrieve, starting at 1. Increase it to list more than numberposts pages; an empty result means there are no more.',
+							'default'     => 1,
+							'minimum'     => 1,
 						),
 						'status'      => array(
 							'type'        => 'string',
@@ -1453,6 +1459,7 @@ function ewpa_register_custom_abilities(): void {
 				},
 				'execute_callback'    => function ( $input ) {
 					$numberposts = min( 100, max( 1, absint( $input['numberposts'] ?? 20 ) ) );
+					$page        = max( 1, (int) ( $input['page'] ?? 1 ) );
 					// Any status registered on the site (custom statuses included) or "any"; an unknown one is an error.
 					$post_status = ewpa_resolve_listing_status( $input['status'] ?? 'publish' );
 					if ( is_wp_error( $post_status ) ) {
@@ -1470,9 +1477,13 @@ function ewpa_register_custom_abilities(): void {
 							array(
 								'post_type'   => 'page',
 								'numberposts' => $numberposts,
+								'paged'       => $page,
 								'post_status' => $post_status,
-								'orderby'     => 'menu_order',
-								'order'       => 'ASC',
+								// ID breaks menu_order ties so consecutive pages never repeat or skip a row.
+								'orderby'     => array(
+									'menu_order' => 'ASC',
+									'ID'         => 'ASC',
+								),
 								'perm'        => 'readable',
 							)
 						)
