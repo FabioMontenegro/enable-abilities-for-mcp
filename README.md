@@ -31,8 +31,8 @@ Claude / MCP client  ──►  MCP Adapter  ──►  Abilities API  ──►
 | Category | Abilities | Highlights |
 |---|---|---|
 | **WordPress Core** | 3 | Native site/user/environment info, exposed to MCP by this plugin |
-| **Read** | 9 | Posts, pages, categories, tags, comments, media, users — with filters, including posts by custom-field key and value |
-| **Write** | 14 | Create/update/delete posts and pages (custom fields can be written in the same call that creates the post), moderate and reply to comments, upload images from URL or from the user's computer through a single-use link (the file never passes through the conversation), duplicate any post/page/CPT with meta and taxonomies, assign custom taxonomy terms to a post/page |
+| **Read** | 9 | Posts, pages, categories, tags, comments, media, users — with filters, including posts by custom-field key and value, and pages paginated beyond 100 |
+| **Write** | 14 | Create/update/delete posts and pages (custom fields can be written in the same call that creates the post; a role that can edit but not publish, such as Contributor, creates drafts and posts pending review), moderate and reply to comments, upload images from URL or from the user's computer through a single-use link (the file never passes through the conversation), duplicate any post/page/CPT with meta and taxonomies, assign custom taxonomy terms to a post/page |
 | **SEO — Rank Math** | 3 | Read/write all meta + write structured-data schema blocks (FAQPage, Article, Product…) as JSON-LD |
 | **SEO — SEOPress** | 3 | Read/write all meta + **content analysis**: every SEOPress check (headings, internal links, schemas…) with impact level and recommendation, optionally re-analyzing the rendered page first |
 | **SEO — Yoast SEO** | 3 | Read/write all meta + sitemap index |
