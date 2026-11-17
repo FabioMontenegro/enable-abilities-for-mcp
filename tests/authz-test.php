@@ -1079,13 +1079,57 @@ ewpa_check(
 	! is_wp_error( $result ) && 3 === $GLOBALS['ewpa_posts'][ $result['post_id'] ]->post_author && 'publish' === $result['status']
 );
 
-// ewpa/create-post is gated by publish_posts in its permission callback, so a user who cannot
-// publish never reaches its status handling: there is no silent draft fallback to replace.
-// This case characterizes that gate and passes before and after Part A.
+/*
+ * Create without publishing: like core, edit_posts is enough to create a post,
+ * and only a status that publishes needs publish_posts. A refused status is an
+ * error, never a silent downgrade, and nothing is inserted.
+ */
 ewpa_reset();
+ewpa_check( 'create_post_is_open_to_a_contributor', true === ewpa_callback_permission( 'ewpa/create-post' ) );
+
+ewpa_reset();
+$GLOBALS['ewpa_caps'] = array( 'read' );
+ewpa_check( 'create_post_is_denied_to_a_subscriber', false === ewpa_callback_permission( 'ewpa/create-post' ) );
+
+foreach ( array( 'draft', 'pending' ) as $new_status ) {
+	ewpa_reset();
+	$result = ewpa_callback( 'ewpa/create-post' )(
+		array(
+			'title'   => 'Contributor ' . $new_status,
+			'content' => 'x',
+			'status'  => $new_status,
+		)
+	);
+	ewpa_check(
+		'contributor_create_post_saves_' . $new_status,
+		! is_wp_error( $result ) && $new_status === $GLOBALS['ewpa_posts'][ $result['post_id'] ]->post_status
+	);
+}
+
+foreach ( array( 'publish', 'private', 'future' ) as $new_status ) {
+	ewpa_reset();
+	$result = ewpa_callback( 'ewpa/create-post' )(
+		array(
+			'title'   => 'Contributor ' . $new_status,
+			'content' => 'x',
+			'status'  => $new_status,
+		)
+	);
+	ewpa_check( 'contributor_create_post_refuses_' . $new_status, ewpa_is_error( $result, 'forbidden' ) );
+	ewpa_check( 'contributor_create_post_inserts_nothing_for_' . $new_status, array() === $GLOBALS['ewpa_inserted'] );
+}
+
+ewpa_reset();
+$result = ewpa_callback( 'ewpa/create-post' )(
+	array(
+		'title'   => 'Unknown status',
+		'content' => 'x',
+		'status'  => 'bogus',
+	)
+);
 ewpa_check(
-	'create_post_is_denied_to_users_without_publish_posts',
-	false === ewpa_callback_permission( 'ewpa/create-post' )
+	'contributor_create_post_still_turns_an_unknown_status_into_a_draft',
+	! is_wp_error( $result ) && 'draft' === $result['status']
 );
 
 // meta: written in the same request that creates the post, so a caller that
@@ -1151,6 +1195,74 @@ ewpa_check(
 	'create_post_without_meta_writes_no_meta',
 	! is_wp_error( $result ) && array() === ( $GLOBALS['ewpa_meta'][ $result['post_id'] ] ?? array() )
 );
+
+/*
+ * ==========================================================================
+ * ewpa/create-page — create without publishing
+ * ==========================================================================
+ */
+
+ewpa_reset();
+$GLOBALS['ewpa_caps'] = array( 'read', 'edit_pages' );
+ewpa_check( 'create_page_is_open_to_a_user_who_can_edit_pages', true === ewpa_callback_permission( 'ewpa/create-page' ) );
+
+ewpa_reset();
+ewpa_check( 'create_page_is_denied_without_edit_pages', false === ewpa_callback_permission( 'ewpa/create-page' ) );
+
+foreach ( array( 'draft', 'pending' ) as $new_status ) {
+	ewpa_reset();
+	$GLOBALS['ewpa_caps'] = array( 'read', 'edit_pages' );
+	$result               = ewpa_callback( 'ewpa/create-page' )(
+		array(
+			'title'   => 'Page ' . $new_status,
+			'content' => 'x',
+			'status'  => $new_status,
+		)
+	);
+	ewpa_check(
+		'page_editor_without_publish_saves_' . $new_status,
+		! is_wp_error( $result ) && $new_status === $GLOBALS['ewpa_posts'][ $result['page_id'] ]->post_status
+	);
+}
+
+foreach ( array( 'publish', 'private' ) as $new_status ) {
+	ewpa_reset();
+	$GLOBALS['ewpa_caps'] = array( 'read', 'edit_pages' );
+	$result               = ewpa_callback( 'ewpa/create-page' )(
+		array(
+			'title'   => 'Page ' . $new_status,
+			'content' => 'x',
+			'status'  => $new_status,
+		)
+	);
+	ewpa_check( 'page_editor_without_publish_is_refused_' . $new_status, ewpa_is_error( $result, 'forbidden' ) );
+	ewpa_check( 'page_editor_without_publish_inserts_nothing_for_' . $new_status, array() === $GLOBALS['ewpa_inserted'] );
+}
+
+ewpa_reset();
+ewpa_become_admin();
+$result = ewpa_callback( 'ewpa/create-page' )(
+	array(
+		'title'   => 'Admin page',
+		'content' => 'x',
+		'status'  => 'publish',
+	)
+);
+ewpa_check(
+	'admin_create_page_still_publishes',
+	! is_wp_error( $result ) && 'publish' === $GLOBALS['ewpa_posts'][ $result['page_id'] ]->post_status
+);
+
+ewpa_reset();
+ewpa_become_admin();
+$result = ewpa_callback( 'ewpa/create-page' )(
+	array(
+		'title'   => 'Future page',
+		'content' => 'x',
+		'status'  => 'future',
+	)
+);
+ewpa_check( 'create_page_still_turns_future_into_a_draft', ! is_wp_error( $result ) && 'draft' === $result['status'] );
 
 /*
  * ==========================================================================
@@ -1527,6 +1639,46 @@ ewpa_reset();
 ewpa_become_admin();
 $result = ewpa_callback( 'ewpa/get-pages' )( ewpa_list_input( array( 'status' => 'any' ) ) );
 ewpa_check( 'admin_get_pages_lists_every_status', array( 130, 131 ) === ewpa_ids( $result ) );
+
+// Pagination: past the 100-page cap, the next pages are reached with "page".
+ewpa_reset();
+ewpa_become_admin();
+ewpa_callback( 'ewpa/get-pages' )(
+	ewpa_list_input(
+		array(
+			'numberposts' => 100,
+			'page'        => 3,
+		)
+	)
+);
+ewpa_check( 'get_pages_requests_the_given_page', 3 === ( ewpa_last_get_posts_args()['paged'] ?? null ) );
+ewpa_check( 'get_pages_keeps_the_page_size_while_paging', 100 === ( ewpa_last_get_posts_args()['numberposts'] ?? null ) );
+// Pages share menu_order 0 by default; without a unique tiebreaker MySQL may repeat or skip rows across pages.
+ewpa_check(
+	'get_pages_orders_by_menu_order_then_id_for_stable_paging',
+	array(
+		'menu_order' => 'ASC',
+		'ID'         => 'ASC',
+	) === ( ewpa_last_get_posts_args()['orderby'] ?? null )
+);
+
+ewpa_reset();
+ewpa_become_admin();
+ewpa_callback( 'ewpa/get-pages' )( ewpa_list_input() );
+ewpa_check( 'get_pages_defaults_to_the_first_page', 1 === ( ewpa_last_get_posts_args()['paged'] ?? null ) );
+
+foreach ( array( 0, -2, 'abc' ) as $bad_page ) {
+	ewpa_reset();
+	ewpa_become_admin();
+	ewpa_callback( 'ewpa/get-pages' )( ewpa_list_input( array( 'page' => $bad_page ) ) );
+	$requested_page = ewpa_last_get_posts_args()['paged'] ?? null;
+	ewpa_check( 'get_pages_treats_an_invalid_page_as_the_first_' . $bad_page, 1 === $requested_page );
+}
+
+ewpa_reset();
+ewpa_become_admin();
+ewpa_callback( 'ewpa/get-pages' )( ewpa_list_input( array( 'numberposts' => 500 ) ) );
+ewpa_check( 'get_pages_still_caps_the_page_size_at_100', 100 === ( ewpa_last_get_posts_args()['numberposts'] ?? null ) );
 
 foreach ( array( 'draft', 'private', 'any' ) as $status ) {
 	ewpa_reset();
