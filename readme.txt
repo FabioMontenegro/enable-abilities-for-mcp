@@ -5,7 +5,7 @@ Tags: mcp, ai, rest-api, content-management, woocommerce
 Requires at least: 6.9
 Tested up to: 7.1
 Requires PHP: 8.0
-Stable tag: 2.17.0
+Stable tag: 2.17.1
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -264,6 +264,10 @@ Yes — strict OAuth clients require a direct `200` on `/.well-known/oauth-autho
 
 == Changelog ==
 
+= 2.17.1 =
+* Changed: the settings page shows the plugin's own mark, three switches that form an E for Enable, in place of the generic WordPress icon.
+* Changed: the review request notice matches the plugin's look: its mark, a mint accent and the same buttons as the settings page.
+
 = 2.17.0 =
 * New: `ewpa/get-pages` accepts a `page` parameter. Each call still returns up to 100 pages, and a site with more can now ask for the next ones (`page: 2`, `page: 3`…) until a call comes back empty. Pages are now ordered by menu order and then by ID, so consecutive calls never repeat or skip a page.
 * New: the AI can create posts and pages without publishing them. `ewpa/create-post` now needs only the permission to edit posts and `ewpa/create-page` the permission to edit pages, as in the WordPress admin, so an MCP user with the Contributor role can write drafts and posts pending review. Publishing, scheduling or making the content private still needs the permission to publish, and is refused with an error rather than saved as something else. Users who could already publish see no change.
@@ -373,6 +377,9 @@ Yes — strict OAuth clients require a direct `200` on `/.well-known/oauth-autho
 * See [changelog.txt](https://plugins.trac.wordpress.org/browser/enable-abilities-for-mcp/trunk/changelog.txt) for the full history of older versions.
 
 == Upgrade Notice ==
+
+= 2.17.1 =
+Visual update: the settings page and the review notice now carry the plugin's new mark.
 
 = 2.17.0 =
 Get Pages can now page through sites with more than 100 pages, and a user who can edit but not publish (such as a Contributor) can let the AI create drafts while publishing stays in human hands.

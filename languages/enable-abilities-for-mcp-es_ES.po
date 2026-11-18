@@ -1,8 +1,8 @@
 msgid ""
 msgstr ""
-"Project-Id-Version: Enable Abilities for MCP 2.17.0\n"
+"Project-Id-Version: Enable Abilities for MCP 2.17.1\n"
 "Report-Msgid-Bugs-To: https://wordpress.org/support/plugin/enable-abilities-for-mcp\n"
-"POT-Creation-Date: 2026-11-17T15:27:17+00:00\n"
+"POT-Creation-Date: 2026-11-18T20:58:37+00:00\n"
 "PO-Revision-Date: 2026-11-12 23:30+0000\n"
 "Last-Translator: Fabio Montenegro <fabiomontenegro1987@gmail.com>\n"
 "Language-Team: Spanish (Spain) <https://translate.wordpress.org/locale/es/>\n"
@@ -3366,24 +3366,24 @@ msgstr[0] "%d entrada"
 msgstr[1] "%d entradas"
 
 #. translators: %s: number of ability executions logged.
-#: includes/admin.php:1811
+#: includes/admin.php:1813
 #, php-format
-msgid "Your AI assistant has already run %s actions on this site through Enable Abilities for MCP. 🚀"
-msgstr "Tu asistente de IA ya ha ejecutado %s acciones en este sitio a través de Enable Abilities for MCP. 🚀"
+msgid "Your AI assistant has already run %s actions on this site through Enable Abilities for MCP."
+msgstr "Tu asistente de IA ya ha ejecutado %s acciones en este sitio a través de Enable Abilities for MCP."
 
-#: includes/admin.php:1818
+#: includes/admin.php:1820
 msgid "If the plugin is making your workflow easier, a 5-star review helps other WordPress + AI users find it — and keeps this free, open-source project moving."
 msgstr "Si el plugin te está facilitando el trabajo, una reseña de 5 estrellas ayuda a que otros usuarios de WordPress + IA lo encuentren — y mantiene en marcha este proyecto gratuito y de código abierto."
 
-#: includes/admin.php:1823
+#: includes/admin.php:1825
 msgid "Leave a review ★"
 msgstr "Dejar una reseña ★"
 
-#: includes/admin.php:1826
+#: includes/admin.php:1828
 msgid "Maybe later"
 msgstr "Quizás más tarde"
 
-#: includes/admin.php:1829
+#: includes/admin.php:1831
 msgid "Already reviewed / don&#8217;t show again"
 msgstr "Ya la escribí / no mostrar de nuevo"
 
