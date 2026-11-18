@@ -3368,8 +3368,8 @@ msgstr[1] "%d entradas"
 #. translators: %s: number of ability executions logged.
 #: includes/admin.php:1811
 #, php-format
-msgid "Your AI assistant has already run %s actions on this site through Enable Abilities for MCP. 🚀"
-msgstr "Tu asistente de IA ya ha ejecutado %s acciones en este sitio a través de Enable Abilities for MCP. 🚀"
+msgid "Your AI assistant has already run %s actions on this site through Enable Abilities for MCP."
+msgstr "Tu asistente de IA ya ha ejecutado %s acciones en este sitio a través de Enable Abilities for MCP."
 
 #: includes/admin.php:1818
 msgid "If the plugin is making your workflow easier, a 5-star review helps other WordPress + AI users find it — and keeps this free, open-source project moving."

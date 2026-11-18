@@ -1802,13 +1802,15 @@ function ewpa_render_review_notice(): void {
 	$review_url = 'https://wordpress.org/support/plugin/enable-abilities-for-mcp/reviews/#new-post';
 	$nonce      = wp_create_nonce( 'ewpa_review_nonce' );
 	?>
-	<div class="notice notice-info" id="ewpa-review-notice" style="border-left-color:#7c3aed;padding:14px 16px;">
+	<div class="notice notice-info" id="ewpa-review-notice" style="border-left-color:#06D6A0;padding:14px 16px;display:flex;gap:14px;align-items:flex-start;">
+		<img src="<?php echo esc_url( EWPA_PLUGIN_URL . 'assets/img/enable-abilities-mark.svg' ); ?>" width="40" height="40" alt="" style="flex-shrink:0;margin-top:2px;" />
+		<div>
 		<p style="margin:0 0 4px;font-size:14px;">
 			<strong>
 				<?php
 				printf(
 					/* translators: %s: number of ability executions logged. */
-					esc_html__( 'Your AI assistant has already run %s actions on this site through Enable Abilities for MCP. 🚀', 'enable-abilities-for-mcp' ),
+					esc_html__( 'Your AI assistant has already run %s actions on this site through Enable Abilities for MCP.', 'enable-abilities-for-mcp' ),
 					esc_html( number_format_i18n( $count ) )
 				);
 				?>
@@ -1819,16 +1821,17 @@ function ewpa_render_review_notice(): void {
 			<em>— Fabio Montenegro</em>
 		</p>
 		<p style="margin:0;">
-			<a href="<?php echo esc_url( $review_url ); ?>" target="_blank" rel="noopener" class="button button-primary" data-ewpa-review="done">
+			<a href="<?php echo esc_url( $review_url ); ?>" target="_blank" rel="noopener" class="button button-primary" data-ewpa-review="done" style="background:#06D6A0;border-color:#04B589;color:#0D1421;font-weight:600;">
 				<?php esc_html_e( 'Leave a review ★', 'enable-abilities-for-mcp' ); ?>
 			</a>
-			<a href="#" class="button" data-ewpa-review="later" style="margin-left:6px;">
+			<a href="#" class="button" data-ewpa-review="later" style="margin-left:6px;color:#0D1421;border-color:#5F6F84;">
 				<?php esc_html_e( 'Maybe later', 'enable-abilities-for-mcp' ); ?>
 			</a>
-			<a href="#" data-ewpa-review="dismiss" style="margin-left:10px;text-decoration:none;">
+			<a href="#" data-ewpa-review="dismiss" style="margin-left:10px;text-decoration:none;color:#047A5C;">
 				<?php esc_html_e( 'Already reviewed / don&#8217;t show again', 'enable-abilities-for-mcp' ); ?>
 			</a>
 		</p>
+		</div>
 	</div>
 	<script>
 	( function () {
