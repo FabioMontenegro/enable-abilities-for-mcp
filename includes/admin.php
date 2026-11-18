@@ -574,7 +574,7 @@ function ewpa_render_settings_page(): void {
 	?>
 	<div class="wrap ewpa-wrap">
 		<h1>
-			<span class="dashicons dashicons-superhero" style="font-size: 28px; margin-right: 8px; vertical-align: text-bottom;"></span>
+			<img class="ewpa-logo" src="<?php echo esc_url( EWPA_PLUGIN_URL . 'assets/img/enable-abilities-mark.svg' ); ?>" width="36" height="36" alt="" />
 			<?php esc_html_e( 'Enable Abilities for MCP', 'enable-abilities-for-mcp' ); ?>
 		</h1>
 		<p class="ewpa-subtitle">

@@ -392,3 +392,16 @@
 	flex-shrink: 0;
 	margin-top: 1px;
 }
+
+/* Brand mark (Panel E) next to the page title. */
+.ewpa-wrap > h1 {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+}
+.ewpa-logo {
+	display: block;
+	width: 36px;
+	height: 36px;
+	flex-shrink: 0;
+}
